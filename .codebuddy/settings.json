@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "frontend-design@codebuddy-plugins-official": true,
+    "application-performance@codebuddy-plugins-official": true,
+    "code-simplifier@codebuddy-plugins-official": true
+  }
+}

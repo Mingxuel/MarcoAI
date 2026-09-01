@@ -1,0 +1,2471 @@
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260818 共 2 只(TPO3), 20260817 共 4 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev a93907ec3] Updated
+ 486 files changed, 2075 insertions(+), 2069 deletions(-)
+ create mode 100644 MarcoAI/Update.md
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag c7440589        
+To https://gitee.com/mingxuel/lazy.git
+   4d086c888..a93907ec3  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260819 共 2 只(TPO3), 20260818 共 2 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 98fed01f9] Updated
+ 2334 files changed, 3532 insertions(+), 12131 deletions(-)
+ delete mode 100644 MarcoAI/AIData/1D/000410.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000510.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000555.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000727.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000899.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002020.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002181.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002204.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002276.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002565.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002626.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002668.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002832.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002865.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002922.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002931.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002937.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002980.SZ
+ delete mode 100644 MarcoAI/AIData/1D/600198.SH
+ delete mode 100644 MarcoAI/AIData/1D/600345.SH
+ delete mode 100644 MarcoAI/AIData/1D/600391.SH
+ delete mode 100644 MarcoAI/AIData/1D/600446.SH
+ delete mode 100644 MarcoAI/AIData/1D/600458.SH
+ delete mode 100644 MarcoAI/AIData/1D/600645.SH
+ delete mode 100644 MarcoAI/AIData/1D/603093.SH
+ delete mode 100644 MarcoAI/AIData/1D/603218.SH
+ delete mode 100644 MarcoAI/AIData/1D/603220.SH
+ delete mode 100644 MarcoAI/AIData/1D/603281.SH
+ delete mode 100644 MarcoAI/AIData/1D/603341.SH
+ delete mode 100644 MarcoAI/AIData/1D/603690.SH
+ delete mode 100644 MarcoAI/AIData/1D/603859.SH
+ delete mode 100644 MarcoAI/AIData/1D/603883.SH
+ delete mode 100644 MarcoAI/AIData/1D/603995.SH
+ delete mode 100644 MarcoAI/AIData/1D/605006.SH
+ delete mode 100644 MarcoAI/AIData/1D/605318.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000410.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000510.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000555.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000727.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000899.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002020.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002181.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002204.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002276.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002565.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002626.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002668.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002832.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002865.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002922.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002931.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002937.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002980.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600198.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600345.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600391.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600446.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600458.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600645.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603093.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603218.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603220.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603281.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603341.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603690.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603859.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603883.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603995.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/605006.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/605318.SH
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_3/20260819
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260819
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260819
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_3/20260819
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260819
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260819
+ create mode 100644 MarcoAI/AIData/TOP/20260819
+ create mode 100644 MarcoAI/AIData/TOP_ORIGIN/主板，2026年8月19日涨停所有股.xlsx
+Auto packing the repository for optimum performance.
+See "git help gc" for manual housekeeping.
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 2a4b59a1        
+To https://gitee.com/mingxuel/lazy.git
+   a93907ec3..98fed01f9  dev -> dev
+git 同步完成
+[UPDATE_DATA] -: 命令: UPDATE_DATA
+策略: -
+
+===== UPDATE_TRADING_DATES =====
+===== UPDATE_TRADING_DATES DONE =====
+
+===== UPDATE_STOCK_CODES =====
+===== UPDATE_STOCK_CODES DONE =====
+
+===== UPDATE_1D_ORIGIN =====
+===== UPDATE_1D_ORIGIN DONE =====
+
+===== UPDATE_TOP =====
+===== UPDATE_TOP DONE =====
+
+===== UPDATE_1D =====
+===== UPDATE_1D DONE =====
+
+===== UPDATE_STRATEGY_TPO_3 =====
+===== UPDATE_STRATEGY_TPO_3 DONE =====
+
+===== UPDATE_STRATEGY_TPO_4 =====
+===== UPDATE_STRATEGY_TPO_4 DONE =====
+
+===== UPDATE_STRATEGY_TPO_5 =====
+===== UPDATE_STRATEGY_TPO_5 DONE =====
+
+===== UPDATE_TARGET_TPO_3 =====
+===== UPDATE_TARGET_TPO_3 DONE =====
+
+===== UPDATE_TARGET_TPO_4 =====
+===== UPDATE_TARGET_TPO_4 DONE =====
+
+===== UPDATE_TARGET_TPO_5 =====
+===== UPDATE_TARGET_TPO_5 DONE =====
+
+===== CLEANUP RESIDUAL DIRS =====
+    cleaned residual dir: STRATEGY\TPO_3.old_1787154548
+    cleaned residual dir: STRATEGY\TPO_4.old_1787154576
+    cleaned residual dir: STRATEGY\TPO_5.old_1787154596
+    cleaned residual dir: TARGET\TPO_3.old_1787154615
+    cleaned residual dir: TARGET\TPO_4.old_1787154626
+    cleaned residual dir: TARGET\TPO_5.old_1787154638
+    cleaned residual dir: 1D.old_1787154537
+    cleaned residual dir: 1D_ORIGIN.old_1787154494
+===== CLEANUP RESIDUAL DIRS DONE =====
+ALL DATA UPDATE COMPLETED
+数据更新完成
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 3bedb5c18] Updated
+ 9 files changed, 1337 insertions(+), 243 deletions(-)
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 70447d97        
+To https://gitee.com/mingxuel/lazy.git
+   98fed01f9..3bedb5c18  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260820 共 0 只(TPO3), 20260819 共 2 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260820 共 0 只(TPO3), 20260819 共 2 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 7a2f156c1] Updated
+ 2900 files changed, 9788 insertions(+), 6411 deletions(-)
+ delete mode 100644 MarcoAI/AIData/1D/000700.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000767.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000828.SZ
+ delete mode 100644 MarcoAI/AIData/1D/001399.SZ
+ create mode 100644 MarcoAI/AIData/1D/002020.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002031.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002083.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002155.SZ
+ create mode 100644 MarcoAI/AIData/1D/002204.SZ
+ create mode 100644 MarcoAI/AIData/1D/002276.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002297.SZ
+ create mode 100644 MarcoAI/AIData/1D/002387.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002413.SZ
+ create mode 100644 MarcoAI/AIData/1D/002541.SZ
+ create mode 100644 MarcoAI/AIData/1D/002626.SZ
+ create mode 100644 MarcoAI/AIData/1D/002668.SZ
+ create mode 100644 MarcoAI/AIData/1D/002984.SZ
+ delete mode 100644 MarcoAI/AIData/1D/600376.SH
+ create mode 100644 MarcoAI/AIData/1D/600383.SH
+ create mode 100644 MarcoAI/AIData/1D/600458.SH
+ delete mode 100644 MarcoAI/AIData/1D/600509.SH
+ create mode 100644 MarcoAI/AIData/1D/600649.SH
+ create mode 100644 MarcoAI/AIData/1D/600993.SH
+ delete mode 100644 MarcoAI/AIData/1D/601619.SH
+ create mode 100644 MarcoAI/AIData/1D/603883.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000700.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000767.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000828.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/001399.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002020.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002031.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002083.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002155.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002204.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002276.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002297.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002387.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002413.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002541.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002626.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002668.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002984.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600376.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600383.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600458.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600509.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600649.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600993.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/601619.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603883.SH
+ rename MarcoAI/AIData/STRATEGY/{TPO_4/20260105 => TPO_3/20260820} (100%)
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260120
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260122
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260123
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260204
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260318
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260610
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260618
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260626
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_4/20260818
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260109
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260112
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260113
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260114
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260116
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260121
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260123
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260126
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260127
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260128
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260129
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260130
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260202
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260203
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260204
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260205
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260206
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260209
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260211
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260212
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260213
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260224
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260225
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260226
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260227
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260302
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260303
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260304
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260305
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260306
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260309
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260310
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260311
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260312
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260313
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260316
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260317
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260318
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260319
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260320
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260324
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260325
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260326
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260327
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260330
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260331
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260401
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260402
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260403
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260407
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260408
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260409
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260410
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260413
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260414
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260415
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260416
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260417
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260420
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260421
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260422
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260423
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260424
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260427
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260428
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260429
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260430
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260506
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260507
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260508
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260511
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260512
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260513
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260514
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260515
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260518
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260519
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260520
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260521
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260522
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260525
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260526
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260527
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260528
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260529
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260601
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260602
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260603
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260604
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260605
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260608
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260609
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260610
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260611
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260612
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260615
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260616
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260617
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260618
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260622
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260623
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260624
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260625
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260626
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260629
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260630
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260701
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260702
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260703
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260706
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260707
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260708
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260710
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260713
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260714
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260715
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260716
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260717
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260720
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260721
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260722
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260723
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260724
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260727
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260728
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260730
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260803
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260804
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260805
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260806
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260807
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260810
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260811
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260812
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260814
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260817
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260818
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_5/20260819
+ rename MarcoAI/AIData/STRATEGY/{TPO_5 => TPO_TOP}/20260105 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260106 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260107 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260108 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260109 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260112 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260113 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260114 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260115 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260116 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260119 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_5 => TPO_TOP}/20260120 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260121 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_5 => TPO_TOP}/20260122 (99%)
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260123
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260126 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260127 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260128 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260129 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260130 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260202 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260203 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4/20260210 => TPO_TOP/20260204} (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260205 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260206 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260209 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_5 => TPO_TOP}/20260210 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260211 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260212 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260213 (50%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260224 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260225 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260226 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260227 (95%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260302 (74%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260303 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260304 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260305 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260306 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260309 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260310 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260311 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260312 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260313 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260316 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260317 (100%)
+ rename MarcoAI/AIData/{TARGET/TPO_4 => STRATEGY/TPO_TOP}/20260318 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260319 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260320 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260323 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260324 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260325 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260326 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260327 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260330 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260331 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260401 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260402 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260403 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260407 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260408 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260409 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260410 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260413 (89%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260414 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260415 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260416 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260417 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260420 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260421 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260422 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260423 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260424 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260427 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260428 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260429 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260430 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260506 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260507 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260508 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260511 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260512 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260513 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260514 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260515 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260518 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260519 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260520 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260521 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260522 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260525 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260526 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260527 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260528 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260529 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260601 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260602 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260603 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260604 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260605 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260608 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260609 (99%)
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260610
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260611 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260612 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260615 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260616 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260617 (99%)
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260618
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260622 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260623 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260624 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260625 (78%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4/20260709 => TPO_TOP/20260626} (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260629 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260630 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260701 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260702 (51%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260703 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260706 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260707 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260708 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_5 => TPO_TOP}/20260709 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260710 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260713 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260714 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260715 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260716 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260717 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260720 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260721 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260722 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260723 (50%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260724 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260727 (78%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260728 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260729 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260730 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260731 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260803 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260804 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260805 (74%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260806 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260807 (87%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260810 (65%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260811 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260812 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260813 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260814 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260817 (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_5/20260106 => TPO_TOP/20260818} (100%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_4 => TPO_TOP}/20260819 (99%)
+ rename MarcoAI/AIData/STRATEGY/{TPO_5/20260107 => TPO_TOP/20260820} (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5/20260108 => TARGET/TPO_3/20260820} (100%)
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260115
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260123
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260303
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260312
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260313
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260323
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260409
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260723
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260729
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260731
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260803
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_4/20260813
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260105
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260106
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260107
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260108
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260109
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260112
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260113
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260114
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260115
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260116
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260119
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260120
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260121
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260122
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260126
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260127
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260128
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260129
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260130
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260202
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260203
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260204
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260205
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260206
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260209
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260210
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260211
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260212
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260213
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260224
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260225
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260226
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260227
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260302
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260304
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260305
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260306
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260309
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260310
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260311
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260313
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260316
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260317
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260319
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260320
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260323
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260324
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260325
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260326
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260327
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260330
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260331
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260401
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260402
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260403
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260407
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260408
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260410
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260413
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260414
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260415
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260416
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260417
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260420
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260421
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260422
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260423
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260424
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260427
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260428
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260429
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260430
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260506
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260507
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260508
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260511
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260512
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260513
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260514
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260515
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260518
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260519
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260520
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260521
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260522
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260525
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260526
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260527
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260528
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260529
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260601
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260602
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260603
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260604
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260605
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260608
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260609
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260610
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260611
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260612
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260615
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260616
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260617
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260618
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260622
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260623
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260624
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260625
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260626
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260629
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260630
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260701
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260702
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260703
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260706
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260707
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260708
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260709
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260710
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260713
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260714
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260715
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260716
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260717
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260720
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260721
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260722
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260723
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260724
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260727
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260728
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260729
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260730
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260731
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260804
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260805
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260806
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260807
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260810
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260811
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260812
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260813
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260814
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260817
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260818
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_5/20260819
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260105 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260106 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260107 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260108 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260109 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260112 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260113 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260114 (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5 => TARGET/TPO_TOP}/20260115 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260116 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260119 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260120 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260121 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260122 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_5 => TPO_TOP}/20260123 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260126 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260127 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260128 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260129 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260130 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260202 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260203 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260204 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260205 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260206 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260209 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260210 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260211 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260212 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260213 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260224 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260225 (87%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260226 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260227 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260302 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_5 => TPO_TOP}/20260303 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260304 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260305 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260306 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260309 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260310 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260311 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_5 => TPO_TOP}/20260312 (97%)
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260313
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260316 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260317 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_5 => TPO_TOP}/20260318 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260319 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260320 (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5 => TARGET/TPO_TOP}/20260323 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260324 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260325 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260326 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260327 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260330 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260331 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260401 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260402 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260403 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260407 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260408 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_5 => TPO_TOP}/20260409 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260410 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260413 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260414 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260415 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260416 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260417 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260420 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260421 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260422 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260423 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260424 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260427 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260428 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260429 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260430 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260506 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260507 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260508 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260511 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260512 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260513 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260514 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260515 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260518 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260519 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260520 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260521 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260522 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260525 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260526 (84%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260527 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260528 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260529 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260601 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260602 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260603 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260604 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260605 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260608 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260609 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260610 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260611 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260612 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260615 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260616 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260617 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260618 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260622 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260623 (86%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260624 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260625 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260626 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260629 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260630 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260701 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260702 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260703 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260706 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260707 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260708 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260709 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260710 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260713 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260714 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260715 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260716 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260717 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260720 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260721 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260722 (97%)
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260723
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260724 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260727 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260728 (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5 => TARGET/TPO_TOP}/20260729 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260730 (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5 => TARGET/TPO_TOP}/20260731 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_5 => TPO_TOP}/20260803 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260804 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260805 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260806 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260807 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260810 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260811 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260812 (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5 => TARGET/TPO_TOP}/20260813 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260814 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260817 (97%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260818 (100%)
+ rename MarcoAI/AIData/TARGET/{TPO_4 => TPO_TOP}/20260819 (100%)
+ rename MarcoAI/AIData/{STRATEGY/TPO_5/20260119 => TARGET/TPO_TOP/20260820} (100%)
+ create mode 100644 MarcoAI/AIData/TOP/20260820
+ create mode 100644 MarcoAI/AIData/TOP_ORIGIN/主板，2026年8月20日涨停所有股.xlsx
+ create mode 100644 MarcoAI/_tmp_check.js
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag cc45daa9        
+To https://gitee.com/mingxuel/lazy.git
+   3bedb5c18..7a2f156c1  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260821 共 0 只(TPO3), 20260820 共 0 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev b3fbb6a61] Updated
+ 2359 files changed, 10771 insertions(+), 5626 deletions(-)
+ delete mode 100644 MarcoAI/AIData/1D/000403.SZ
+ create mode 100644 MarcoAI/AIData/1D/000410.SZ
+ create mode 100644 MarcoAI/AIData/1D/000510.SZ
+ create mode 100644 MarcoAI/AIData/1D/000555.SZ
+ create mode 100644 MarcoAI/AIData/1D/000700.SZ
+ create mode 100644 MarcoAI/AIData/1D/000727.SZ
+ create mode 100644 MarcoAI/AIData/1D/000767.SZ
+ create mode 100644 MarcoAI/AIData/1D/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002020.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002204.SZ
+ create mode 100644 MarcoAI/AIData/1D/002297.SZ
+ create mode 100644 MarcoAI/AIData/1D/002413.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002984.SZ
+ create mode 100644 MarcoAI/AIData/1D/600345.SH
+ delete mode 100644 MarcoAI/AIData/1D/600383.SH
+ create mode 100644 MarcoAI/AIData/1D/600391.SH
+ create mode 100644 MarcoAI/AIData/1D/600446.SH
+ create mode 100644 MarcoAI/AIData/1D/600509.SH
+ delete mode 100644 MarcoAI/AIData/1D/600649.SH
+ delete mode 100644 MarcoAI/AIData/1D/600993.SH
+ create mode 100644 MarcoAI/AIData/1D/603281.SH
+ delete mode 100644 MarcoAI/AIData/1D/603538.SH
+ create mode 100644 MarcoAI/AIData/1D/603580.SH
+ create mode 100644 MarcoAI/AIData/1D/603626.SH
+ delete mode 100644 MarcoAI/AIData/1D/603693.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000403.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000410.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000510.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000555.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000700.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000727.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000767.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002020.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002204.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002297.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002413.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002984.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600345.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600383.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600391.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600446.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600509.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600649.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600993.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603281.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603538.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603580.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603626.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603693.SH
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_3/20260821
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260821
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_3/20260821
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260821
+ create mode 100644 MarcoAI/AIData/TOP/20260821
+ create mode 100644 MarcoAI/AIData/TOP_ORIGIN/主板，2026年8月21日涨停所有股.xlsx
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 0d4f7695        
+To https://gitee.com/mingxuel/lazy.git
+   7a2f156c1..b3fbb6a61  dev -> dev
+git 同步完成
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 15434f335] Updated
+ 315 files changed, 92 insertions(+), 937 deletions(-)
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260105
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260106
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260107
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260108
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260109
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260112
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260113
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260114
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260115
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260116
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260119
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260120
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260121
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260122
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260123
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260126
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260127
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260128
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260129
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260130
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260202
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260203
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260204
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260205
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260206
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260209
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260210
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260211
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260212
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260213
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260224
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260225
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260226
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260227
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260302
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260303
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260304
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260305
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260306
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260309
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260310
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260311
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260312
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260313
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260316
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260317
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260318
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260319
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260320
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260323
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260324
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260325
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260326
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260327
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260330
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260331
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260401
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260402
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260403
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260407
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260408
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260409
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260410
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260413
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260414
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260415
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260416
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260417
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260420
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260421
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260422
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260423
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260424
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260427
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260428
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260429
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260430
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260506
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260507
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260508
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260511
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260512
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260513
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260514
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260515
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260518
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260519
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260520
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260521
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260522
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260525
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260526
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260527
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260528
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260529
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260601
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260602
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260603
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260604
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260605
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260608
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260609
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260610
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260611
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260612
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260615
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260616
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260617
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260618
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260622
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260623
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260624
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260625
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260626
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260629
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260630
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260701
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260702
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260703
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260706
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260707
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260708
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260709
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260710
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260713
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260714
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260715
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260716
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260717
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260720
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260721
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260722
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260723
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260724
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260727
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260728
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260729
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260730
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260731
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260803
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260804
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260805
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260806
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260807
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260810
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260811
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260812
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260813
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260814
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260817
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260818
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260819
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260820
+ delete mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260821
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260105
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260106
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260107
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260108
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260109
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260112
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260113
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260114
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260115
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260116
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260119
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260120
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260121
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260122
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260123
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260126
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260127
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260128
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260129
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260130
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260202
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260203
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260204
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260205
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260206
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260209
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260210
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260211
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260212
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260213
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260224
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260225
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260226
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260227
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260302
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260303
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260304
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260305
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260306
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260309
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260310
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260311
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260312
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260313
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260316
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260317
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260318
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260319
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260320
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260323
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260324
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260325
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260326
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260327
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260330
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260331
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260401
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260402
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260403
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260407
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260408
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260409
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260410
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260413
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260414
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260415
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260416
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260417
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260420
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260421
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260422
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260423
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260424
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260427
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260428
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260429
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260430
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260506
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260507
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260508
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260511
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260512
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260513
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260514
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260515
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260518
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260519
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260520
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260521
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260522
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260525
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260526
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260527
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260528
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260529
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260601
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260602
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260603
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260604
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260605
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260608
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260609
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260610
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260611
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260612
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260615
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260616
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260617
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260618
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260622
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260623
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260624
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260625
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260626
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260629
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260630
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260701
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260702
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260703
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260706
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260707
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260708
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260709
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260710
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260713
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260714
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260715
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260716
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260717
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260720
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260721
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260722
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260723
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260724
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260727
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260728
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260729
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260730
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260731
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260803
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260804
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260805
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260806
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260807
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260810
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260811
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260812
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260813
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260814
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260817
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260818
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260819
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260820
+ delete mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260821
+ create mode 100644 MarcoAI/_v3.py
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 6b4fa0b1        
+To https://gitee.com/mingxuel/lazy.git
+   b3fbb6a61..15434f335  dev -> dev
+git 同步完成
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 097add966] Updated
+ 3 files changed, 684 insertions(+), 33 deletions(-)
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 3f4653a2        
+To https://gitee.com/mingxuel/lazy.git
+   15434f335..097add966  dev -> dev
+git 同步完成
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev f714543be] Updated
+ 932 files changed, 2605 insertions(+), 899 deletions(-)
+ create mode 100644 MarcoAI/.codebuddy/settings.json
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260107
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260108
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260109
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260112
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260113
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260114
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260115
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260116
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260119
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260120
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260121
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260122
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260123
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260126
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260127
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260128
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260129
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260130
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260202
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260203
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260204
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260205
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260206
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260209
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260210
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260211
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260212
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260213
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260224
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260225
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260226
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260227
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260302
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260303
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260304
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260305
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260306
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260309
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260310
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260311
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260312
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260313
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260316
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260317
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260318
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260319
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260320
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260323
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260324
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260325
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260326
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260327
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260330
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260331
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260401
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260402
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260403
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260407
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260408
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260409
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260410
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260413
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260414
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260415
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260416
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260417
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260420
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260421
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260422
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260423
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260424
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260427
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260428
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260429
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260430
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260506
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260507
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260508
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260511
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260512
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260513
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260514
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260515
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260518
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260519
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260520
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260521
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260522
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260525
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260526
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260527
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260528
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260529
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260601
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260602
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260603
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260604
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260605
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260608
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260609
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260610
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260611
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260612
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260615
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260616
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260617
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260618
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260622
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260623
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260624
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260625
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260626
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260629
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260630
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260701
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260702
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260703
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260706
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260707
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260708
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260709
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260710
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260713
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260714
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260715
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260716
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260717
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260720
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260721
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260722
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260723
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260724
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260727
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260728
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260729
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260730
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260731
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260803
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260804
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260805
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260806
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260807
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260810
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260811
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260812
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260813
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260814
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260817
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260818
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260819
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260820
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260821
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260105
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260106
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260107
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260108
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260109
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260112
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260113
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260114
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260115
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260116
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260119
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260120
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260121
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260122
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260123
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260126
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260127
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260128
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260129
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260130
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260202
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260203
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260204
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260205
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260206
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260209
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260210
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260211
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260212
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260213
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260224
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260225
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260226
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260227
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260302
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260303
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260304
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260305
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260306
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260309
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260310
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260311
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260312
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260313
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260316
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260317
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260318
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260319
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260320
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260323
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260324
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260325
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260326
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260327
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260330
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260331
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260401
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260402
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260403
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260407
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260408
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260409
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260410
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260413
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260414
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260415
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260416
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260417
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260420
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260421
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260422
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260423
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260424
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260427
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260428
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260429
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260430
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260506
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260507
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260508
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260511
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260512
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260513
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260514
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260515
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260518
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260519
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260520
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260521
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260522
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260525
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260526
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260527
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260528
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260529
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260601
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260602
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260603
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260604
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260605
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260608
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260609
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260610
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260611
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260612
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260615
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260616
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260617
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260618
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260622
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260623
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260624
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260625
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260626
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260629
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260630
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260701
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260702
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260703
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260706
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260707
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260708
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260709
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260710
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260713
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260714
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260715
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260716
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260717
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260720
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260721
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260722
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260723
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260724
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260727
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260728
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260729
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260730
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260731
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260803
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260804
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260805
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260806
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260807
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260810
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260811
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260812
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260813
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260814
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260817
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260818
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260819
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260820
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260821
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260105
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260106
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260107
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260108
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260109
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260112
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260113
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260114
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260115
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260116
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260119
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260120
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260121
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260122
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260123
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260126
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260127
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260128
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260129
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260130
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260202
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260203
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260204
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260205
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260206
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260209
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260210
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260211
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260212
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260213
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260224
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260225
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260226
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260227
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260302
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260303
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260304
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260305
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260306
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260309
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260310
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260311
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260312
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260313
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260316
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260317
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260318
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260319
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260320
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260323
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260324
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260325
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260326
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260327
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260330
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260331
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260401
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260402
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260403
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260407
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260408
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260409
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260410
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260413
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260414
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260415
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260416
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260417
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260420
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260421
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260422
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260423
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260424
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260427
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260428
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260429
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260430
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260506
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260507
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260508
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260511
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260512
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260513
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260514
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260515
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260518
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260519
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260520
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260521
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260522
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260525
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260526
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260527
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260528
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260529
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260601
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260602
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260603
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260604
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260605
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260608
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260609
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260610
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260611
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260612
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260615
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260616
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260617
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260618
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260622
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260623
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260624
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260625
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260626
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260629
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260630
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260701
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260702
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260703
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260706
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260707
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260708
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260709
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260710
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260713
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260714
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260715
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260716
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260717
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260720
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260721
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260722
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260723
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260724
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260727
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260728
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260729
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260730
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260731
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260803
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260804
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260805
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260806
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260807
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260810
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260811
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260812
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260813
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260814
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260817
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260818
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260819
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260820
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260821
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260105
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260106
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260107
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260108
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260109
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260112
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260113
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260114
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260115
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260116
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260119
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260120
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260121
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260122
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260123
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260126
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260127
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260128
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260129
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260130
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260202
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260203
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260204
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260205
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260206
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260209
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260210
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260211
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260212
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260213
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260224
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260225
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260226
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260227
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260302
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260303
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260304
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260305
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260306
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260309
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260310
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260311
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260312
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260313
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260316
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260317
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260318
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260319
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260320
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260323
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260324
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260325
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260326
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260327
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260330
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260331
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260401
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260402
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260403
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260407
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260408
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260409
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260410
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260413
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260414
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260415
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260416
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260417
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260420
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260421
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260422
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260423
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260424
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260427
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260428
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260429
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260430
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260506
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260507
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260508
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260511
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260512
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260513
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260514
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260515
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260518
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260519
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260520
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260521
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260522
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260525
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260526
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260527
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260528
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260529
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260601
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260602
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260603
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260604
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260605
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260608
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260609
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260610
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260611
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260612
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260615
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260616
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260617
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260618
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260622
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260623
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260624
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260625
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260626
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260629
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260630
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260701
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260702
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260703
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260706
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260707
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260708
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260709
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260710
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260713
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260714
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260715
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260716
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260717
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260720
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260721
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260722
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260723
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260724
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260727
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260728
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260729
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260730
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260731
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260803
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260804
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260805
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260806
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260807
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260810
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260811
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260812
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260813
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260814
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260817
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260818
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260819
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260820
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260821
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260105
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260106
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260107
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260108
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260109
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260112
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260113
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260114
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260115
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260116
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260119
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260120
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260121
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260122
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260123
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260126
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260127
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260128
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260129
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260130
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260202
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260203
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260204
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260205
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260206
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260209
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260210
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260211
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260212
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260213
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260224
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260225
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260226
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260227
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260302
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260303
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260304
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260305
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260306
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260309
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260310
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260311
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260312
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260313
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260316
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260317
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260318
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260319
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260320
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260323
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260324
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260325
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260326
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260327
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260330
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260331
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260401
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260402
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260403
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260407
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260408
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260409
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260410
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260413
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260414
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260415
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260416
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260417
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260420
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260421
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260422
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260423
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260424
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260427
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260428
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260429
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260430
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260506
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260507
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260508
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260511
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260512
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260513
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260514
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260515
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260518
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260519
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260520
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260521
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260522
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260525
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260526
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260527
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260528
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260529
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260601
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260602
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260603
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260604
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260605
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260608
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260609
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260610
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260611
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260612
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260615
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260616
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260617
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260618
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260622
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260623
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260624
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260625
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260626
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260629
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260630
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260701
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260702
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260703
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260706
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260707
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260708
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260709
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260710
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260713
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260714
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260715
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260716
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260717
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260720
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260721
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260722
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260723
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260724
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260727
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260728
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260729
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260730
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260731
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260803
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260804
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260805
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260806
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260807
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260810
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260811
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260812
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260813
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260814
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260817
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260818
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260819
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260820
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260821
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260105
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260106
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260107
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260108
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260109
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260112
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260113
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260114
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260115
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260116
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260119
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260120
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260121
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260122
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260123
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260126
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260127
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260128
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260129
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260130
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260202
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260203
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260204
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260205
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260206
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260209
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260210
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260211
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260212
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260213
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260224
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260225
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260226
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260227
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260302
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260303
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260304
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260305
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260306
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260309
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260310
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260311
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260312
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260313
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260316
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260317
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260318
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260319
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260320
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260323
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260324
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260325
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260326
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260327
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260330
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260331
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260401
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260402
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260403
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260407
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260408
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260409
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260410
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260413
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260414
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260415
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260416
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260417
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260420
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260421
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260422
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260423
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260424
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260427
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260428
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260429
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260430
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260506
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260507
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260508
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260511
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260512
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260513
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260514
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260515
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260518
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260519
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260520
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260521
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260522
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260525
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260526
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260527
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260528
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260529
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260601
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260602
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260603
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260604
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260605
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260608
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260609
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260610
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260611
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260612
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260615
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260616
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260617
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260618
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260622
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260623
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260624
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260625
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260626
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260629
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260630
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260701
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260702
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260703
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260706
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260707
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260708
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260709
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260710
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260713
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260714
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260715
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260716
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260717
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260720
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260721
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260722
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260723
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260724
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260727
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260728
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260729
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260730
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260731
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260803
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260804
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260805
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260806
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260807
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260810
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260811
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260812
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260813
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260814
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260817
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260818
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260819
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260820
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260821
+ delete mode 100644 MarcoAI/_check_ui_vs.py
+ delete mode 100644 MarcoAI/_tmp_check.js
+ delete mode 100644 MarcoAI/_v3.py
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag ae42a3ab        
+To https://gitee.com/mingxuel/lazy.git
+   097add966..f714543be  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260824 共 1 只(TPO3), 20260821 共 0 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 567ebd2df] Updated
+ 3077 files changed, 7381 insertions(+), 9108 deletions(-)
+ create mode 100644 MarcoAI/AIData/1D/000065.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000410.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000555.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000700.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000727.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000767.SZ
+ create mode 100644 MarcoAI/AIData/1D/000828.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000837.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002182.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002346.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002348.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002413.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002541.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002626.SZ
+ create mode 100644 MarcoAI/AIData/1D/002906.SZ
+ create mode 100644 MarcoAI/AIData/1D/002984.SZ
+ create mode 100644 MarcoAI/AIData/1D/600198.SH
+ delete mode 100644 MarcoAI/AIData/1D/600446.SH
+ delete mode 100644 MarcoAI/AIData/1D/600480.SH
+ delete mode 100644 MarcoAI/AIData/1D/603124.SH
+ delete mode 100644 MarcoAI/AIData/1D/603281.SH
+ create mode 100644 MarcoAI/AIData/1D/603327.SH
+ delete mode 100644 MarcoAI/AIData/1D/603580.SH
+ delete mode 100644 MarcoAI/AIData/1D/603601.SH
+ delete mode 100644 MarcoAI/AIData/1D/603883.SH
+ create mode 100644 MarcoAI/AIData/1D/605168.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000065.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000410.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000555.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000700.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000727.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000767.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000828.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000837.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002182.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002346.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002348.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002413.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002541.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002626.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002906.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002984.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600198.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600446.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600480.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603124.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603281.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603327.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603580.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603601.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603883.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/605168.SH
+ rename MarcoAI/AIData/STRATEGY/{TPO_MA/20260107 => TPO_3/20260824} (100%)
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_MA/20260824
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_NB/20260824
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260824
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_VR/20260824
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_3/20260824
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_NB/20260824
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260824
+ create mode 100644 MarcoAI/AIData/TOP/20260824
+ create mode 100644 MarcoAI/AIData/TOP_ORIGIN/主板，2026年8月24日涨停所有股.xlsx
+Auto packing the repository for optimum performance.
+See "git help gc" for manual housekeeping.
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 8e46eb84        
+To https://gitee.com/mingxuel/lazy.git
+   950578fc6..567ebd2df  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260825 共 1 只(TPO3), 20260824 共 0 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[UPDATE_THS] TPO_3: 命令: UPDATE_THS
+策略: TPO_3
+
+同花顺板块已更新:
+策略 TPO_3: 20260826 共 1 只(TPO3), 20260825 共 1 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[UPDATE_THS] TPO_M5: 命令: UPDATE_THS
+策略: TPO_M5
+
+同花顺板块已更新:
+策略 TPO_M5: 20260827 共 2 只(TPO3), 20260826 共 1 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev 9dca6ac2c] Updated
+ 2402 files changed, 8793 insertions(+), 2938 deletions(-)
+ create mode 100644 MarcoAI/AIData/1D/000510.SZ
+ create mode 100644 MarcoAI/AIData/1D/001399.SZ
+ create mode 100644 MarcoAI/AIData/1D/002155.SZ
+ create mode 100644 MarcoAI/AIData/1D/002297.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002703.SZ
+ create mode 100644 MarcoAI/AIData/1D/002842.SZ
+ create mode 100644 MarcoAI/AIData/1D/002937.SZ
+ create mode 100644 MarcoAI/AIData/1D/002980.SZ
+ create mode 100644 MarcoAI/AIData/1D/600360.SH
+ delete mode 100644 MarcoAI/AIData/1D/600507.SH
+ create mode 100644 MarcoAI/AIData/1D/600728.SH
+ create mode 100644 MarcoAI/AIData/1D/600993.SH
+ delete mode 100644 MarcoAI/AIData/1D/601163.SH
+ delete mode 100644 MarcoAI/AIData/1D/601801.SH
+ create mode 100644 MarcoAI/AIData/1D/603124.SH
+ create mode 100644 MarcoAI/AIData/1D/603220.SH
+ create mode 100644 MarcoAI/AIData/1D/603281.SH
+ create mode 100644 MarcoAI/AIData/1D/603341.SH
+ create mode 100644 MarcoAI/AIData/1D/603580.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000510.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/001399.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002155.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002297.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002703.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002842.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002937.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002980.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600360.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600507.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600728.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600993.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/601163.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/601801.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603124.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603220.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603281.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603341.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603580.SH
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_3/20260827
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_M5/20260827
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260827
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_3/20260827
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_M5/20260827
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260827
+ create mode 100644 MarcoAI/AIData/TOP/20260827
+ create mode 100644 MarcoAI/AIData/TOP_ORIGIN/主板，2026年8月27日涨停所有股.xlsx
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag fc4dfe8b        
+To https://gitee.com/mingxuel/lazy.git
+   4dd9edc75..9dca6ac2c  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_M5: 命令: UPDATE_THS
+策略: TPO_M5
+
+同花顺板块已更新:
+策略 TPO_M5: 20260828 共 6 只(TPO3), 20260827 共 2 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[GIT_SYNC] -: 命令: GIT_SYNC
+策略: -
+
+$ git add .
+$ git commit -m "Updated"
+[dev edf85eecc] Updated
+ 2441 files changed, 8325 insertions(+), 4280 deletions(-)
+ create mode 100644 MarcoAI/AIData/1D/000006.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000403.SZ
+ create mode 100644 MarcoAI/AIData/1D/000552.SZ
+ create mode 100644 MarcoAI/AIData/1D/000712.SZ
+ delete mode 100644 MarcoAI/AIData/1D/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D/001399.SZ
+ create mode 100644 MarcoAI/AIData/1D/002083.SZ
+ create mode 100644 MarcoAI/AIData/1D/002387.SZ
+ create mode 100644 MarcoAI/AIData/1D/002437.SZ
+ create mode 100644 MarcoAI/AIData/1D/002541.SZ
+ delete mode 100644 MarcoAI/AIData/1D/002937.SZ
+ delete mode 100644 MarcoAI/AIData/1D/600360.SH
+ create mode 100644 MarcoAI/AIData/1D/600722.SH
+ create mode 100644 MarcoAI/AIData/1D/600740.SH
+ create mode 100644 MarcoAI/AIData/1D/601003.SH
+ create mode 100644 MarcoAI/AIData/1D/601801.SH
+ delete mode 100644 MarcoAI/AIData/1D/603040.SH
+ delete mode 100644 MarcoAI/AIData/1D/603124.SH
+ delete mode 100644 MarcoAI/AIData/1D/603218.SH
+ delete mode 100644 MarcoAI/AIData/1D/603220.SH
+ create mode 100644 MarcoAI/AIData/1D/603327.SH
+ delete mode 100644 MarcoAI/AIData/1D/603341.SH
+ create mode 100644 MarcoAI/AIData/1D/603883.SH
+ create mode 100644 MarcoAI/AIData/1D/605006.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000006.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000403.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000552.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/000712.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/000917.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/001399.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002083.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002387.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002437.SZ
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/002541.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/002937.SZ
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/600360.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600722.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/600740.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/601003.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/601801.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603040.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603124.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603218.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603220.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603327.SH
+ delete mode 100644 MarcoAI/AIData/1D_ORIGIN/603341.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/603883.SH
+ create mode 100644 MarcoAI/AIData/1D_ORIGIN/605006.SH
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_3/20260828
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_M5/20260828
+ create mode 100644 MarcoAI/AIData/STRATEGY/TPO_TOP/20260828
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_3/20260828
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_M5/20260828
+ create mode 100644 MarcoAI/AIData/TARGET/TPO_TOP/20260828
+ create mode 100644 MarcoAI/AIData/TOP/20260828
+ create mode 100644 MarcoAI/AIData/TOP_ORIGIN/主板，2026年8月28日涨停所有股.xlsx
+$ git push
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 064be6a7        
+To https://gitee.com/mingxuel/lazy.git
+   9dca6ac2c..edf85eecc  dev -> dev
+git 同步完成
+[UPDATE_THS] TPO_M5: 命令: UPDATE_THS
+策略: TPO_M5
+
+同花顺板块已更新:
+策略 TPO_M5: 20260831 共 0 只(TPO3), 20260828 共 6 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml
+[UPDATE_THS] TPO_M5: 命令: UPDATE_THS
+策略: TPO_M5
+
+同花顺板块已更新:
+策略 TPO_M5: 20260901 共 2 只(TPO3), 20260831 共 0 只(TPO31)
+已覆盖: C:\同花顺远航版\bin\users\狗蛋儿家的金\blockstockV3.xml

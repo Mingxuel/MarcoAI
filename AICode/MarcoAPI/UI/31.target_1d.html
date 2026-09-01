@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Target 1D</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#131722; color:#d1d4dc; font-family:'Segoe UI',sans-serif; }
+  body { padding:10px 20px 20px 0; }
+
+  html, body { height:100%; overflow:hidden; }
+  #scroll-wrap { overflow:auto; width:100%; height:calc(100vh - 30px); overscroll-behavior-x:none; touch-action:pan-y; }
+  #scroll-wrap::-webkit-scrollbar { display:none; }
+  #scroll-wrap { -ms-overflow-style:none; scrollbar-width:none; }
+
+  table { table-layout:fixed; width:4145px; border-collapse:collapse; }
+  td { padding:8px 10px; border-bottom:1px solid #2b2b43; vertical-align:middle; background:#131722; }
+  .col-idx { position:sticky; left:0; z-index:3; width:240px; text-align:center; color:#ffffff; font-size:200px; font-weight:900; line-height:1; }
+  .col-chart { width:3685px; position:relative; }
+  .col-param { position:sticky; right:0; z-index:3; width:220px; padding-left:20px; }
+
+  /* D 行 - 冻结在顶部 */
+  .row-date { position:sticky; top:0; z-index:4; }
+  .row-date td { padding:0 0 10px; background:#131722; }
+  .row-date .data-area { display:flex; align-items:stretch; height:80px; padding:0 10px 0 5px; }
+  .row-date .data-area { display:flex; align-items:stretch; height:80px; }
+  .date-axis { position:relative; height:100%; }
+  .date-axis .dl { position:absolute; top:0; bottom:0; writing-mode:vertical-rl; text-orientation:upright; font-size:8px; color:#d1d4dc; text-align:center; border-left:1px solid #5a5f7a; display:flex; align-items:center; justify-content:center; }
+
+  /* 图表容器 */
+  .chart-box { position:relative; user-select:none; margin:0; cursor:crosshair; }
+
+
+  .chart-label .tag { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:normal; }
+  .chart-label .tag.blue { background:#2962ff22; color:#2962ff; border:1px solid #2962ff44; }
+  .chart-label .tag.green { background:#26a69a22; color:#26a69a; border:1px solid #26a69a44; }
+  .chart-label .tag.red { background:#ef535022; color:#ef5350; border:1px solid #ef535044; }
+
+  .param-group { display:flex; flex-direction:column; gap:4px; }
+  .param-row { display:flex; align-items:center; gap:6px; }
+  .param-row label { font-size:11px; color:#787b86; min-width:48px; text-align:right; }
+  .param-row input { flex:1; min-width:40px; padding:4px 6px; border:1px solid #2b2b43; background:#1e222d; color:#d1d4dc; font-size:11px; border-radius:4px; outline:none; }
+  .param-row input:focus { border-color:#2962ff; }
+  .param-row input[type="checkbox"] { flex:unset; min-width:unset; width:16px; height:16px; }
+  .color-picker { position:relative; }
+  .color-swatch { width:22px; height:22px; border:1px solid #2b2b43; border-radius:3px; cursor:pointer; flex-shrink:0; }
+  .color-grid { position:absolute; top:24px; left:0; z-index:20; display:none; grid-template-columns:repeat(8,18px); gap:1px; background:#1e222d; padding:3px; border:1px solid #2b2b43; border-radius:4px; }
+  .color-grid.show { display:grid; }
+  .color-grid span { width:18px; height:18px; cursor:pointer; border-radius:2px; border:1px solid transparent; }
+  .color-grid span:hover { border-color:#fff; }
+  .param-row input.height-input { min-width:60px; }
+
+  /* 十字虚线 */
+  #cross-v { position:fixed; top:0; bottom:0; width:0; border-left:1px dashed #787b8666; z-index:10; pointer-events:none; display:none; }
+
+  .up { color:#26a69a; } .dn { color:#ef5350; }
+  .empty { color:#485c7b; font-size:14px; padding:40px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="cross-v"></div>
+<div id="scroll-wrap">
+  <table>
+    <tbody>
+      <!-- 日期轴（冻结） -->
+      <tr class="row-date">
+        <td class="col-idx" style="font-family:'Orbitron',sans-serif;font-size:40px;line-height:80px;">100,000</td>
+        <td>
+          <div class="data-area">
+            <div class="date-axis-wrap">
+              <div class="date-axis" id="date-axis"></div>
+            </div>
+          </div>
+        </td>
+        <td class="col-param"></td>
+      </tr>
+      <!-- 第2行：上升均线 -->
+      <tr>
+        <td class="col-idx" style="padding:0;"><div style="font-size:13px;font-weight:normal;color:#d1d4dc;line-height:1.2;">上升均线 <span style="font-size:10px;background:#2962ff22;color:#2962ff;border:1px solid #2962ff44;padding:1px 6px;border-radius:8px;">MA</span></div><div style="font-family:'Orbitron',sans-serif;font-size:60px;font-weight:900;line-height:1;">MA</div></td>
+        <td style="padding:0;">
+          <div class="chart-box" style="height:120px;">
+            <canvas id="c-ma"></canvas>
+          </div>
+        </td>
+        <td class="col-param">
+          <div class="param-group">
+            <div class="param-row"><label>MA1</label><input class="ma-period" type="number" value="5" min="0" data-ma="0"><div class="color-picker"><div class="color-swatch ma-swatch" data-ma="0" style="background:#f5a623"></div><div class="color-grid"><span style="background:#ff0000" data-color="#ff0000"></span><span style="background:#ff4500" data-color="#ff4500"></span><span style="background:#ff8c00" data-color="#ff8c00"></span><span style="background:#ffd700" data-color="#ffd700"></span><span style="background:#ffff00" data-color="#ffff00"></span><span style="background:#adff2f" data-color="#adff2f"></span><span style="background:#00ff00" data-color="#00ff00"></span><span style="background:#00ff7f" data-color="#00ff7f"></span><span style="background:#00ffff" data-color="#00ffff"></span><span style="background:#00bfff" data-color="#00bfff"></span><span style="background:#1e90ff" data-color="#1e90ff"></span><span style="background:#0000ff" data-color="#0000ff"></span><span style="background:#8a2be2" data-color="#8a2be2"></span><span style="background:#9400d3" data-color="#9400d3"></span><span style="background:#ff00ff" data-color="#ff00ff"></span><span style="background:#ff1493" data-color="#ff1493"></span><span style="background:#dc143c" data-color="#dc143c"></span><span style="background:#b22222" data-color="#b22222"></span><span style="background:#8b0000" data-color="#8b0000"></span><span style="background:#cd5c5c" data-color="#cd5c5c"></span><span style="background:#f08080" data-color="#f08080"></span><span style="background:#ff6347" data-color="#ff6347"></span><span style="background:#ff6600" data-color="#ff6600"></span><span style="background:#f4a460" data-color="#f4a460"></span><span style="background:#b8860b" data-color="#b8860b"></span><span style="background:#bdb76b" data-color="#bdb76b"></span><span style="background:#808000" data-color="#808000"></span><span style="background:#9acd32" data-color="#9acd32"></span><span style="background:#32cd32" data-color="#32cd32"></span><span style="background:#228b22" data-color="#228b22"></span><span style="background:#006400" data-color="#006400"></span><span style="background:#008080" data-color="#008080"></span><span style="background:#20b2aa" data-color="#20b2aa"></span><span style="background:#00ced1" data-color="#00ced1"></span><span style="background:#5f9ea0" data-color="#5f9ea0"></span><span style="background:#4682b4" data-color="#4682b4"></span><span style="background:#4169e1" data-color="#4169e1"></span><span style="background:#483d8b" data-color="#483d8b"></span><span style="background:#4b0082" data-color="#4b0082"></span><span style="background:#8b008b" data-color="#8b008b"></span><span style="background:#9932cc" data-color="#9932cc"></span><span style="background:#da70d6" data-color="#da70d6"></span><span style="background:#dda0dd" data-color="#dda0dd"></span><span style="background:#ff69b4" data-color="#ff69b4"></span><span style="background:#db7093" data-color="#db7093"></span><span style="background:#ffc0cb" data-color="#ffc0cb"></span><span style="background:#a52a2a" data-color="#a52a2a"></span><span style="background:#d2691e" data-color="#d2691e"></span><span style="background:#cd853f" data-color="#cd853f"></span><span style="background:#8fbc8f" data-color="#8fbc8f"></span><span style="background:#2e8b57" data-color="#2e8b57"></span><span style="background:#556b2f" data-color="#556b2f"></span><span style="background:#808080" data-color="#808080"></span><span style="background:#c0c0c0" data-color="#c0c0c0"></span><span style="background:#ffffff" data-color="#ffffff"></span><span style="background:#696969" data-color="#696969"></span><span style="background:#a9a9a9" data-color="#a9a9a9"></span><span style="background:#2f4f4f" data-color="#2f4f4f"></span><span style="background:#000000" data-color="#000000"></span><span style="background:#bc8f8f" data-color="#bc8f8f"></span><span style="background:#6495ed" data-color="#6495ed"></span><span style="background:#e9967a" data-color="#e9967a"></span><span style="background:#f5a623" data-color="#f5a623"></span><span style="background:#00e5ff" data-color="#00e5ff"></span></div></div></div>
+            <div class="param-row"><label>MA2</label><input class="ma-period" type="number" value="10" min="0" data-ma="1"><div class="color-picker"><div class="color-swatch ma-swatch" data-ma="1" style="background:#1e90ff"></div><div class="color-grid"><span style="background:#ff0000" data-color="#ff0000"></span><span style="background:#ff4500" data-color="#ff4500"></span><span style="background:#ff8c00" data-color="#ff8c00"></span><span style="background:#ffd700" data-color="#ffd700"></span><span style="background:#ffff00" data-color="#ffff00"></span><span style="background:#adff2f" data-color="#adff2f"></span><span style="background:#00ff00" data-color="#00ff00"></span><span style="background:#00ff7f" data-color="#00ff7f"></span><span style="background:#00ffff" data-color="#00ffff"></span><span style="background:#00bfff" data-color="#00bfff"></span><span style="background:#1e90ff" data-color="#1e90ff"></span><span style="background:#0000ff" data-color="#0000ff"></span><span style="background:#8a2be2" data-color="#8a2be2"></span><span style="background:#9400d3" data-color="#9400d3"></span><span style="background:#ff00ff" data-color="#ff00ff"></span><span style="background:#ff1493" data-color="#ff1493"></span><span style="background:#dc143c" data-color="#dc143c"></span><span style="background:#b22222" data-color="#b22222"></span><span style="background:#8b0000" data-color="#8b0000"></span><span style="background:#cd5c5c" data-color="#cd5c5c"></span><span style="background:#f08080" data-color="#f08080"></span><span style="background:#ff6347" data-color="#ff6347"></span><span style="background:#ff6600" data-color="#ff6600"></span><span style="background:#f4a460" data-color="#f4a460"></span><span style="background:#b8860b" data-color="#b8860b"></span><span style="background:#bdb76b" data-color="#bdb76b"></span><span style="background:#808000" data-color="#808000"></span><span style="background:#9acd32" data-color="#9acd32"></span><span style="background:#32cd32" data-color="#32cd32"></span><span style="background:#228b22" data-color="#228b22"></span><span style="background:#006400" data-color="#006400"></span><span style="background:#008080" data-color="#008080"></span><span style="background:#20b2aa" data-color="#20b2aa"></span><span style="background:#00ced1" data-color="#00ced1"></span><span style="background:#5f9ea0" data-color="#5f9ea0"></span><span style="background:#4682b4" data-color="#4682b4"></span><span style="background:#4169e1" data-color="#4169e1"></span><span style="background:#483d8b" data-color="#483d8b"></span><span style="background:#4b0082" data-color="#4b0082"></span><span style="background:#8b008b" data-color="#8b008b"></span><span style="background:#9932cc" data-color="#9932cc"></span><span style="background:#da70d6" data-color="#da70d6"></span><span style="background:#dda0dd" data-color="#dda0dd"></span><span style="background:#ff69b4" data-color="#ff69b4"></span><span style="background:#db7093" data-color="#db7093"></span><span style="background:#ffc0cb" data-color="#ffc0cb"></span><span style="background:#a52a2a" data-color="#a52a2a"></span><span style="background:#d2691e" data-color="#d2691e"></span><span style="background:#cd853f" data-color="#cd853f"></span><span style="background:#8fbc8f" data-color="#8fbc8f"></span><span style="background:#2e8b57" data-color="#2e8b57"></span><span style="background:#556b2f" data-color="#556b2f"></span><span style="background:#808080" data-color="#808080"></span><span style="background:#c0c0c0" data-color="#c0c0c0"></span><span style="background:#ffffff" data-color="#ffffff"></span><span style="background:#696969" data-color="#696969"></span><span style="background:#a9a9a9" data-color="#a9a9a9"></span><span style="background:#2f4f4f" data-color="#2f4f4f"></span><span style="background:#000000" data-color="#000000"></span><span style="background:#bc8f8f" data-color="#bc8f8f"></span><span style="background:#6495ed" data-color="#6495ed"></span><span style="background:#e9967a" data-color="#e9967a"></span><span style="background:#f5a623" data-color="#f5a623"></span><span style="background:#00e5ff" data-color="#00e5ff"></span></div></div></div>
+            <div class="param-row"><label>MA3</label><input class="ma-period" type="number" value="0" min="0" data-ma="2"><div class="color-picker"><div class="color-swatch ma-swatch" data-ma="2" style="background:#808080"></div><div class="color-grid"><span style="background:#ff0000" data-color="#ff0000"></span><span style="background:#ff4500" data-color="#ff4500"></span><span style="background:#ff8c00" data-color="#ff8c00"></span><span style="background:#ffd700" data-color="#ffd700"></span><span style="background:#ffff00" data-color="#ffff00"></span><span style="background:#adff2f" data-color="#adff2f"></span><span style="background:#00ff00" data-color="#00ff00"></span><span style="background:#00ff7f" data-color="#00ff7f"></span><span style="background:#00ffff" data-color="#00ffff"></span><span style="background:#00bfff" data-color="#00bfff"></span><span style="background:#1e90ff" data-color="#1e90ff"></span><span style="background:#0000ff" data-color="#0000ff"></span><span style="background:#8a2be2" data-color="#8a2be2"></span><span style="background:#9400d3" data-color="#9400d3"></span><span style="background:#ff00ff" data-color="#ff00ff"></span><span style="background:#ff1493" data-color="#ff1493"></span><span style="background:#dc143c" data-color="#dc143c"></span><span style="background:#b22222" data-color="#b22222"></span><span style="background:#8b0000" data-color="#8b0000"></span><span style="background:#cd5c5c" data-color="#cd5c5c"></span><span style="background:#f08080" data-color="#f08080"></span><span style="background:#ff6347" data-color="#ff6347"></span><span style="background:#ff6600" data-color="#ff6600"></span><span style="background:#f4a460" data-color="#f4a460"></span><span style="background:#b8860b" data-color="#b8860b"></span><span style="background:#bdb76b" data-color="#bdb76b"></span><span style="background:#808000" data-color="#808000"></span><span style="background:#9acd32" data-color="#9acd32"></span><span style="background:#32cd32" data-color="#32cd32"></span><span style="background:#228b22" data-color="#228b22"></span><span style="background:#006400" data-color="#006400"></span><span style="background:#008080" data-color="#008080"></span><span style="background:#20b2aa" data-color="#20b2aa"></span><span style="background:#00ced1" data-color="#00ced1"></span><span style="background:#5f9ea0" data-color="#5f9ea0"></span><span style="background:#4682b4" data-color="#4682b4"></span><span style="background:#4169e1" data-color="#4169e1"></span><span style="background:#483d8b" data-color="#483d8b"></span><span style="background:#4b0082" data-color="#4b0082"></span><span style="background:#8b008b" data-color="#8b008b"></span><span style="background:#9932cc" data-color="#9932cc"></span><span style="background:#da70d6" data-color="#da70d6"></span><span style="background:#dda0dd" data-color="#dda0dd"></span><span style="background:#ff69b4" data-color="#ff69b4"></span><span style="background:#db7093" data-color="#db7093"></span><span style="background:#ffc0cb" data-color="#ffc0cb"></span><span style="background:#a52a2a" data-color="#a52a2a"></span><span style="background:#d2691e" data-color="#d2691e"></span><span style="background:#cd853f" data-color="#cd853f"></span><span style="background:#8fbc8f" data-color="#8fbc8f"></span><span style="background:#2e8b57" data-color="#2e8b57"></span><span style="background:#556b2f" data-color="#556b2f"></span><span style="background:#808080" data-color="#808080"></span><span style="background:#c0c0c0" data-color="#c0c0c0"></span><span style="background:#ffffff" data-color="#ffffff"></span><span style="background:#696969" data-color="#696969"></span><span style="background:#a9a9a9" data-color="#a9a9a9"></span><span style="background:#2f4f4f" data-color="#2f4f4f"></span><span style="background:#000000" data-color="#000000"></span><span style="background:#bc8f8f" data-color="#bc8f8f"></span><span style="background:#6495ed" data-color="#6495ed"></span><span style="background:#e9967a" data-color="#e9967a"></span><span style="background:#f5a623" data-color="#f5a623"></span><span style="background:#00e5ff" data-color="#00e5ff"></span></div></div></div>
+            <div class="param-row"><label>数据线</label><input type="checkbox" class="ma-line-toggle" checked></div>
+            <div class="param-row"><label>高度</label><input class="height-input" type="number" value="180" min="60" step="10" data-target="c-ma"></div>
+          </div>
+        </td>
+      </tr>
+      <!-- 第3行：每日上涨个数 -->
+      <tr>
+        <td class="col-idx" style="padding:0;border-bottom:none;"><div style="font-size:13px;font-weight:normal;color:#d1d4dc;line-height:1.2;">每日上涨个数 <span style="font-size:10px;background:#ef535022;color:#ef5350;border:1px solid #ef535044;padding:1px 6px;border-radius:8px;">1D_WIN</span></div><div style="font-family:'Orbitron',sans-serif;font-size:60px;font-weight:900;line-height:1;">UP</div></td>
+        <td style="padding:0;border-bottom:none;line-height:0;">
+          <div class="chart-box" style="height:270px;">
+            <canvas id="c-up"></canvas>
+          </div>
+        </td>
+        <td class="col-param" style="border-bottom:none;"></td>
+      </tr>
+      <!-- 第4行：下跌柱状图 -->
+      <tr>
+        <td class="col-idx" style="padding:0;border-top:none;"><div style="font-size:13px;font-weight:normal;color:#d1d4dc;line-height:1.2;">每日下跌个数 <span style="font-size:10px;background:#00e5ff22;color:#00e5ff;border:1px solid #00e5ff44;padding:1px 6px;border-radius:8px;">1D_WIN</span></div><div style="font-family:'Orbitron',sans-serif;font-size:60px;font-weight:900;line-height:1;">DOWN</div></td>
+        <td style="padding:0;border-top:none;line-height:0;">
+          <div class="chart-box" style="height:270px;">
+            <canvas id="c-dn"></canvas>
+          </div>
+        </td>
+        <td class="col-param" style="padding:0;border-top:none;"></td>
+      </tr>
+      <!-- 4 行空白（高度 200px） -->
+      <tr style="height:200px;"><td class="col-idx"></td><td></td><td class="col-param"></td></tr>
+      <tr style="height:200px;"><td class="col-idx"></td><td></td><td class="col-param"></td></tr>
+      <tr style="height:200px;"><td class="col-idx"></td><td></td><td class="col-param"></td></tr>
+      <tr style="height:200px;"><td class="col-idx"></td><td></td><td class="col-param"></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const stocks = [{"code": "002156.SZ", "open": "69.5", "high": "70.88", "low": "67.6", "close": "69.3", "volume": "196069728.0", "amount": "1356969.0", "pre_close": "71.44"}, {"code": "002851.SZ", "open": "135.85", "high": "137.37", "low": "131.83", "close": "135.49", "volume": "20598200.0", "amount": "276601.0", "pre_close": "135.86"}, {"code": "603730.SH", "open": "13.29", "high": "13.52", "low": "12.73", "close": "13.37", "volume": "40973072.0", "amount": "53751.81", "pre_close": "13.45"}, {"code": "000875.SZ", "open": "6.94", "high": "7.13", "low": "6.9", "close": "6.96", "volume": "106736544.0", "amount": "74741.26", "pre_close": "6.94"}];
+const winData = [{"date": "20250103", "up": 111, "flat": 9, "down": 583, "total": 703}, {"date": "20250106", "up": 370, "flat": 24, "down": 309, "total": 703}, {"date": "20250107", "up": 478, "flat": 22, "down": 203, "total": 703}, {"date": "20250108", "up": 230, "flat": 14, "down": 459, "total": 703}, {"date": "20250109", "up": 268, "flat": 18, "down": 417, "total": 703}, {"date": "20250110", "up": 95, "flat": 13, "down": 595, "total": 703}, {"date": "20250113", "up": 361, "flat": 20, "down": 322, "total": 703}, {"date": "20250114", "up": 688, "flat": 3, "down": 12, "total": 703}, {"date": "20250115", "up": 180, "flat": 23, "down": 500, "total": 703}, {"date": "20250116", "up": 415, "flat": 30, "down": 258, "total": 703}, {"date": "20250117", "up": 418, "flat": 45, "down": 240, "total": 703}, {"date": "20250120", "up": 367, "flat": 33, "down": 303, "total": 703}, {"date": "20250121", "up": 287, "flat": 27, "down": 389, "total": 703}, {"date": "20250122", "up": 168, "flat": 21, "down": 514, "total": 703}, {"date": "20250123", "up": 306, "flat": 28, "down": 369, "total": 703}, {"date": "20250124", "up": 547, "flat": 28, "down": 128, "total": 703}, {"date": "20250127", "up": 298, "flat": 19, "down": 386, "total": 703}, {"date": "20250205", "up": 290, "flat": 17, "down": 396, "total": 703}, {"date": "20250206", "up": 540, "flat": 22, "down": 141, "total": 703}, {"date": "20250207", "up": 559, "flat": 12, "down": 132, "total": 703}, {"date": "20250210", "up": 361, "flat": 43, "down": 299, "total": 703}, {"date": "20250211", "up": 246, "flat": 19, "down": 438, "total": 703}, {"date": "20250212", "up": 465, "flat": 36, "down": 202, "total": 703}, {"date": "20250213", "up": 192, "flat": 24, "down": 487, "total": 703}, {"date": "20250214", "up": 375, "flat": 40, "down": 288, "total": 703}, {"date": "20250217", "up": 320, "flat": 20, "down": 363, "total": 703}, {"date": "20250218", "up": 154, "flat": 8, "down": 541, "total": 703}, {"date": "20250219", "up": 484, "flat": 26, "down": 193, "total": 703}, {"date": "20250220", "up": 268, "flat": 33, "down": 402, "total": 703}, {"date": "20250221", "up": 401, "flat": 23, "down": 279, "total": 703}, {"date": "20250224", "up": 324, "flat": 23, "down": 356, "total": 703}, {"date": "20250225", "up": 124, "flat": 20, "down": 559, "total": 703}, {"date": "20250226", "up": 531, "flat": 14, "down": 158, "total": 703}, {"date": "20250227", "up": 272, "flat": 24, "down": 407, "total": 703}, {"date": "20250228", "up": 85, "flat": 10, "down": 608, "total": 703}, {"date": "20250303", "up": 365, "flat": 36, "down": 302, "total": 703}, {"date": "20250304", "up": 435, "flat": 38, "down": 230, "total": 703}, {"date": "20250305", "up": 333, "flat": 29, "down": 341, "total": 703}, {"date": "20250306", "up": 533, "flat": 18, "down": 152, "total": 703}, {"date": "20250307", "up": 280, "flat": 16, "down": 407, "total": 703}, {"date": "20250310", "up": 322, "flat": 23, "down": 358, "total": 703}, {"date": "20250311", "up": 435, "flat": 26, "down": 242, "total": 703}, {"date": "20250312", "up": 292, "flat": 26, "down": 385, "total": 703}, {"date": "20250313", "up": 265, "flat": 17, "down": 421, "total": 703}, {"date": "20250314", "up": 585, "flat": 16, "down": 102, "total": 703}, {"date": "20250317", "up": 317, "flat": 30, "down": 356, "total": 703}, {"date": "20250318", "up": 342, "flat": 38, "down": 323, "total": 703}, {"date": "20250319", "up": 258, "flat": 26, "down": 419, "total": 703}, {"date": "20250320", "up": 208, "flat": 25, "down": 470, "total": 703}, {"date": "20250321", "up": 155, "flat": 22, "down": 526, "total": 703}, {"date": "20250324", "up": 339, "flat": 26, "down": 338, "total": 703}, {"date": "20250325", "up": 378, "flat": 18, "down": 307, "total": 703}, {"date": "20250326", "up": 284, "flat": 38, "down": 381, "total": 703}, {"date": "20250327", "up": 322, "flat": 25, "down": 356, "total": 703}, {"date": "20250328", "up": 186, "flat": 26, "down": 491, "total": 703}, {"date": "20250331", "up": 177, "flat": 17, "down": 509, "total": 703}, {"date": "20250401", "up": 458, "flat": 25, "down": 220, "total": 703}, {"date": "20250402", "up": 323, "flat": 30, "down": 350, "total": 703}, {"date": "20250403", "up": 262, "flat": 23, "down": 418, "total": 703}, {"date": "20250407", "up": 14, "flat": 1, "down": 688, "total": 703}, {"date": "20250408", "up": 428, "flat": 10, "down": 265, "total": 703}, {"date": "20250409", "up": 504, "flat": 21, "down": 178, "total": 703}, {"date": "20250410", "up": 576, "flat": 18, "down": 109, "total": 703}, {"date": "20250411", "up": 332, "flat": 34, "down": 337, "total": 703}, {"date": "20250414", "up": 497, "flat": 26, "down": 180, "total": 703}, {"date": "20250415", "up": 239, "flat": 18, "down": 446, "total": 703}, {"date": "20250416", "up": 258, "flat": 14, "down": 431, "total": 703}, {"date": "20250417", "up": 277, "flat": 48, "down": 378, "total": 703}, {"date": "20250418", "up": 360, "flat": 47, "down": 296, "total": 703}, {"date": "20250421", "up": 501, "flat": 29, "down": 173, "total": 703}, {"date": "20250422", "up": 288, "flat": 39, "down": 376, "total": 703}, {"date": "20250423", "up": 333, "flat": 29, "down": 341, "total": 703}, {"date": "20250424", "up": 275, "flat": 33, "down": 395, "total": 703}, {"date": "20250425", "up": 416, "flat": 21, "down": 266, "total": 703}, {"date": "20250428", "up": 234, "flat": 14, "down": 455, "total": 703}, {"date": "20250429", "up": 326, "flat": 21, "down": 356, "total": 703}, {"date": "20250430", "up": 354, "flat": 27, "down": 322, "total": 703}, {"date": "20250506", "up": 586, "flat": 12, "down": 105, "total": 703}, {"date": "20250507", "up": 435, "flat": 33, "down": 235, "total": 703}, {"date": "20250508", "up": 393, "flat": 40, "down": 270, "total": 703}, {"date": "20250509", "up": 214, "flat": 15, "down": 474, "total": 703}, {"date": "20250512", "up": 546, "flat": 26, "down": 131, "total": 703}, {"date": "20250513", "up": 312, "flat": 32, "down": 359, "total": 703}, {"date": "20250514", "up": 423, "flat": 33, "down": 247, "total": 703}, {"date": "20250515", "up": 113, "flat": 21, "down": 569, "total": 703}, {"date": "20250516", "up": 272, "flat": 30, "down": 401, "total": 703}, {"date": "20250519", "up": 369, "flat": 32, "down": 302, "total": 703}, {"date": "20250520", "up": 412, "flat": 51, "down": 240, "total": 703}, {"date": "20250521", "up": 350, "flat": 47, "down": 306, "total": 703}, {"date": "20250522", "up": 162, "flat": 9, "down": 532, "total": 703}, {"date": "20250523", "up": 114, "flat": 13, "down": 576, "total": 703}, {"date": "20250526", "up": 378, "flat": 33, "down": 292, "total": 703}, {"date": "20250527", "up": 229, "flat": 44, "down": 430, "total": 703}, {"date": "20250528", "up": 268, "flat": 27, "down": 408, "total": 703}, {"date": "20250529", "up": 534, "flat": 24, "down": 145, "total": 703}, {"date": "20250530", "up": 183, "flat": 23, "down": 497, "total": 703}, {"date": "20250603", "up": 380, "flat": 36, "down": 287, "total": 703}, {"date": "20250604", "up": 501, "flat": 37, "down": 165, "total": 703}, {"date": "20250605", "up": 366, "flat": 30, "down": 307, "total": 703}, {"date": "20250606", "up": 332, "flat": 33, "down": 338, "total": 703}, {"date": "20250609", "up": 461, "flat": 35, "down": 207, "total": 703}, {"date": "20250610", "up": 171, "flat": 20, "down": 512, "total": 703}, {"date": "20250611", "up": 485, "flat": 40, "down": 178, "total": 703}, {"date": "20250612", "up": 284, "flat": 35, "down": 384, "total": 703}, {"date": "20250613", "up": 185, "flat": 23, "down": 495, "total": 703}, {"date": "20250616", "up": 375, "flat": 29, "down": 299, "total": 703}, {"date": "20250617", "up": 343, "flat": 34, "down": 326, "total": 703}, {"date": "20250618", "up": 284, "flat": 19, "down": 400, "total": 703}, {"date": "20250619", "up": 108, "flat": 14, "down": 581, "total": 703}, {"date": "20250620", "up": 250, "flat": 37, "down": 416, "total": 703}, {"date": "20250623", "up": 441, "flat": 37, "down": 225, "total": 703}, {"date": "20250624", "up": 581, "flat": 8, "down": 114, "total": 703}, {"date": "20250625", "up": 579, "flat": 18, "down": 106, "total": 703}, {"date": "20250626", "up": 201, "flat": 23, "down": 479, "total": 703}, {"date": "20250627", "up": 401, "flat": 39, "down": 263, "total": 703}, {"date": "20250630", "up": 412, "flat": 42, "down": 249, "total": 703}, {"date": "20250701", "up": 366, "flat": 26, "down": 311, "total": 703}, {"date": "20250702", "up": 322, "flat": 20, "down": 361, "total": 703}, {"date": "20250703", "up": 382, "flat": 44, "down": 277, "total": 703}, {"date": "20250704", "up": 283, "flat": 30, "down": 390, "total": 703}, {"date": "20250707", "up": 318, "flat": 31, "down": 354, "total": 703}, {"date": "20250708", "up": 536, "flat": 17, "down": 150, "total": 703}, {"date": "20250709", "up": 239, "flat": 27, "down": 437, "total": 703}, {"date": "20250710", "up": 448, "flat": 21, "down": 234, "total": 703}, {"date": "20250711", "up": 398, "flat": 35, "down": 270, "total": 703}, {"date": "20250714", "up": 371, "flat": 18, "down": 314, "total": 703}, {"date": "20250715", "up": 208, "flat": 10, "down": 485, "total": 703}, {"date": "20250716", "up": 282, "flat": 39, "down": 382, "total": 703}, {"date": "20250717", "up": 459, "flat": 45, "down": 199, "total": 703}, {"date": "20250718", "up": 442, "flat": 28, "down": 233, "total": 703}, {"date": "20250721", "up": 499, "flat": 14, "down": 190, "total": 703}, {"date": "20250722", "up": 454, "flat": 16, "down": 233, "total": 703}, {"date": "20250723", "up": 210, "flat": 30, "down": 463, "total": 703}, {"date": "20250724", "up": 528, "flat": 18, "down": 157, "total": 703}, {"date": "20250725", "up": 246, "flat": 25, "down": 432, "total": 703}, {"date": "20250728", "up": 278, "flat": 21, "down": 404, "total": 703}, {"date": "20250729", "up": 339, "flat": 21, "down": 343, "total": 703}, {"date": "20250730", "up": 282, "flat": 17, "down": 404, "total": 703}, {"date": "20250731", "up": 101, "flat": 9, "down": 593, "total": 703}, {"date": "20250801", "up": 294, "flat": 38, "down": 371, "total": 703}, {"date": "20250804", "up": 430, "flat": 45, "down": 228, "total": 703}, {"date": "20250805", "up": 533, "flat": 34, "down": 136, "total": 703}, {"date": "20250806", "up": 449, "flat": 38, "down": 216, "total": 703}, {"date": "20250807", "up": 291, "flat": 30, "down": 382, "total": 703}, {"date": "20250808", "up": 331, "flat": 27, "down": 345, "total": 703}, {"date": "20250811", "up": 440, "flat": 32, "down": 231, "total": 703}, {"date": "20250812", "up": 342, "flat": 29, "down": 332, "total": 703}, {"date": "20250813", "up": 408, "flat": 36, "down": 259, "total": 703}, {"date": "20250814", "up": 139, "flat": 13, "down": 551, "total": 703}, {"date": "20250815", "up": 561, "flat": 18, "down": 124, "total": 703}, {"date": "20250818", "up": 445, "flat": 34, "down": 224, "total": 703}, {"date": "20250819", "up": 270, "flat": 32, "down": 401, "total": 703}, {"date": "20250820", "up": 558, "flat": 24, "down": 121, "total": 703}, {"date": "20250821", "up": 334, "flat": 19, "down": 350, "total": 703}, {"date": "20250822", "up": 486, "flat": 29, "down": 188, "total": 703}, {"date": "20250825", "up": 582, "flat": 9, "down": 112, "total": 703}, {"date": "20250826", "up": 322, "flat": 22, "down": 359, "total": 703}, {"date": "20250827", "up": 93, "flat": 4, "down": 606, "total": 703}, {"date": "20250828", "up": 486, "flat": 20, "down": 197, "total": 703}, {"date": "20250829", "up": 360, "flat": 17, "down": 326, "total": 703}, {"date": "20250901", "up": 336, "flat": 10, "down": 357, "total": 703}, {"date": "20250902", "up": 204, "flat": 11, "down": 488, "total": 703}, {"date": "20250903", "up": 131, "flat": 7, "down": 565, "total": 703}, {"date": "20250904", "up": 204, "flat": 20, "down": 479, "total": 703}, {"date": "20250905", "up": 606, "flat": 10, "down": 87, "total": 703}, {"date": "20250908", "up": 465, "flat": 9, "down": 229, "total": 703}, {"date": "20250909", "up": 260, "flat": 21, "down": 422, "total": 703}, {"date": "20250910", "up": 217, "flat": 27, "down": 459, "total": 703}, {"date": "20250911", "up": 601, "flat": 19, "down": 83, "total": 703}, {"date": "20250912", "up": 277, "flat": 12, "down": 414, "total": 703}, {"date": "20250915", "up": 235, "flat": 25, "down": 443, "total": 703}, {"date": "20250916", "up": 322, "flat": 13, "down": 368, "total": 703}, {"date": "20250917", "up": 418, "flat": 24, "down": 261, "total": 703}, {"date": "20250918", "up": 141, "flat": 5, "down": 557, "total": 703}, {"date": "20250919", "up": 348, "flat": 15, "down": 340, "total": 703}, {"date": "20250922", "up": 284, "flat": 10, "down": 409, "total": 703}, {"date": "20250923", "up": 231, "flat": 10, "down": 462, "total": 703}, {"date": "20250924", "up": 522, "flat": 26, "down": 155, "total": 703}, {"date": "20250925", "up": 267, "flat": 14, "down": 422, "total": 703}, {"date": "20250926", "up": 259, "flat": 39, "down": 405, "total": 703}, {"date": "20250929", "up": 494, "flat": 25, "down": 184, "total": 703}, {"date": "20250930", "up": 372, "flat": 17, "down": 314, "total": 703}, {"date": "20251009", "up": 503, "flat": 11, "down": 189, "total": 703}, {"date": "20251010", "up": 320, "flat": 21, "down": 362, "total": 703}, {"date": "20251013", "up": 237, "flat": 14, "down": 452, "total": 703}, {"date": "20251014", "up": 258, "flat": 20, "down": 425, "total": 703}, {"date": "20251015", "up": 510, "flat": 23, "down": 170, "total": 703}, {"date": "20251016", "up": 236, "flat": 16, "down": 451, "total": 703}, {"date": "20251017", "up": 79, "flat": 9, "down": 615, "total": 703}, {"date": "20251020", "up": 428, "flat": 14, "down": 261, "total": 703}, {"date": "20251021", "up": 541, "flat": 21, "down": 141, "total": 703}, {"date": "20251022", "up": 234, "flat": 26, "down": 443, "total": 703}, {"date": "20251023", "up": 421, "flat": 17, "down": 265, "total": 703}, {"date": "20251024", "up": 397, "flat": 18, "down": 288, "total": 703}, {"date": "20251027", "up": 513, "flat": 22, "down": 168, "total": 703}, {"date": "20251028", "up": 230, "flat": 14, "down": 459, "total": 703}, {"date": "20251029", "up": 518, "flat": 14, "down": 171, "total": 703}, {"date": "20251030", "up": 228, "flat": 11, "down": 464, "total": 703}, {"date": "20251031", "up": 271, "flat": 20, "down": 412, "total": 703}, {"date": "20251103", "up": 394, "flat": 18, "down": 291, "total": 703}, {"date": "20251104", "up": 158, "flat": 16, "down": 529, "total": 703}, {"date": "20251105", "up": 378, "flat": 17, "down": 308, "total": 703}, {"date": "20251106", "up": 510, "flat": 24, "down": 169, "total": 703}, {"date": "20251107", "up": 298, "flat": 26, "down": 379, "total": 703}, {"date": "20251110", "up": 433, "flat": 13, "down": 257, "total": 703}, {"date": "20251111", "up": 238, "flat": 18, "down": 447, "total": 703}, {"date": "20251112", "up": 232, "flat": 15, "down": 456, "total": 703}, {"date": "20251113", "up": 522, "flat": 19, "down": 162, "total": 703}, {"date": "20251114", "up": 145, "flat": 18, "down": 540, "total": 703}, {"date": "20251117", "up": 249, "flat": 13, "down": 441, "total": 703}, {"date": "20251118", "up": 156, "flat": 10, "down": 537, "total": 703}, {"date": "20251119", "up": 300, "flat": 23, "down": 380, "total": 703}, {"date": "20251120", "up": 222, "flat": 28, "down": 453, "total": 703}, {"date": "20251121", "up": 47, "flat": 7, "down": 649, "total": 703}, {"date": "20251124", "up": 388, "flat": 21, "down": 294, "total": 703}, {"date": "20251125", "up": 483, "flat": 31, "down": 189, "total": 703}, {"date": "20251126", "up": 276, "flat": 28, "down": 399, "total": 703}, {"date": "20251127", "up": 277, "flat": 48, "down": 378, "total": 703}, {"date": "20251128", "up": 502, "flat": 20, "down": 181, "total": 703}, {"date": "20251201", "up": 524, "flat": 18, "down": 161, "total": 703}, {"date": "20251202", "up": 182, "flat": 34, "down": 487, "total": 703}, {"date": "20251203", "up": 263, "flat": 21, "down": 419, "total": 703}, {"date": "20251204", "up": 287, "flat": 25, "down": 391, "total": 703}, {"date": "20251205", "up": 507, "flat": 12, "down": 184, "total": 703}, {"date": "20251208", "up": 366, "flat": 22, "down": 315, "total": 703}, {"date": "20251209", "up": 170, "flat": 15, "down": 518, "total": 703}, {"date": "20251210", "up": 436, "flat": 24, "down": 243, "total": 703}, {"date": "20251211", "up": 158, "flat": 15, "down": 530, "total": 703}, {"date": "20251212", "up": 481, "flat": 23, "down": 199, "total": 703}, {"date": "20251215", "up": 291, "flat": 22, "down": 390, "total": 703}, {"date": "20251216", "up": 142, "flat": 8, "down": 553, "total": 703}, {"date": "20251217", "up": 569, "flat": 24, "down": 110, "total": 703}, {"date": "20251218", "up": 272, "flat": 24, "down": 407, "total": 703}, {"date": "20251219", "up": 507, "flat": 18, "down": 178, "total": 703}, {"date": "20251222", "up": 420, "flat": 27, "down": 256, "total": 703}, {"date": "20251223", "up": 270, "flat": 18, "down": 415, "total": 703}, {"date": "20251224", "up": 470, "flat": 28, "down": 205, "total": 703}, {"date": "20251225", "up": 412, "flat": 33, "down": 258, "total": 703}, {"date": "20251226", "up": 367, "flat": 33, "down": 303, "total": 703}, {"date": "20251229", "up": 245, "flat": 23, "down": 435, "total": 703}, {"date": "20251230", "up": 271, "flat": 27, "down": 405, "total": 703}, {"date": "20251231", "up": 269, "flat": 30, "down": 404, "total": 703}, {"date": "20260105", "up": 548, "flat": 13, "down": 142, "total": 703}, {"date": "20260106", "up": 585, "flat": 11, "down": 107, "total": 703}, {"date": "20260107", "up": 279, "flat": 13, "down": 411, "total": 703}, {"date": "20260108", "up": 305, "flat": 21, "down": 377, "total": 703}, {"date": "20260109", "up": 507, "flat": 23, "down": 173, "total": 703}, {"date": "20260112", "up": 460, "flat": 21, "down": 222, "total": 703}, {"date": "20260113", "up": 250, "flat": 26, "down": 427, "total": 703}, {"date": "20260114", "up": 273, "flat": 12, "down": 418, "total": 703}, {"date": "20260115", "up": 323, "flat": 20, "down": 360, "total": 703}, {"date": "20260116", "up": 257, "flat": 22, "down": 424, "total": 703}, {"date": "20260119", "up": 446, "flat": 31, "down": 226, "total": 703}, {"date": "20260120", "up": 397, "flat": 12, "down": 294, "total": 703}, {"date": "20260121", "up": 324, "flat": 18, "down": 361, "total": 703}, {"date": "20260122", "up": 398, "flat": 22, "down": 283, "total": 703}, {"date": "20260123", "up": 427, "flat": 27, "down": 249, "total": 703}, {"date": "20260126", "up": 304, "flat": 17, "down": 382, "total": 703}, {"date": "20260127", "up": 241, "flat": 8, "down": 454, "total": 703}, {"date": "20260128", "up": 355, "flat": 16, "down": 332, "total": 703}, {"date": "20260129", "up": 343, "flat": 19, "down": 341, "total": 703}, {"date": "20260130", "up": 168, "flat": 19, "down": 516, "total": 703}, {"date": "20260202", "up": 108, "flat": 6, "down": 589, "total": 703}, {"date": "20260203", "up": 582, "flat": 10, "down": 111, "total": 703}, {"date": "20260204", "up": 486, "flat": 8, "down": 209, "total": 703}, {"date": "20260205", "up": 217, "flat": 9, "down": 477, "total": 703}, {"date": "20260206", "up": 244, "flat": 18, "down": 441, "total": 703}, {"date": "20260209", "up": 587, "flat": 12, "down": 104, "total": 703}, {"date": "20260210", "up": 294, "flat": 18, "down": 391, "total": 703}, {"date": "20260211", "up": 357, "flat": 17, "down": 329, "total": 703}, {"date": "20260212", "up": 325, "flat": 12, "down": 366, "total": 703}, {"date": "20260213", "up": 106, "flat": 7, "down": 590, "total": 703}, {"date": "20260224", "up": 499, "flat": 17, "down": 187, "total": 703}, {"date": "20260225", "up": 475, "flat": 12, "down": 216, "total": 703}, {"date": "20260226", "up": 321, "flat": 22, "down": 360, "total": 703}, {"date": "20260227", "up": 427, "flat": 24, "down": 252, "total": 703}, {"date": "20260302", "up": 329, "flat": 13, "down": 361, "total": 703}, {"date": "20260303", "up": 127, "flat": 9, "down": 567, "total": 703}, {"date": "20260304", "up": 215, "flat": 15, "down": 473, "total": 703}, {"date": "20260305", "up": 462, "flat": 17, "down": 224, "total": 703}, {"date": "20260306", "up": 453, "flat": 16, "down": 234, "total": 703}, {"date": "20260309", "up": 206, "flat": 15, "down": 482, "total": 703}, {"date": "20260310", "up": 519, "flat": 15, "down": 169, "total": 703}, {"date": "20260311", "up": 382, "flat": 17, "down": 304, "total": 703}, {"date": "20260312", "up": 298, "flat": 21, "down": 384, "total": 703}, {"date": "20260313", "up": 180, "flat": 16, "down": 507, "total": 703}, {"date": "20260316", "up": 256, "flat": 22, "down": 425, "total": 703}, {"date": "20260317", "up": 193, "flat": 14, "down": 496, "total": 703}, {"date": "20260318", "up": 332, "flat": 22, "down": 349, "total": 703}, {"date": "20260319", "up": 87, "flat": 8, "down": 608, "total": 703}, {"date": "20260320", "up": 147, "flat": 7, "down": 549, "total": 703}, {"date": "20260323", "up": 58, "flat": 2, "down": 643, "total": 703}, {"date": "20260324", "up": 635, "flat": 3, "down": 65, "total": 703}, {"date": "20260325", "up": 616, "flat": 7, "down": 80, "total": 703}, {"date": "20260326", "up": 144, "flat": 18, "down": 541, "total": 703}, {"date": "20260327", "up": 471, "flat": 19, "down": 213, "total": 703}, {"date": "20260330", "up": 349, "flat": 22, "down": 332, "total": 703}, {"date": "20260331", "up": 157, "flat": 8, "down": 538, "total": 703}, {"date": "20260401", "up": 562, "flat": 13, "down": 128, "total": 703}, {"date": "20260402", "up": 192, "flat": 10, "down": 501, "total": 703}, {"date": "20260403", "up": 133, "flat": 6, "down": 564, "total": 703}, {"date": "20260407", "up": 361, "flat": 20, "down": 322, "total": 703}, {"date": "20260408", "up": 647, "flat": 4, "down": 52, "total": 703}, {"date": "20260409", "up": 195, "flat": 17, "down": 491, "total": 703}, {"date": "20260410", "up": 444, "flat": 19, "down": 240, "total": 703}, {"date": "20260413", "up": 326, "flat": 25, "down": 352, "total": 703}, {"date": "20260414", "up": 485, "flat": 14, "down": 204, "total": 703}, {"date": "20260415", "up": 272, "flat": 14, "down": 417, "total": 703}, {"date": "20260416", "up": 479, "flat": 30, "down": 194, "total": 703}, {"date": "20260417", "up": 271, "flat": 23, "down": 409, "total": 703}, {"date": "20260420", "up": 402, "flat": 24, "down": 277, "total": 703}, {"date": "20260421", "up": 317, "flat": 13, "down": 373, "total": 703}, {"date": "20260422", "up": 395, "flat": 18, "down": 290, "total": 703}, {"date": "20260423", "up": 245, "flat": 16, "down": 442, "total": 703}, {"date": "20260424", "up": 220, "flat": 18, "down": 465, "total": 703}, {"date": "20260427", "up": 301, "flat": 17, "down": 385, "total": 703}, {"date": "20260428", "up": 302, "flat": 16, "down": 385, "total": 703}, {"date": "20260429", "up": 507, "flat": 18, "down": 178, "total": 703}, {"date": "20260430", "up": 280, "flat": 16, "down": 407, "total": 703}, {"date": "20260506", "up": 512, "flat": 12, "down": 179, "total": 703}, {"date": "20260507", "up": 399, "flat": 18, "down": 286, "total": 703}, {"date": "20260508", "up": 320, "flat": 18, "down": 365, "total": 703}, {"date": "20260511", "up": 444, "flat": 21, "down": 238, "total": 703}, {"date": "20260512", "up": 257, "flat": 17, "down": 429, "total": 703}, {"date": "20260513", "up": 372, "flat": 17, "down": 314, "total": 703}, {"date": "20260514", "up": 117, "flat": 11, "down": 575, "total": 703}, {"date": "20260515", "up": 156, "flat": 14, "down": 533, "total": 703}, {"date": "20260518", "up": 274, "flat": 11, "down": 418, "total": 703}, {"date": "20260519", "up": 436, "flat": 15, "down": 252, "total": 703}, {"date": "20260520", "up": 247, "flat": 6, "down": 450, "total": 703}, {"date": "20260521", "up": 146, "flat": 9, "down": 548, "total": 703}, {"date": "20260522", "up": 393, "flat": 17, "down": 293, "total": 703}, {"date": "20260525", "up": 379, "flat": 18, "down": 306, "total": 703}, {"date": "20260526", "up": 328, "flat": 19, "down": 356, "total": 703}, {"date": "20260527", "up": 182, "flat": 8, "down": 513, "total": 703}];
+let charts = [];
+
+/* ---- 鼠标中键拖动 ---- */
+const wrap = document.getElementById('scroll-wrap');
+const crossV = document.getElementById('cross-v');
+let dragging = false, sx = 0, ss = 0;
+
+document.addEventListener('mousedown', e => {
+  if (e.button !== 1 || !e.target.closest('#scroll-wrap')) return;
+  e.preventDefault();
+  dragging = true;
+  sx = e.clientX;
+  ss = wrap.scrollLeft;
+  wrap.style.cursor = 'grabbing';
+});
+
+document.addEventListener('mousemove', e => {
+  if (dragging) {
+    wrap.scrollLeft = ss - (e.clientX - sx);
+  } else if (e.target.closest('#scroll-wrap')) {
+    crossV.style.display = 'block';
+    crossV.style.left = e.clientX + 'px';
+  } else {
+    crossV.style.display = 'none';
+  }
+});
+
+document.addEventListener('mouseup', e => {
+  if (e.button === 1 && dragging) {
+    dragging = false;
+    wrap.style.cursor = '';
+  }
+  crossV.style.display = 'none';
+});
+
+wrap.addEventListener('mouseleave', () => { crossV.style.display = 'none'; });
+
+// 阻止中键点击默认的自动滚动行为
+document.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
+
+/* ---- 行高调整 ---- */
+document.addEventListener('input', e => {
+  const input = e.target.closest('.height-input');
+  if (!input) return;
+  const targetId = input.dataset.target;
+  const h = parseInt(input.value) || 120;
+  const row = input.closest('tr');
+  if (!row) return;
+  const box = row.querySelector('.chart-box');
+  const canvas = document.getElementById(targetId);
+  if (!box || !canvas) return;
+  box.style.height = h + 'px';
+  const ch = charts.find(c => c.canvas === canvas);
+  if (ch) ch.resize();
+});
+
+/* ---- MA 配置变化时重绘 ---- */
+function rebuildMAChart() {
+  const ch = charts.find(c => c.canvas && c.canvas.id === 'c-ma');
+  if (!ch) return;
+  const upVals = winData.map(d => d.up);
+  const showLine = document.querySelector('.ma-line-toggle').checked;
+  const datasets = [];
+  if (showLine) {
+    datasets.push({ label:'UP', data:upVals, borderColor:'#26a69a', backgroundColor:'rgba(38,166,154,0.08)', fill:true, tension:0.3, pointRadius:0, pointHoverRadius:4, borderWidth:1.5 });
+  }
+  for (let maIdx = 0; maIdx < 3; maIdx++) {
+    const periodInput = document.querySelector('.ma-period[data-ma="'+maIdx+'"]');
+    const swatch = document.querySelector('.ma-swatch[data-ma="'+maIdx+'"]');
+    if (!periodInput || !swatch) continue;
+    const period = parseInt(periodInput.value) || 0;
+    const color = swatch.dataset.color || swatch.style.background;
+    if (period <= 0) continue;
+    const maData = upVals.map((v,i) => i<period-1 ? null : +(upVals.slice(i-period+1,i+1).reduce((a,b)=>a+b,0)/period).toFixed(2));
+    datasets.push({ label:'MA'+period, data:maData, borderColor:color, borderDash:[3,2], fill:false, tension:0.3, pointRadius:0, borderWidth:1 });
+  }
+  ch.data.datasets = datasets;
+  ch.update();
+}
+
+// 颜色矩阵点击
+document.addEventListener('click', e => {
+  // 点击颜色方格
+  const span = e.target.closest('.color-grid span');
+  if (span) {
+    const picker = span.closest('.color-picker');
+    const swatch = picker.querySelector('.ma-swatch');
+    swatch.style.background = span.dataset.color;
+    swatch.dataset.color = span.dataset.color;
+    picker.querySelector('.color-grid').classList.remove('show');
+    rebuildMAChart();
+    return;
+  }
+  // 点击色块显示/隐藏网格
+  const sw = e.target.closest('.ma-swatch');
+  if (sw) {
+    const grid = sw.closest('.color-picker').querySelector('.color-grid');
+    const shown = grid.classList.contains('show');
+    document.querySelectorAll('.color-grid.show').forEach(g => g.classList.remove('show'));
+    if (!shown) grid.classList.add('show');
+    return;
+  }
+  // 点击外部关闭
+  if (!e.target.closest('.color-picker')) document.querySelectorAll('.color-grid.show').forEach(g => g.classList.remove('show'));
+});
+
+document.addEventListener('input', e => {
+  if (e.target.closest('.ma-period')) rebuildMAChart();
+});
+document.addEventListener('change', e => {
+  if (e.target.closest('.ma-line-toggle')) rebuildMAChart();
+});
+
+/* ---- 构建 D 行日期轴（1:1 垂直标签） ---- */
+function buildDateAxis() {
+  const axis = document.getElementById('date-axis');
+  if (!axis || winData.length === 0) return;
+  const barW = 11; // 每根柱子宽度 11px
+  const totalW = winData.length * barW;
+  axis.style.width = totalW + 'px';
+
+  winData.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'dl';
+    el.textContent = d.date;
+    axis.appendChild(el);
+  });
+}
+
+/* ---- 图表 ---- */
+function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }
+
+function init() {
+  if (stocks.length === 0) {
+    document.querySelector('#scroll-wrap table tbody').innerHTML =
+      '<tr><td colspan="3" class="empty">暂无数据</td></tr>';
+    return;
+  }
+  buildDateAxis();
+  setTimeout(() => renderCharts(), 60);
+}
+
+function renderCharts() {
+  const records = stocks.map(s => ({
+    code: s.code,
+    close: parseFloat(s.close),
+    pre: parseFloat(s.pre_close),
+    pct: (parseFloat(s.close)-parseFloat(s.pre_close))/parseFloat(s.pre_close)*100,
+  }));
+
+  const chartWidth = Math.max(3000, winData.length * 11);
+  // 统一上下图Y轴范围
+  const maxUpVal = Math.max(...winData.map(d => d.up));
+  const maxDnVal = Math.max(...winData.map(d => d.down));
+  const globalMax = Math.max(maxUpVal, maxDnVal);
+
+  /* ---- 第2行：上升均线（用 UP 数据 + 最多3条MA，默认 5/10/0） ---- */
+  const ctx1 = document.getElementById('c-ma');
+  if (ctx1 && winData.length > 0) {
+    const upVals = winData.map(d => d.up);
+    const datasets = [
+      { label:'UP', data:upVals, borderColor:'#26a69a', backgroundColor:'rgba(38,166,154,0.08)', fill:true, tension:0.3, pointRadius:0, pointHoverRadius:4, borderWidth:1.5 }
+    ];
+    for (let maIdx = 0; maIdx < 3; maIdx++) {
+      const periodInput = document.querySelector('.ma-period[data-ma="'+maIdx+'"]');
+      const sw = document.querySelector('.ma-swatch[data-ma="'+maIdx+'"]');
+      if (!periodInput || !sw) continue;
+      const p = parseInt(periodInput.value) || 0;
+      const color = sw.style.background;
+      if (p <= 0) continue;
+      const ma = upVals.map((v,i) => i<p-1 ? null : +(upVals.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p).toFixed(2));
+      datasets.push({ label:'MA'+p, data:ma, borderColor:color, borderDash:[3,2], fill:false, tension:0.3, pointRadius:0, borderWidth:1 });
+    }
+    charts.push(new Chart(ctx1, {
+      type:'line',
+      data:{ labels: winData.map(d => d.date), datasets: datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales:{
+          x:{ offset:true, ticks:{ display:false }, grid:{ display:false } },
+          y:{ display:false }
+        }
+      }
+    }));
+  }
+
+  /* ---- 第3行：每日上涨个数 ---- */
+  const ctx2 = document.getElementById('c-up');
+  if (ctx2 && winData.length > 0) {
+    const upVals = winData.map(d => d.up);
+    // 用真实日期作为 labels（供 tooltip 使用），但 X 轴隐藏
+    const ch = new Chart(ctx2, {
+      type:'bar',
+      data:{
+        labels: winData.map(d => d.date),
+        datasets:[{ label:'上涨个数', data:upVals, backgroundColor:'#ef5350', borderColor:'#b71c1c', borderWidth:1, borderRadius:1, barPercentage:0.92, categoryPercentage:1 }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ title: items => winData[items[0].dataIndex].date, label: ctx => '上涨: ' + ctx.parsed.y } } },
+        scales:{
+          x:{ offset:true, ticks:{ display:false }, grid:{ display:false } },
+          y:{ display:true, position:'right', ticks:{ display:false }, grid:{ color:'#485c7b55', borderDash:[3,4], lineWidth:1 }, border:{ display:false }, max:globalMax }
+        }
+      }
+    });
+    charts.push(ch);
+  }
+
+  /* ---- 第4行：下跌柱状图（用 winData.down，向下柱子） ---- */
+  const ctx3 = document.getElementById('c-dn');
+  if (ctx3 && winData.length > 0) {
+    const dnVals = winData.map(d => -d.down);  // 负值，柱子向下
+    charts.push(new Chart(ctx3, {
+      type:'bar',
+      data:{
+        labels: winData.map(d => d.date),
+        datasets:[{ label:'下跌个数', data:dnVals, backgroundColor:'#00e5ff', borderColor:'#00b8d4', borderWidth:1, borderRadius:1, barPercentage:0.92, categoryPercentage:1 }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ title: items => winData[items[0].dataIndex].date, label: ctx => '下跌: ' + Math.abs(ctx.parsed.y) } } },
+        scales:{
+          x:{ offset:true, ticks:{ display:false }, grid:{ display:false } },
+          y:{ display:true, position:'right', ticks:{ display:false }, grid:{ color:'#485c7b55', borderDash:[3,4], lineWidth:1 }, border:{ display:false } }
+        }
+      }
+    }));
+  }
+
+  // 用 Chart.js 柱子的精确 X 坐标定位 D 行标签
+  setTimeout(() => {
+    const ch = charts.find(c => c.canvas && c.canvas.id === 'c-up');
+    if (!ch) return;
+    const meta = ch.getDatasetMeta(0);
+    if (!meta || !meta.data || !meta.data.length) return;
+    const axis = document.getElementById('date-axis');
+    if (!axis) return;
+    const labels = axis.querySelectorAll('.dl');
+    if (!labels.length) return;
+    // 获取第一个柱子的左边界作为偏移基准
+    const firstX = meta.data[0].x;
+    const lastX = meta.data[meta.data.length - 1].x;
+    // 计算每根柱子的实际间距（Chart.js 可能不等距）
+    const gaps = [];
+    for (let i = 1; i < meta.data.length; i++) {
+      gaps.push(meta.data[i].x - meta.data[i-1].x);
+    }
+    const avgGap = gaps.length > 0 ? Math.round(gaps.reduce((a,b)=>a+b,0)/gaps.length) : 11;
+    const totalW = lastX - firstX + avgGap;
+    axis.style.width = totalW + 'px';
+    axis.style.paddingLeft = firstX + 'px';
+    // 用每个柱子的精确 X 坐标定位 label
+    labels.forEach((el, i) => {
+      const cx = meta.data[i].x - firstX;
+      el.style.left = cx + 'px';
+      el.style.width = avgGap + 'px';
+      el.style.transform = 'translateX(-50%)';
+    });
+  }, 400);
+}
+
+init();
+</script>
+</body>
+</html>
