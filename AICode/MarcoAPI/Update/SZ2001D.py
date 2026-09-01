@@ -212,7 +212,7 @@ def UPDATE_1D_ORIGIN():
     sys.path.append(PATH_TDX())  # 确保 tqcenter 模块所在目录在 sys.path 中
     from tqcenter import tq  # 仅在离线更新时惰性导入，避免实盘加载本模块时触碰通达信
     tq.initialize(__file__)
-    df = tq.get_market_data( field_list=["Open","High", "Low", "Close", "Volume", "Amount"], stock_list=stock_codes, start_time=START_DATE, end_time='', count=-1, dividend_type='front', period='1d', fill_data=True )
+    df = tq.get_market_data( field_list=["Open","High", "Low", "Close", "Volume", "Amount"], stock_list=stock_codes, start_time=START_DATE, end_time='', count=-1, dividend_type='front', period='1d', fill_data=False )
     _SZ200_1D_ALL_CACHE.clear()
     fn_origin = partial(GENERATE_1D_ORIGIN, dataframe=df)
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as pool:
@@ -231,21 +231,27 @@ def GENERATE_1D_ORIGIN(stock_code:str, dataframe:pd.DataFrame) -> dict[str, DATA
     """worker: 将通达信 DataFrame 中单只股票的原始日线写入 1D_ORIGIN 文件。
 
     按交易日顺序逐行写原始 7 列数据，并返回 {日期: DATA_1D} 缓存。
+    fill_data=False 时停牌日无该股数据（NaN 或索引缺失），跳过不写，
+    保证 1D_ORIGIN / 1D 只有真实成交的交易日，避免污染 MA/量比等加工字段。
     """
     stock_cache: dict[str, DATA_1D] = {}
     with open(f"{PATH_AIDATA_1D_ORIGIN()}/{stock_code}", "w") as file:
         trading_dates = TRADING_DATES()
         for trading_date in trading_dates:
-            _date = trading_date
-            _open = dataframe["Open"].loc[trading_date, stock_code]
+            try:
+                _open = dataframe["Open"].loc[trading_date, stock_code]
+            except KeyError:
+                continue  # fill_data=False：该交易日无该股数据（停牌），跳过
             _high = dataframe["High"].loc[trading_date, stock_code]
             _low = dataframe["Low"].loc[trading_date, stock_code]
             _close = dataframe["Close"].loc[trading_date, stock_code]
             _volume = dataframe["Volume"].loc[trading_date, stock_code]
             _amount = dataframe["Amount"].loc[trading_date, stock_code]
-            file.write(f"{_date}|{_open}|{_high}|{_low}|{_close}|{_volume}|{_amount}\n")
+            if any(pd.isna(v) for v in (_open, _high, _low, _close, _volume, _amount)):
+                continue  # fill_data=False：停牌/无成交返回 NaN，跳过
+            file.write(f"{trading_date}|{_open}|{_high}|{_low}|{_close}|{_volume}|{_amount}\n")
             stock_cache[trading_date] = DATA_1D(
-                date=_date, open=float(_open), high=float(_high),
+                date=trading_date, open=float(_open), high=float(_high),
                 low=float(_low), close=float(_close),
                 volume=float(_volume), amount=float(_amount))
     return stock_cache

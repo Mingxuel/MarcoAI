@@ -1,11 +1,3 @@
-20260105|nan|nan|nan|nan|nan|nan
-20260106|nan|nan|nan|nan|nan|nan
-20260107|nan|nan|nan|nan|nan|nan
-20260108|nan|nan|nan|nan|nan|nan
-20260109|nan|nan|nan|nan|nan|nan
-20260112|nan|nan|nan|nan|nan|nan
-20260113|nan|nan|nan|nan|nan|nan
-20260114|nan|nan|nan|nan|nan|nan
 20260115|12.64|12.64|12.64|12.64|17300140.0|21919.28
 20260116|13.91|13.91|13.91|13.91|4212435.0|5872.13
 20260119|15.3|15.3|12.52|14.07|123554264.0|165474.91

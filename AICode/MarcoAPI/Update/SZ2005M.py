@@ -116,7 +116,7 @@ def UPDATE_5M_ORIGIN(stock_codes: list[str] | None = None) -> str:
     data = tq.get_market_data(
         field_list=["Open", "High", "Low", "Close", "Volume", "Amount"],
         stock_list=stock_codes, start_time=START_DATE, end_time="", count=-1,
-        dividend_type="front", period="5m", fill_data=True,
+        dividend_type="front", period="5m", fill_data=False,
     )
     _SZ200_5M_ALL_CACHE.clear()
     if not data or "Open" not in data:
