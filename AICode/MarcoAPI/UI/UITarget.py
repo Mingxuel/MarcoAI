@@ -6,8 +6,8 @@ import webbrowser
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, os.path.dirname(_root))
-from AICode.MarcoAPI.Update.Path import PATH_AIDATA_TARGET_31, PATH_AIDATA_1D_WIN_COUNT, PATH_AIDATA_TARGET_31_RATIO, PATH_AIDATA_TARGET_311_RATIO, PATH_AIDATA_TARGET_HISTORY_RATIO, PATH_AIDATA_TARGET_TOP_1_RATIO, PATH_AIDATA_TARGET_TOP_11_RATIO, PATH_AIDATA_TOP, PATH_AIDATA_TOPPED, PATH_AIDATA_BOTTOM, PATH_AIDATA_1D_MOTION_COUNT, PATH_AIDATA_MOTION, PATH_AIDATA_1D_PRICE, PATH_THS_HISTORY
-from AICode.MarcoAPI.Update.DataAligned import READ_ALIGNED_LINES, ALIGNED_DATES
+from AICode.MarcoAPI.Update.Path import PATH_AIDATA_TARGET_31, PATH_AIDATA_1D_WIN_COUNT, PATH_AIDATA_TARGET_31_RATIO, PATH_AIDATA_TARGET_311_RATIO, PATH_AIDATA_TARGET_HISTORY_RATIO, PATH_AIDATA_TARGET_TOP_1_RATIO, PATH_AIDATA_TARGET_TOP_11_RATIO, PATH_AIDATA_TOP, PATH_AIDATA_TOPPED, PATH_AIDATA_BOTTOM, PATH_AIDATA_1D_MOTION_COUNT, PATH_AIDATA_MOTION, PATH_AIDATA_1D_PRICE
+from AICode.MarcoAPI.Update.DataAligned import READ_ALIGNED_LINES
 
 
 def SHOW_TARGET_1D():
@@ -201,118 +201,6 @@ def SHOW_TARGET_1D():
     ohlc311_data = build_ohlc(ratio311_data)
     ohlc_history_data = build_ohlc(history_data)
 
-    # ── 读取 THS 账户 History 数据 ──
-    account_history = []
-    ths_path = PATH_THS_HISTORY()
-    aligned_dates = ALIGNED_DATES()
-    if os.path.isfile(ths_path):
-        with open(ths_path, 'r') as f:
-            ths_lines = {l.split('|')[0]: l.strip() for l in f if l.strip()}
-    else:
-        ths_lines = {}
-    for date in aligned_dates:
-        line = ths_lines.get(date, '')
-        if line:
-            parts = line.split('|')
-            # 日期|市值|当日盈亏|当日收益率|累计盈亏|累计收益率
-            market_val = float(parts[1]) if len(parts) > 1 else 0.0
-            daily_pnl = float(parts[2].replace('+', '')) if len(parts) > 2 else 0.0
-            daily_pct_str = parts[3].replace('%', '').replace('+', '') if len(parts) > 3 else '0'
-            daily_pct = float(daily_pct_str) if daily_pct_str else 0.0
-            cumulative_pnl = float(parts[4].replace('+', '')) if len(parts) > 4 else 0.0
-            cumulative_pct_str = parts[5].replace('%', '').replace('+', '') if len(parts) > 5 else '0'
-            cumulative_pct = float(cumulative_pct_str) if cumulative_pct_str else 0.0
-        else:
-            market_val = 0.0; daily_pnl = 0.0; daily_pct = 0.0
-            cumulative_pnl = 0.0; cumulative_pct = 0.0
-        account_history.append({
-            'date': date,
-            'market_val': market_val,
-            'daily_pnl': daily_pnl,
-            'daily_pct': daily_pct,
-            'cumulative_pnl': cumulative_pnl,
-            'cumulative_pct': cumulative_pct,
-        })
-
-    # ── 策略模拟：成交额MA5>MA10 且 History MA5>MA10 时才交易 ──
-    # 用 win_data.amount 作为成交额，计算其 MA5/MA10
-    # 用 account_history.daily_pct 计算其 MA5/MA10
-    amt_vals = [d['amount'] / 1e8 for d in win_data]  # 成交额（亿）
-    hist_pct_vals = [d['daily_pct'] for d in account_history]
-
-    def calc_ma(data, period):
-        return [sum(data[max(0, i - period + 1):i + 1]) / min(period, i + 1) if i >= 0 else 0 for i in range(len(data))]
-
-    amt_ma5 = calc_ma(amt_vals, 5)
-    amt_ma10 = calc_ma(amt_vals, 10)
-    hist_ma5 = calc_ma(hist_pct_vals, 5)
-    hist_ma10 = calc_ma(hist_pct_vals, 10)
-
-    # 策略：当 amt_ma5 > amt_ma10 且 hist_ma5 > hist_ma10 时交易，持有策略标的
-    # 策略标的是 account_history 的 daily_pct（即按账户当日收益率模拟持仓）
-    strategy_nav = 100.0  # 起始净值100
-    strategy_data = []
-    in_position = False
-    for i in range(len(aligned_dates)):
-        signal = 1 if (amt_ma5[i] > amt_ma10[i] and hist_ma5[i] > hist_ma10[i]) else 0
-        if signal == 1:
-            if not in_position:
-                in_position = True
-            # 持有：按 account daily_pct 涨跌
-            pct = hist_pct_vals[i]
-            strategy_nav = round(strategy_nav * (1 + pct / 100), 4)
-        else:
-            if in_position:
-                in_position = False
-            # 空仓：净值不变
-        date_fmt = f"{aligned_dates[i][:4]}-{aligned_dates[i][4:6]}-{aligned_dates[i][6:8]}"
-        strategy_data.append({
-            'date': date_fmt,
-            'nav': strategy_nav,
-            'signal': signal,
-        })
-
-    # 构建策略 K线（用策略每日收益率，起始价100，与 build_ohlc 一致）
-    strategy_ohlc = []
-    price = 100.0
-    for i, d in enumerate(strategy_data):
-        if i == 0:
-            pct = 0.0
-        else:
-            prev_nav = strategy_data[i - 1]['nav']
-            if prev_nav != 0:
-                pct = (d['nav'] - prev_nav) / abs(prev_nav) * 100
-            else:
-                pct = 0.0
-        if i > 0:
-            price = strategy_ohlc[i - 1]['close']
-        open_price = price
-        close = round(price * (1 + pct / 100), 4)
-        strategy_ohlc.append({
-            'date': d['date'],
-            'open': open_price,
-            'high': close,
-            'low': close,
-            'close': close,
-        })
-
-    # 构建账户 History K线（用 daily_pct 涨跌幅，起始价100，与 build_ohlc 一致）
-    account_ohlc = []
-    price = 100.0
-    for i, d in enumerate(account_history):
-        val = d['daily_pct']
-        if i > 0:
-            price = account_ohlc[i - 1]['close']
-        open_price = price
-        close = round(price * (1 + val / 100), 4)
-        account_ohlc.append({
-            'date': f"{d['date'][:4]}-{d['date'][4:6]}-{d['date'][6:8]}",
-            'open': open_price,
-            'high': close,
-            'low': close,
-            'close': close,
-        })
-
     data_json = json.dumps(stocks, ensure_ascii=False)
     win_json = json.dumps(win_data, ensure_ascii=False)
     ratio_json = json.dumps(ratio_data, ensure_ascii=False)
@@ -343,9 +231,6 @@ def SHOW_TARGET_1D():
             'close': close,
         })
 
-    account_ohlc_json = json.dumps(account_ohlc, ensure_ascii=False)
-    strategy_ohlc_json = json.dumps(strategy_ohlc, ensure_ascii=False)
-    strategy_signal_json = json.dumps(strategy_data, ensure_ascii=False)
     amount_ohlc_json = json.dumps(amount_ohlc, ensure_ascii=False)
     top_json = json.dumps(top_data, ensure_ascii=False)
     bottom_json = json.dumps(bottom_data, ensure_ascii=False)
@@ -633,40 +518,6 @@ def SHOW_TARGET_1D():
           </div>
         </td>
       </tr>
-      <!-- 第11.5行：账户盈亏 KLINE（lightweight-charts + 均线） -->
-      <tr>
-        <td class="col-idx"><div style="font-size:13px;font-weight:normal;color:#d1d4dc;line-height:1.2;"><span style="font-size:10px;background:#ffd74022;color:#ffd740;border:1px solid #ffd74044;padding:1px 6px;border-radius:8px;">ACCOUNT</span></div><div style="font-family:'Orbitron',sans-serif;font-size:36px;font-weight:900;line-height:1.1;">账户<br>KLINE</div></td>
-        <td style="padding:10px 0;">
-          <div class="chart-box" style="height:500px;position:relative;">
-            <div id="c-ohlc-account" style="width:100%;height:100%;"></div>
-          </div>
-        </td>
-        <td class="col-param">
-          <div class="param-group">
-            <div class="param-row"><label>MA1</label><input class="ohlc-ma-period" type="number" value="5" min="0" data-ma="0" data-ohlc="account"><div class="color-picker"><div class="color-swatch ohlc-ma-swatch" data-ma="0" style="background:#f5a623"></div></div></div>
-            <div class="param-row"><label>MA2</label><input class="ohlc-ma-period" type="number" value="10" min="0" data-ma="1" data-ohlc="account"><div class="color-picker"><div class="color-swatch ohlc-ma-swatch" data-ma="1" style="background:#1e90ff"></div></div></div>
-            <div class="param-row"><label>MA3</label><input class="ohlc-ma-period" type="number" value="0" min="0" data-ma="2" data-ohlc="account"><div class="color-picker"><div class="color-swatch ohlc-ma-swatch" data-ma="2" style="background:#808080"></div></div></div>
-            <div class="param-row"><label>高度</label><input class="height-input" type="number" value="500" min="60" step="10" data-target="c-ohlc-account"></div>
-          </div>
-        </td>
-      </tr>
-      <!-- 第11.6行：策略盈亏 KLINE（lightweight-charts + 均线） -->
-      <tr>
-        <td class="col-idx"><div style="font-size:13px;font-weight:normal;color:#d1d4dc;line-height:1.2;"><span style="font-size:10px;background:#ffd74022;color:#ffd740;border:1px solid #ffd74044;padding:1px 6px;border-radius:8px;">STRATEGY</span></div><div style="font-family:'Orbitron',sans-serif;font-size:36px;font-weight:900;line-height:1.1;">策略<br>KLINE</div></td>
-        <td style="padding:10px 0;">
-          <div class="chart-box" style="height:500px;position:relative;">
-            <div id="c-ohlc-strategy" style="width:100%;height:100%;"></div>
-          </div>
-        </td>
-        <td class="col-param">
-          <div class="param-group">
-            <div class="param-row"><label>MA1</label><input class="ohlc-ma-period" type="number" value="5" min="0" data-ma="0" data-ohlc="strategy"><div class="color-picker"><div class="color-swatch ohlc-ma-swatch" data-ma="0" style="background:#f5a623"></div></div></div>
-            <div class="param-row"><label>MA2</label><input class="ohlc-ma-period" type="number" value="10" min="0" data-ma="1" data-ohlc="strategy"><div class="color-picker"><div class="color-swatch ohlc-ma-swatch" data-ma="1" style="background:#1e90ff"></div></div></div>
-            <div class="param-row"><label>MA3</label><input class="ohlc-ma-period" type="number" value="0" min="0" data-ma="2" data-ohlc="strategy"><div class="color-picker"><div class="color-swatch ohlc-ma-swatch" data-ma="2" style="background:#808080"></div></div></div>
-            <div class="param-row"><label>高度</label><input class="height-input" type="number" value="500" min="60" step="10" data-target="c-ohlc-strategy"></div>
-          </div>
-        </td>
-      </tr>
       <!-- 第12行：封板率 TOP/(TOPPED+TOP)*100 -->
       <tr>
         <td class="col-idx" style="padding:0;"><div style="font-size:13px;font-weight:normal;color:#d1d4dc;line-height:1.2;"><span style="font-size:10px;background:#ffd74022;color:#ffd740;border:1px solid #ffd74044;padding:1px 6px;border-radius:8px;">SEAL</span></div><div style="font-family:'Orbitron',sans-serif;font-size:40px;font-weight:900;line-height:1;">封板率</div></td>
@@ -726,9 +577,6 @@ const historyData = {history_json};
 const ohlcData = {ohlc_json};
 const ohlc311Data = {ohlc311_json};
 const ohlcHistoryData = {ohlc_history_json};
-const accountOhlcData = {account_ohlc_json};
-const strategyOhlcData = {strategy_ohlc_json};
-const strategySignalData = {strategy_signal_json};
 const amountOhlcData = {amount_ohlc_json};
 const topData = {top_json};
 const bottomData = {bottom_json};
@@ -1552,8 +1400,6 @@ function makeRatioChartOptions() {{
   renderOHLC_Kline('c-ohlc-history', ohlcHistoryData, 'history');
 
   renderOHLC_Kline('c-ohlc-amount', amountOhlcData, 'amount');
-  renderOHLC_Kline('c-ohlc-account', accountOhlcData, 'account');
-  renderOHLC_Kline('c-ohlc-strategy', strategyOhlcData, 'strategy');
 
 
   /* ---- 第9行：311_RATIO（单线 + 上下不同色阴影） ---- */

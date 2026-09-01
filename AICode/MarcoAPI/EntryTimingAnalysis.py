@@ -1,15 +1,22 @@
 """
 SZ200 入场时机分析 - 每月5~10次入场，找出最佳策略
 """
+import os
 import pandas as pd
 import numpy as np
 import sys
 from pathlib import Path
 
+# 项目根加入 sys.path，保证直接运行本脚本时也能导入 AICode.* 模块
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from AICode.MarcoAPI.Update.Path import PATH_AIDATA
+
 # ==================== 1. 读取数据 ====================
 def load_data():
-    # 直接使用绝对路径
-    file_path = r"E:\Lazy\MarcoAI\AIData\1D_MOTION"
+    file_path = os.path.join(PATH_AIDATA(), "1D_MOTION")
     df = pd.read_csv(
         file_path, sep='|', header=None,
         names=['date', 'open_ratio', 'high_ratio', 'low_ratio', 'close_ratio', 'volume', 'amount']

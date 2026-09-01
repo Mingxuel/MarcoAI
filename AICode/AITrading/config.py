@@ -5,7 +5,7 @@ miniQMT（xtquant）实盘配置 —— AITrading/QMT
     1. 安装并登录 QMT 客户端（极速交易 / miniQMT 模式，保持客户端运行）
     2. 在同目录 config.json 中填入账号与 userdata 路径（也可直接改本文件常量）
     3. 买入：交易日 T-1 尾盘集合竞价前
-        cd e:/Lazy/MarcoAI/AICode
+        cd e:/MarcoAI/AICode
         python -m AITrading.tpo_m5_trader buy
        卖出：交易日 T-0 盘中
         python -m AITrading.tpo_m5_trader sell

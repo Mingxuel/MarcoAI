@@ -2,7 +2,7 @@
 Run.py —— 主交互菜单
 
 运行：
-    cd e:/Lazy/MarcoAI
+    cd e:/MarcoAI
     python Run.py
 
 功能：

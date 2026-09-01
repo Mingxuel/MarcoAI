@@ -42,7 +42,8 @@ KLINE_DAYS = 120  # 内嵌每只候选股最近 120 天 K 线数据
 
 # 同花顺板块 XML：模板与拷贝目标目录（实盘机）
 THS_TEMPLATE_FILE = PATH_AIDATA() + "/THS/blockstockV3.xml"
-THS_TARGET_DIR = r"C:\同花顺远航版\bin\users\狗蛋儿家的金"
+# 目标目录为同花顺安装路径（外部软件），可用环境变量 THS_TARGET_DIR 覆盖
+THS_TARGET_DIR = os.environ.get("THS_TARGET_DIR", r"C:\同花顺远航版\bin\users\狗蛋儿家的金")
 THS_BLOCK_NAME = "blockstockV3.xml"
 
 # 板块占位符
@@ -1988,7 +1989,7 @@ function onClickUpdateTHS(btn) {{
   const sel = document.getElementById('ths-strategy');
   const strategy = sel ? sel.value : '';
   if (!strategy) {{ logCmd('请先选择策略'); return; }}
-  const ok = confirm('将根据策略 ' + strategy + ' 更新同花顺板块 blockstockV3.xml，\\n最新日期股票->TPO3，前一日期->TPO31，并覆盖 C:\\\\同花顺远航版\\\\bin\\\\users\\\\狗蛋儿家的金\\\\blockstockV3.xml。\\n\\n确定继续吗？');
+  const ok = confirm('将根据策略 ' + strategy + ' 更新同花顺板块 blockstockV3.xml，\\n最新日期股票->TPO3，前一日期->TPO31，并覆盖同花顺用户目录下的同名文件。\\n\\n确定继续吗？');
   if (!ok) {{ logCmd('已取消同花顺更新'); return; }}
   runCommand('UPDATE_THS', {{ strategy }}, btn);
 }}
