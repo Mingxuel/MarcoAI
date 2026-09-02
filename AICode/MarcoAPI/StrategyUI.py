@@ -30,7 +30,7 @@ if _root not in sys.path:
     sys.path.insert(0, os.path.dirname(_root))
 from AICode.MarcoAPI.Backtest import (
     _load_strategy, INIT_CAPITAL, _stock_return, _limit_ratio, _limit_price, STOCK_SELL_STOP,
-    _stock_return_5m, _sell_price_5m,
+    _stock_return_5m, _sell_price_5m, _sell_price_1d, _trade_net_return,
 )
 from AICode.MarcoAPI.Update.Path import (
     PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP
@@ -82,8 +82,10 @@ def _load_strategy_detail(strategies: list[str]) -> dict[str, dict[str, list[dic
                     continue
                 close = _to_float(r[7])
                 pre = _to_float(r[10])
-                sell_ret = _stock_return(r)  # 日线卖出收益率（止损优先/涨停/收盘）
-                sell_ret_5m = _stock_return_5m(r)  # 5 分钟 K 线日内卖出收益率
+                sp_1d = _sell_price_1d(r)            # 日线实际卖出价
+                sp_5m = _sell_price_5m(r)            # 5 分钟 K 线日内卖出价
+                net_1d = _trade_net_return(pre, sp_1d, INIT_CAPITAL) if (sp_1d is not None and pre > 0) else None
+                net_5m = _trade_net_return(pre, sp_5m, INIT_CAPITAL) if (sp_5m is not None and pre > 0) else None
                 item = {
                     "code": r[0],
                     "name": r[1] if len(r) > 1 else "",
@@ -96,9 +98,9 @@ def _load_strategy_detail(strategies: list[str]) -> dict[str, dict[str, list[dic
                     "vol": _to_float(r[8]),
                     "amount": _to_float(r[9]),
                     "chg": round((close - pre) / pre * 100, 2) if pre else 0.0,
-                    "sell_chg": round(sell_ret * 100, 2) if sell_ret is not None else 0.0,
-                    "sell_chg_5m": round(sell_ret_5m * 100, 2) if sell_ret_5m is not None
-                    else (round(sell_ret * 100, 2) if sell_ret is not None else 0.0),
+                    "sell_chg": round(net_1d * 100, 2) if net_1d is not None else 0.0,
+                    "sell_chg_5m": round(net_5m * 100, 2) if net_5m is not None
+                    else (round(net_1d * 100, 2) if net_1d is not None else 0.0),
                 }
                 rows.append(item)
             detail[date] = rows
@@ -147,18 +149,20 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         first = rows[0]  # 每日买入第一只（first 模式）
         # T-0 卖出方式：5m = 5 分钟 K 线日内卖出；day = 日线 O/H/L/C
         if sell_mode == "5m":
-            ret = _stock_return_5m(first)
             sell_price = _sell_price_5m(first)
-            if ret is None or sell_price is None:  # 缺 5M 数据则回退日线
-                ret = _stock_return(first)
-                sell_price = _sell_price(first)
+            if sell_price is None:  # 缺 5M 数据则回退日线
+                sell_price = _sell_price_1d(first)
         else:
-            ret = _stock_return(first)
-            sell_price = _sell_price(first)
-        ret = ret or 0.0
-        capital *= (1.0 + ret)
+            sell_price = _sell_price_1d(first)
+        try:
+            pre = float(first[10])
+        except (ValueError, IndexError):
+            pre = 0.0
+        # 净收益：万1免5 佣金（买卖双边）+ 千0.5 印花税（卖出），满仓 10 万
+        net_ret = _trade_net_return(pre, sell_price, capital) if (sell_price is not None and pre > 0) else 0.0
+        capital *= (1.0 + net_ret)
         capitals.append(round(capital, 2))
-        rets.append(ret)
+        rets.append(net_ret)
 
         # 区间复利收益
         ym = date[:6]
@@ -181,7 +185,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
                 k_open = prev_capital * (1 + (open_p - pre) / pre)
                 k_high = prev_capital * (1 + (high - pre) / pre)
                 k_low = prev_capital * (1 + (low - pre) / pre)
-                k_close = prev_capital * (sell_price / pre)  # 收盘资金按实际卖出价
+                k_close = prev_capital * (1 + net_ret)  # 收盘资金按净收益（含手续费）
                 kline.append({
                     "time": t, "open": round(k_open, 2), "high": round(k_high, 2),
                     "low": round(k_low, 2), "close": round(k_close, 2),

@@ -44,6 +44,11 @@ from AICode.MarcoAPI.Update.Path import PATH_AIDATA_STRATEGY, PATH_AIDATA_STRATE
 INIT_CAPITAL = 100000.0  # 起始资金 10 万
 SELL_MODES = ["first", "last", "avg", "5m"]  # 支持的卖出方式（5m = 基于 5 分钟 K 线的日内卖出）
 
+# 交易成本（手续费）模型：万1 佣金（免五，单笔最低 5 元）+ 千0.5 印花税（仅卖出方）
+COMMISSION_RATE = 1e-4   # 佣金费率：万分之 1
+MIN_COMMISSION = 5.0     # 免五：单笔佣金不足 5 元按 5 元收
+STAMP_RATE = 5e-4        # 印花税费率：千分之 0.5（仅卖出方收取）
+
 
 def _read_lines(path):
     """兼容多种编码读取文件行（策略文件含中文股票名）"""
@@ -105,17 +110,14 @@ def _limit_price(pre_close: float, ratio: float) -> float:
     return float(mid.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
-def _stock_return(cols: list[str]) -> float | None:
-    """按次日卖出规则计算单只股票收益率；数据无效返回 None。
-
-    卖出规则（按优先级）：
+def _sell_price_1d(cols: list[str]) -> float | None:
+    """按次日卖出规则返回实际卖出价（与 _stock_return 同等优先级）：
       1. 开盘涨跌幅 < 止损线      -> 按开盘价卖出
-      2. 最低价涨跌幅 < 止损线    -> 按止损线卖出
-      3. 最高价触及涨停价          -> 按涨停价卖出
+      2. 最低价涨跌幅 < 止损线    -> 按止损价卖出
+      3. 最高价触及涨停价         -> 按涨停价卖出
       4. 以上都不满足             -> 按收盘价卖出
-
-    止损线优先取数据第 29 列（索引 28，由策略写入，如 TPO_M5 为 -5%），
-    缺失时回退全局 STOCK_SELL_STOP（-6%）。
+    止损线优先取数据第 29 列（索引 28，如 TPO_M5 为 -5%），缺失回退 STOCK_SELL_STOP。
+    数据无效返回 None。
     """
     try:
         code = cols[0]
@@ -140,22 +142,38 @@ def _stock_return(cols: list[str]) -> float | None:
             pass
 
     # 规则1：开盘涨跌幅 < 止损线 -> 按开盘价卖出
-    open_ratio = (open_p - pre_close) / pre_close
-    if open_ratio < stop:
-        return open_ratio
+    if (open_p - pre_close) / pre_close < stop:
+        return open_p
 
-    # 规则2：最低价 < 止损线 -> 按止损线卖出
-    low_ratio = (low - pre_close) / pre_close
-    if low_ratio < stop:
-        return stop
+    # 规则2：最低价 < 止损线 -> 按止损价卖出
+    if (low - pre_close) / pre_close < stop:
+        return pre_close * (1 + stop)
 
     # 规则3：最高价触及涨停 -> 按涨停价卖出
     limit_p = _limit_price(pre_close, _limit_ratio(code))
     if high >= limit_p:
-        return (limit_p - pre_close) / pre_close
+        return limit_p
 
     # 规则4：否则按收盘价卖出
-    return (close - pre_close) / pre_close
+    return close
+
+
+def _stock_return(cols: list[str]) -> float | None:
+    """按次日卖出规则计算单只股票【毛】收益率（未扣手续费）；净收益见 _trade_net_return。
+
+    卖出规则（按优先级）：开盘<止损价→开盘价 / 最低<止损价→止损价 / 最高触涨停→涨停价 / 否则收盘价。
+    止损线优先取数据第 29 列（索引 28，如 TPO_M5 为 -5%），缺失回退全局 STOCK_SELL_STOP。
+    """
+    sp = _sell_price_1d(cols)
+    if sp is None:
+        return None
+    try:
+        pre_close = float(cols[10])
+    except (ValueError, IndexError):
+        return None
+    if pre_close <= 0:
+        return None
+    return (sp - pre_close) / pre_close
 
 
 # ----------------------------------------------------------------------
@@ -273,6 +291,36 @@ def _stock_return_5m(cols: list[str]) -> float | None:
     return (sp - pre_close) / pre_close
 
 
+def _trade_net_return(buy_price: float, sell_price: float, notional: float) -> float:
+    """单笔交易【净】收益率（已扣买入佣金 + 卖出佣金（均万1免五）+ 卖出印花税千0.5）。
+
+    buy_price 为买入价（T-1 收盘 = 前收），sell_price 为实际卖出价，notional 为投入本金。
+    返回 (净回收 - notional) / notional；买入价或本金无效返回 0.0。
+    """
+    if buy_price <= 0 or notional <= 0:
+        return 0.0
+    buy_comm = max(notional * COMMISSION_RATE, MIN_COMMISSION)
+    shares = (notional - buy_comm) / buy_price
+    if shares <= 0:
+        return 0.0
+    proceeds = shares * sell_price
+    if proceeds <= 0:
+        return 0.0
+    sell_comm = max(proceeds * COMMISSION_RATE, MIN_COMMISSION)
+    stamp = proceeds * STAMP_RATE
+    net = proceeds - sell_comm - stamp
+    return (net - notional) / notional
+
+
+def _sell_price_for(cols: list[str], mode: str) -> float | None:
+    """按卖出方式返回实际卖出价：5m 优先用 5 分钟 K 线，缺失回退日线；其余用日线。"""
+    if mode == "5m":
+        sp = _sell_price_5m(cols)
+        if sp is not None:
+            return sp
+    return _sell_price_1d(cols)
+
+
 def _daily_return(rows: list[list[str]], mode: str) -> float:
     """计算某卖出日组合的收益率"""
     if mode == "first":
@@ -297,22 +345,44 @@ def _daily_return(rows: list[list[str]], mode: str) -> float:
 
 
 def _backtest(daily: dict[str, list[list[str]]], mode: str):
-    """按卖出方式回测，返回 (交易记录, 每日资金序列)"""
+    """按卖出方式回测（已扣手续费：万1免5 + 千0.5印花税），返回 (交易记录, 每日资金序列)
+
+    每日所选股票等权分配当日本金，逐笔扣双边佣金与卖出印花税后复利滚动资金。
+    """
     capital = INIT_CAPITAL
-    records = []  # (卖出日, 所选股票代码列表, 当日收益率, 当日资金)
+    records = []  # (卖出日, 所选股票代码列表, 当日净收益率, 当日资金)
     for date in sorted(daily):
         rows = daily[date]
         if not rows:
             continue
-        day_ret = _daily_return(rows, mode)
-        capital *= (1.0 + day_ret)
-        # 记录所选股票（first/last 取1只，avg 取全部）
+        # 当日所选股票（first/last 取1只，avg/5m 取全部）
         if mode == "first":
             selected = [rows[0]]
         elif mode == "last":
             selected = [rows[-1]]
         else:
             selected = rows
+        day_start = capital
+        # 过滤出有有效卖出价的交易，按等权分配本金逐笔扣费
+        valid = []
+        for row in selected:
+            sp = _sell_price_for(row, mode)
+            if sp is None:
+                continue
+            try:
+                pre = float(row[10])
+            except (ValueError, IndexError):
+                continue
+            if pre > 0:
+                valid.append((pre, sp))
+        n = len(valid)
+        pnl = 0.0
+        if n > 0:
+            alloc = day_start / n
+            for pre, sp in valid:
+                pnl += alloc * _trade_net_return(pre, sp, alloc)
+        capital = day_start + pnl
+        day_ret = (capital - day_start) / day_start if day_start > 0 else 0.0
         records.append((date, selected, day_ret, capital))
     return records
 
@@ -367,6 +437,7 @@ def BACKTEST(strategy_name: str, sell_modes: list[str] | None = None) -> dict[st
     lines: list[str] = []
     lines.append(f"策略: {strategy_name}")
     lines.append(f"起始资金: {INIT_CAPITAL:.0f} 元")
+    lines.append(f"手续费: 佣金万1免5（单笔最低5元）+ 印花税千0.5（仅卖出），买卖双边计入")
     lines.append(f"数据范围: {sorted(daily)[0]} ~ {sorted(daily)[-1]}")
     lines.append("")
 
