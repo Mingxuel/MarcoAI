@@ -2161,7 +2161,7 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
         else:
             raw = re.sub(r"\r?\n" + re.escape(ph), "", raw).replace(ph, "")
 
-    # 拷贝一份模板到目标目录覆盖同名文件，然后删除本地拷贝
+    # 拷贝模板到目标目录覆盖同名文件
     # newline="" 保持模板原始换行（CRLF），避免文本模式把 \n 再转成 \r\n 导致 \r\r\n
     if not os.path.isdir(THS_TARGET_DIR):
         return f"同花顺目标目录不存在: {THS_TARGET_DIR}"

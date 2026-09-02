@@ -12,6 +12,7 @@ Run.py —— 主交互菜单
     4. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
     5. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     6. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
+    7. 更新同花顺 —— 选策略后写入同花顺板块（自动关闭/重启同花顺生效）
     0. 退出
 执行完任一项后自动回到主菜单。
 """
@@ -41,7 +42,7 @@ except Exception:
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
 from AICode.MarcoAPI.Update.Path import PATH_AIDATA
-from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI
+from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI, CMD_UPDATE_THS, _list_strategies
 from AICode.AITrading.Structure.callbacks import watch as qmt_watch
 from AICode.AITrading import commands as CMD
 
@@ -221,8 +222,45 @@ def _do_gitee():
 
 
 def _do_github():
-    """菜单 5：提交并推送到 GitHub。"""
+    """菜单 6：提交并推送到 GitHub。"""
     _git_push("github")
+
+
+def _do_ths():
+    """菜单 7：更新同花顺板块（子菜单选择策略）。
+
+    列出 AIData/Strategy 下的全部策略，用户选一个后调用 CMD_UPDATE_THS：
+    若同花顺在运行会先自动关闭再写入、写完自动重启，使板块立即生效。
+    """
+    try:
+        strategies = _list_strategies()
+    except Exception as e:
+        print(f"  {Y}读取策略列表失败：{e}{R}")
+        return
+    if not strategies:
+        print(f"  {Y}没有可用策略（AIData/Strategy 下无数据）。{R}")
+        return
+    while True:
+        print(f"\n  {C}{B}── 选择要更新到同花顺板块的策略 ──{R}")
+        for i, s in enumerate(strategies, 1):
+            print(f"  {G}{i}{R}  {s}")
+        print(f"  {Y}0{R}  {B}返回主菜单{R}")
+        sel = input(f"  {C}请选择策略 → {R}").strip()
+        if sel == "0":
+            return
+        if not sel.isdigit() or not (1 <= int(sel) <= len(strategies)):
+            print(f"  {Y}无效选择，请输入 1 ~ {len(strategies)} 或 0。{R}")
+            continue
+        strategy = strategies[int(sel) - 1]
+        print(f"  {C}正在更新同花顺板块（策略：{strategy}）...{R}")
+        try:
+            result = CMD_UPDATE_THS(strategy)
+        except BaseException as exc:
+            print(f"  {Y}!!!!! 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
+            result = None
+        if result:
+            print(f"  {result}")
+        print(f"  {G}── 更新完成，可继续选择其它策略或输入 0 返回 ──{R}")
 
 
 def _banner():
@@ -242,6 +280,7 @@ def _menu_loop():
         print(f"  {G}4{R}  {B}QMT 自动交易{R} 买入 / 卖出监控 / 常驻 watch")
         print(f"  {G}5{R}  {B}上传 Gitee{R}    提交改动并推送到 Gitee 仓库")
         print(f"  {G}6{R}  {B}上传 GitHub{R}   提交改动并推送到 GitHub 仓库")
+        print(f"  {G}7{R}  {B}更新同花顺{R}    按策略把股票写入同花顺板块（自动关闭/重启生效）")
         print(f"  {Y}0{R}  {B}退出{R}")
         print()
         choice = input(f"  {C}请选择 → {R}").strip()
@@ -259,11 +298,13 @@ def _menu_loop():
         elif choice == "6":
             _do_github()
             input("\n  按回车返回主菜单...")
+        elif choice == "7":
+            _do_ths()
         elif choice in ("0", "q", "Q", "exit", "quit"):
             print(f"\n  {Y}已退出。{R}\n")
             break
         else:
-            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 5 / 6 / 0。{R}")
+            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 5 / 6 / 7 / 0。{R}")
 
 
 def main():
