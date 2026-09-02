@@ -29,7 +29,7 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import Manager
 from typing import Optional
-from tqdm import tqdm
+from .progress import ProgressBar as tqdm
 
 from openpyxl import load_workbook
 
@@ -73,7 +73,7 @@ def UPDATE_TOP():
     ]
     with ProcessPoolExecutor(max_workers=32) as pool:
         future_to_file = {pool.submit(GENERATE_TOP, f): f for f in xlsx_files}
-        with tqdm(total=len(future_to_file), desc="TOP", ncols=90) as bar:
+        with tqdm(total=len(future_to_file), desc="TOP", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_file):
                 fut.result()
                 bar.set_postfix(file=os.path.basename(future_to_file[fut]), refresh=False)

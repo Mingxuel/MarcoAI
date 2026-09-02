@@ -36,7 +36,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 import sys
 import pandas as pd
-from tqdm import tqdm
+from .progress import ProgressBar as tqdm
 
 _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if _root not in sys.path:
@@ -136,7 +136,7 @@ def UPDATE_5M_ORIGIN(stock_codes: list[str] | None = None) -> str:
             pool.submit(_WRITE_5M_BATCH, {k: data[k][batch] for k in data}, batch): batch
             for batch in batches
         }
-        with tqdm(total=len(future_to_batch), desc="5M_ORIGIN", ncols=90) as bar:
+        with tqdm(total=len(future_to_batch), desc="5M_ORIGIN", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_batch):
                 try:
                     done += len(fut.result())

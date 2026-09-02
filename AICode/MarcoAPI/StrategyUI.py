@@ -29,7 +29,8 @@ _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, os.path.dirname(_root))
 from AICode.MarcoAPI.Backtest import (
-    _load_strategy, INIT_CAPITAL, _stock_return, _limit_ratio, _limit_price, STOCK_SELL_STOP
+    _load_strategy, INIT_CAPITAL, _stock_return, _limit_ratio, _limit_price, STOCK_SELL_STOP,
+    _stock_return_5m, _sell_price_5m,
 )
 from AICode.MarcoAPI.Update.Path import (
     PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP
@@ -81,7 +82,8 @@ def _load_strategy_detail(strategies: list[str]) -> dict[str, dict[str, list[dic
                     continue
                 close = _to_float(r[7])
                 pre = _to_float(r[10])
-                sell_ret = _stock_return(r)  # 实际卖出收益率（按卖出规则：止损优先/涨停/收盘）
+                sell_ret = _stock_return(r)  # 日线卖出收益率（止损优先/涨停/收盘）
+                sell_ret_5m = _stock_return_5m(r)  # 5 分钟 K 线日内卖出收益率
                 item = {
                     "code": r[0],
                     "name": r[1] if len(r) > 1 else "",
@@ -95,6 +97,8 @@ def _load_strategy_detail(strategies: list[str]) -> dict[str, dict[str, list[dic
                     "amount": _to_float(r[9]),
                     "chg": round((close - pre) / pre * 100, 2) if pre else 0.0,
                     "sell_chg": round(sell_ret * 100, 2) if sell_ret is not None else 0.0,
+                    "sell_chg_5m": round(sell_ret_5m * 100, 2) if sell_ret_5m is not None
+                    else (round(sell_ret * 100, 2) if sell_ret is not None else 0.0),
                 }
                 rows.append(item)
             detail[date] = rows
@@ -102,8 +106,9 @@ def _load_strategy_detail(strategies: list[str]) -> dict[str, dict[str, list[dic
     return out
 
 
-def _build_strategy_payload(strategy_name: str) -> dict[str, object]:
-    """构建单个策略的回测数据（仅 first：每日买入第一只股票，即市值最大）。
+def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[str, object]:
+    """构建单个策略的回测数据（first：每日买入第一只股票即市值最大；
+    sell_mode="5m" 用 5 分钟 K 线日内卖出，sell_mode="day" 用日线 O/H/L/C 卖出。
 
     返回:
         name: 策略名
@@ -140,7 +145,17 @@ def _build_strategy_payload(strategy_name: str) -> dict[str, object]:
                 dist[k].append(None)
             continue
         first = rows[0]  # 每日买入第一只（first 模式）
-        ret = _stock_return(first) or 0.0
+        # T-0 卖出方式：5m = 5 分钟 K 线日内卖出；day = 日线 O/H/L/C
+        if sell_mode == "5m":
+            ret = _stock_return_5m(first)
+            sell_price = _sell_price_5m(first)
+            if ret is None or sell_price is None:  # 缺 5M 数据则回退日线
+                ret = _stock_return(first)
+                sell_price = _sell_price(first)
+        else:
+            ret = _stock_return(first)
+            sell_price = _sell_price(first)
+        ret = ret or 0.0
         capital *= (1.0 + ret)
         capitals.append(round(capital, 2))
         rets.append(ret)
@@ -162,7 +177,6 @@ def _build_strategy_payload(strategy_name: str) -> dict[str, object]:
             close = float(first[7])
             pre = float(first[10])
             volume = float(first[8])
-            sell_price = _sell_price(first)
             if pre > 0 and sell_price is not None:
                 k_open = prev_capital * (1 + (open_p - pre) / pre)
                 k_high = prev_capital * (1 + (high - pre) / pre)
@@ -596,6 +610,12 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
     <div><label>策略：</label>
       <select id="strategy-select"></select>
     </div>
+    <div><label>T-0 卖出：</label>
+      <select id="sell-mode">
+        <option value="5m">5分钟日内</option>
+        <option value="day">日线收盘</option>
+      </select>
+    </div>
     <div class="legend" id="legend" style="margin-bottom:0"></div>
   </div>
   <div class="card capital-card">
@@ -754,7 +774,7 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
 
 <script>
 const DATA = {payload};
-let current = {{ strategy: null, candStrategy: null, date: null, code: null, topDate: null, topCode: null }};
+let current = {{ strategy: null, candStrategy: null, date: null, code: null, topDate: null, topCode: null, sellMode: "5m" }};
 
 function switchTab(name) {{
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -786,6 +806,20 @@ DATA.strategies.forEach(s => {{
 }});
 strategySelect2.value = DATA.strategies[0];
 
+// T-0 卖出方式选择器：day = 日线收盘；5m = 5 分钟 K 线日内卖出（默认 5m）
+const sellModeSelect = document.getElementById('sell-mode');
+sellModeSelect.value = current.sellMode;
+sellModeSelect.addEventListener('change', () => {{
+  current.sellMode = sellModeSelect.value;
+  updateCharts();
+  loadDetail();
+}});
+function backtestPayload() {{
+  const p = DATA.backtest[current.strategy];
+  if (!p) return null;
+  return p[current.sellMode] || p;
+}}
+
 function fmtPct(v) {{ return (v * 100).toFixed(2) + '%'; }}
 function pctClass(v) {{ return v >= 0 ? 'pos' : 'neg'; }}
 function fmtYi(v) {{ const n = parseFloat(v); return isNaN(n) ? '' : (n / 1e8).toFixed(2) + '亿'; }}
@@ -797,11 +831,13 @@ function loadStrategy() {{
 }}
 
 function updateCharts() {{
-  const st = DATA.backtest[current.strategy];
+  const st = backtestPayload();
   if (!st) return;
   const legend = document.getElementById('legend');
+  const smLabel = current.sellMode === '5m' ? '5分钟卖出' : '日线卖出';
   legend.innerHTML =
     `<span class="mode-badge b-first">first</span>` +
+    `<span class="mode-badge b-avg">${{smLabel}}</span>` +
     ` 总收益: <b class="${{pctClass(st.total)}}">${{fmtPct(st.total)}}</b>` +
     ` 最终资金: ${{st.final.toFixed(2)}}` +
     ` 交易天数: ${{st.dates.length}}`;
@@ -933,7 +969,7 @@ function renderBtColorConfig() {{
   }});
 }}
 function rerenderBtKline() {{
-  const st = DATA.backtest[current.strategy];
+  const st = backtestPayload();
   if (st) requestAnimationFrame(() => renderBacktestKline(st));
 }}
 
@@ -1011,7 +1047,7 @@ function renderSentColorConfig() {{
   }});
 }}
 function rerenderSentKline() {{
-  const st = DATA.backtest[current.strategy];
+  const st = backtestPayload();
   if (st) requestAnimationFrame(() => renderSentimentKline(st));
 }}
 
@@ -1815,18 +1851,19 @@ function loadDetail() {{
     // 该日股票表格
     const table = document.createElement('table');
     table.className = 'detail-table';
-    table.innerHTML = '<thead><tr><th>#</th><th>代码</th><th>名称</th><th>涨跌幅%</th><th>实际卖出%</th><th>市值(亿)</th><th>开盘</th><th>最高</th><th>最低</th><th>收盘</th><th>前收</th><th>成交量</th><th>成交额(万)</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>#</th><th>代码</th><th>名称</th><th>涨跌幅%</th><th>实际卖出%(' + (current.sellMode === '5m' ? '5m' : '日线') + ')</th><th>市值(亿)</th><th>开盘</th><th>最高</th><th>最低</th><th>收盘</th><th>前收</th><th>成交量</th><th>成交额(万)</th></tr></thead>';
     const tbody = document.createElement('tbody');
     rows.forEach((row, i) => {{
       total++;
       const cls = row.chg >= 0 ? 'neg' : 'pos';  // 涨红跌绿
-      const scls = (row.sell_chg || 0) >= 0 ? 'neg' : 'pos';  // 实际卖出涨跌颜色
+      const sellVal = current.sellMode === '5m' ? (row.sell_chg_5m ?? row.sell_chg) : row.sell_chg;
+      const scls = (sellVal || 0) >= 0 ? 'neg' : 'pos';  // 实际卖出涨跌颜色
       const tr = document.createElement('tr');
       if (i === 0) tr.className = 'row-selected';  // 选中股（当日第一只）高亮
       tr.innerHTML = '<td>' + (i + 1) + '</td>' +
         '<td>' + row.code + '</td><td>' + row.name + '</td>' +
         '<td class="' + cls + '">' + row.chg.toFixed(2) + '</td>' +
-        '<td class="' + scls + '">' + (row.sell_chg || 0).toFixed(2) + '</td>' +
+        '<td class="' + scls + '">' + (sellVal || 0).toFixed(2) + '</td>' +
         '<td>' + fmtNum(row.market) + '</td>' +
         '<td>' + row.open.toFixed(2) + '</td><td>' + row.high.toFixed(2) + '</td>' +
         '<td>' + row.low.toFixed(2) + '</td><td>' + row.close.toFixed(2) + '</td>' +
@@ -1872,7 +1909,7 @@ strategySelect.addEventListener('change', loadStrategy);
 strategySelect2.addEventListener('change', loadCandidates);
 document.getElementById('bt-year-select').addEventListener('change', e => {{
   btYear = e.target.value;
-  const st = DATA.backtest[current.strategy];
+  const st = backtestPayload();
   if (st) renderBtYearView(st);
 }});
 
@@ -1913,13 +1950,8 @@ function pollUpdateLog() {{
       const res = await fetch('/api/update_log');
       const data = await res.json();
       if (data.log) {{
-        // 只保留关键步骤行，过滤详细日志
-        const lines = data.log.split('\\n');
-        const key = lines.filter(l => {{
-          const s = l.trim();
-          return s.startsWith('=====') || s.startsWith('!!!!!') || s.startsWith('UPDATE_') || s.includes('数据更新完成') || s.includes('数据更新失败') || s.startsWith('数据更新');
-        }});
-        const text = key.join('\\n');
+        // 后端已精简：仅含失败行（!!!!!）与当前单行进度，直接整体替换显示（进度条单行刷新）
+        const text = data.log;
         const pre = document.getElementById('cmd-output');
         if (pre.textContent !== text) {{
           pre.textContent = text;
@@ -2156,10 +2188,13 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
             print("STRATEGY_UI: Strategy 目录下无策略")
             return ""
 
-    # 回测数据
+    # 回测数据：同时预计算 day（日线卖出）与 5m（5 分钟日内卖出）两套
     backtest = {}
     for name in strategies:
-        backtest[name] = _build_strategy_payload(name)
+        backtest[name] = {
+            "day": _build_strategy_payload(name, "day"),
+            "5m": _build_strategy_payload(name, "5m"),
+        }
 
     # 候选池 + K 线
     candidates = {}

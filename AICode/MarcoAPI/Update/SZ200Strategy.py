@@ -3,7 +3,7 @@ from functools import partial
 import os
 import sys
 from typing import Callable, TextIO
-from tqdm import tqdm
+from .progress import ProgressBar as tqdm
 
 _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if _root not in sys.path:
@@ -16,13 +16,13 @@ from AICode.MarcoAPI.Update.Data import DATA_1D
 from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS, _rotate_dir
 
 def UPDATE_STRATEGY_TPO_3():
-    """策略 TPO_3：市值统一用 T-2 日收盘价计算（>= 200 亿），T-1 收盘涨跌幅 <= 3%（含边界）"""
-    _UPDATE_STRATEGY_TPO("TPO_3", PATH_AIDATA_STRATEGY_TPO_3(), market_index=2, max_ratio=3.0)
+    """策略 TPO_3：市值统一用 T-2 日收盘价计算（200 亿~1300 亿），T-1 收盘涨跌幅 <= 3%（含边界）"""
+    _UPDATE_STRATEGY_TPO("TPO_3", PATH_AIDATA_STRATEGY_TPO_3(), market_index=2, max_ratio=3.0, market_min=2e10, market_max=1.3e11)
 
 
 def UPDATE_STRATEGY_TPO_TOP():
     """策略 TPO_TOP：条件同 TPO_3，但选股时按流通市值倒序排列，市值最大的排第一"""
-    _UPDATE_STRATEGY_TPO("TPO_TOP", PATH_AIDATA_STRATEGY_TPO_TOP(), market_index=2, max_ratio=3.0, sort_by_market=True)
+    _UPDATE_STRATEGY_TPO("TPO_TOP", PATH_AIDATA_STRATEGY_TPO_TOP(), market_index=2, max_ratio=3.0, sort_by_market=True, market_min=2e10, market_max=1.3e11)
 
 
 def UPDATE_STRATEGY_TPO_M5():
@@ -58,7 +58,7 @@ def _UPDATE_STRATEGY_TPO(strategy_name: str, strategy_dir: str, market_index: in
     with ProcessPoolExecutor(max_workers=32) as pool:
         fn = partial(GENERATE_STRATEGY_TPO, stock_codes, strategy_dir, market_index, max_ratio, sort_by_market, sort_by_vol_ratio, sort_by_vol_ratio_asc, require_first_plate, market_min, market_max, ma5_predict, stop_loss)
         future_to_date = {pool.submit(fn, d): d for d in trading_dates}
-        with tqdm(total=len(future_to_date), desc=f"STRATEGY {strategy_name}", ncols=90) as bar:
+        with tqdm(total=len(future_to_date), desc=f"STRATEGY {strategy_name}", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_date):
                 fut.result()
                 bar.set_postfix(date=future_to_date[fut], refresh=False)

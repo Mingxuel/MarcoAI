@@ -10,7 +10,7 @@ Run.py —— 主交互菜单
     2. 更新5M数据 —— 下载 5 分钟级原始行情（2026 起，需通达信联网）
     3. 显示 UI    —— 生成策略看板并在浏览器中打开
     4. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
-    5. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: gitee）
+    5. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     6. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
     0. 退出
 执行完任一项后自动回到主菜单。
@@ -216,8 +216,8 @@ def _git_push(remote):
 
 
 def _do_gitee():
-    """菜单 4：提交并推送到 Gitee。"""
-    _git_push("gitee")
+    """菜单 5：提交并推送到 Gitee（实际 remote 名为 origin）。"""
+    _git_push("origin")
 
 
 def _do_github():

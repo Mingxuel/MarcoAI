@@ -78,15 +78,53 @@ def _wait_update_proc():
             _update_done = True
 
 
+def _strip_carriage(log: str) -> str:
+    """把进度条的 \\r 原地刷新序列压缩为单行进度：遇到裸 \\r 时删除上一个 \\n 之后的未定稿内容，
+    只保留最后一帧。先归一 CRLF（行尾的 \\r\\n 来自 close()/print 的 \\n），避免行尾 \\r 误删上一行。
+    这样写入文件的进度序列在网页 <pre> 里可被渲染成单行进度。"""
+    log = log.replace("\r\n", "\n")  # CRLF 归一为 LF（行结束，非覆盖信号）
+    out: list[str] = []
+    for ch in log:
+        if ch == "\r":
+            s = "".join(out)
+            idx = s.rfind("\n")
+            out = [s[: idx + 1]] if idx >= 0 else []
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _simplify_update_log(log: str) -> str:
+    """精简更新日志：只保留失败行（!!!!!）与最后一个进度条行（当前步骤进度），
+    使前端进度条可单行实时刷新。"""
+    log = _strip_carriage(log)
+    fail_lines: list[str] = []
+    last_progress = ""
+    for ln in log.split("\n"):
+        s = ln.strip()
+        if not s:
+            continue
+        if s.startswith("!!!!!"):
+            fail_lines.append(ln)
+        else:
+            last_progress = ln
+    lines = fail_lines[:]
+    if last_progress:
+        lines.append(last_progress)
+    return "\n".join(lines)
+
+
 def _update_status() -> dict:
     global _update_running, _update_done
-    # 读取日志文件
+    # 读取日志文件（二进制读，保留 \r，避免文本模式 universal-newline 把 \r 转成 \n）
     log = ""
     try:
         if os.path.isfile(_update_log_file):
-            log = open(_update_log_file, encoding="utf-8", errors="replace").read()
+            with open(_update_log_file, "rb") as _f:
+                log = _f.read().decode("utf-8", errors="replace")
     except Exception:
         pass
+    log = _simplify_update_log(log)
     with _update_lock:
         return {"ok": True, "running": _update_running, "done": _update_done, "log": log}
 

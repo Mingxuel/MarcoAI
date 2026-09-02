@@ -39,10 +39,10 @@ from collections import defaultdict
 _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _root not in sys.path:
     sys.path.insert(0, _root)
-from AICode.MarcoAPI.Update.Path import PATH_AIDATA_STRATEGY, PATH_AIDATA_STRATEGY_RESULT
+from AICode.MarcoAPI.Update.Path import PATH_AIDATA_STRATEGY, PATH_AIDATA_STRATEGY_RESULT, PATH_AIDATA_5M
 
 INIT_CAPITAL = 100000.0  # 起始资金 10 万
-SELL_MODES = ["first", "last", "avg"]  # 支持的卖出方式
+SELL_MODES = ["first", "last", "avg", "5m"]  # 支持的卖出方式（5m = 基于 5 分钟 K 线的日内卖出）
 
 
 def _read_lines(path):
@@ -158,6 +158,121 @@ def _stock_return(cols: list[str]) -> float | None:
     return (close - pre_close) / pre_close
 
 
+# ----------------------------------------------------------------------
+# 5 分钟 K 线日内卖出模式（sell_mode = "5m"）
+#
+# 规则（按当日 5min K 线时间升序，1-indexed 第 47 根 = 14:55）：
+#   1. 任一 K 线 high 触及涨停价            -> 按涨停价卖出（盘中触及即卖）
+#   2. 任一 K 线 close 相对 pre_close < 止损线(-5%) -> 按该根 close 卖出（盘中止损）
+#   3. 前 47 根（至 14:55）均未触发         -> 按第 47 根（14:55）close 卖出
+# 涨停优先于止损；第 48 根（15:00）不参与，避免尾盘集合竞价不可撤单。
+# ----------------------------------------------------------------------
+_5M_CACHE: dict[str, list[tuple] | None] = {}
+
+
+def _get_5m_bars(code: str) -> list[tuple] | None:
+    """读取并缓存单只股票的全部 5M K 线，返回按时间升序的
+    [(time_str, open, high, low, close, volume, amount), ...]；无文件返回 None。
+
+    文件: AIData/5M/{code}，每行 time|open|high|low|close|volume|amount
+    """
+    if code in _5M_CACHE:
+        return _5M_CACHE[code]
+    path = os.path.join(PATH_AIDATA_5M(), code)
+    if not os.path.isfile(path):
+        _5M_CACHE[code] = None
+        return None
+    raw = open(path, "rb").read()
+    text: str | None = None
+    for enc in ("utf-8", "gbk", "latin-1"):
+        try:
+            text = raw.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        _5M_CACHE[code] = None
+        return None
+    bars: list[tuple] = []
+    for line in text.splitlines():
+        p = line.strip().split("|")
+        if len(p) < 7:
+            continue
+        try:
+            bars.append((p[0], float(p[1]), float(p[2]), float(p[3]), float(p[4]), float(p[5]), float(p[6])))
+        except ValueError:
+            continue
+    bars.sort(key=lambda x: x[0])  # 按时间（字符串 YYYY-MM-DD HH:MM:SS）升序
+    _5M_CACHE[code] = bars
+    return bars
+
+
+def _sell_price_5m(cols: list[str]) -> float | None:
+    """基于 5 分钟 K 线的 T-0 日内实际卖出价；无当日 5M 数据返回 None。
+
+    规则（按当日 5min K 线时间升序，1-indexed 第 47 根 = 14:55）：
+      1. 任一 K 线 high 触及涨停价            -> 涨停价
+      2. 任一 K 线 close 相对 pre_close < 止损线 -> 该根 close
+      3. 前 47 根均未触发                -> 第 47 根（14:55）close
+    涨停优先于止损；第 48 根（15:00）不参与，避免尾盘集合竞价不可撤单。
+    """
+    try:
+        code = cols[0]
+        sell_date = cols[3]          # T-0 卖出日 YYYYMMDD
+        pre_close = float(cols[10])
+    except (ValueError, IndexError):
+        return None
+    if pre_close <= 0:
+        return None
+    bars = _get_5m_bars(code)
+    if not bars:
+        return None
+    date_prefix = f"{sell_date[:4]}-{sell_date[4:6]}-{sell_date[6:8]}"
+    day_bars = [b for b in bars if b[0].startswith(date_prefix)]
+    if not day_bars:
+        return None
+
+    limit_p = _limit_price(pre_close, _limit_ratio(code))
+    stop = STOCK_SELL_STOP
+    if len(cols) > 28:
+        try:
+            v = float(cols[28])
+            if v < 0:
+                stop = v
+        except ValueError:
+            pass
+
+    # 遍历前 47 根（1-indexed）；不足 47 根则遍历全部
+    n = min(len(day_bars), 47)
+    for i in range(n):
+        _t, _o, h, _l, c, _v, _a = day_bars[i]
+        if h >= limit_p:
+            return limit_p
+        if (c - pre_close) / pre_close < stop:
+            return c
+
+    # 兜底：第 47 根（14:55）收盘卖；若当日不足 47 根则取最后一根
+    last = day_bars[46] if len(day_bars) >= 47 else day_bars[-1]
+    return last[4]
+
+
+def _stock_return_5m(cols: list[str]) -> float | None:
+    """基于 5 分钟 K 线的 T-0 日内卖出收益率；无当日 5M 数据返回 None。
+
+    详见模块顶部「5 分钟 K 线日内卖出模式」说明。
+    """
+    sp = _sell_price_5m(cols)
+    if sp is None:
+        return None
+    try:
+        pre_close = float(cols[10])
+    except (ValueError, IndexError):
+        return None
+    if pre_close <= 0:
+        return None
+    return (sp - pre_close) / pre_close
+
+
 def _daily_return(rows: list[list[str]], mode: str) -> float:
     """计算某卖出日组合的收益率"""
     if mode == "first":
@@ -169,6 +284,12 @@ def _daily_return(rows: list[list[str]], mode: str) -> float:
     if mode == "avg":
         # 平均收益率（资金平均分配给当日所有选股）
         returns = [r for r in (_stock_return(row) for row in rows) if r is not None]
+        if not returns:
+            return 0.0
+        return sum(returns) / len(returns)
+    if mode == "5m":
+        # 基于 5 分钟 K 线的日内卖出（资金平均分配给当日所有选股）
+        returns = [r for r in (_stock_return_5m(row) for row in rows) if r is not None]
         if not returns:
             return 0.0
         return sum(returns) / len(returns)

@@ -112,15 +112,15 @@ def UPDATE_ALL():
             with contextlib.redirect_stdout(buf):
                 summary = fn()
             if summary:
-                print(f"  {summary}")
+                print(f"  {summary}", file=sys.stderr)
         except BaseException as exc:  # 捕获所有异常，避免静默中断后续步骤
-            print(f"!!!!! {name} FAILED: {type(exc).__name__}: {exc}")
+            print(f"!!!!! {name} FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
     # 更新完成后清理 _rotate_dir 留下的 .old_* 残留目录
     try:
         _cleanup_old_dirs()
     except BaseException as exc:
-        print(f"!!!!! CLEANUP RESIDUAL DIRS FAILED: {type(exc).__name__}: {exc}")
-    print("ALL DATA UPDATE COMPLETED")
+        print(f"!!!!! CLEANUP RESIDUAL DIRS FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
+    print("ALL DATA UPDATE COMPLETED", file=sys.stderr)
 
 
 if __name__ == "__main__":

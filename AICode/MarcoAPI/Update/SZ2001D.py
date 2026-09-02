@@ -67,7 +67,7 @@ import shutil
 import sys
 import pandas as pd
 from functools import partial
-from tqdm import tqdm
+from .progress import ProgressBar as tqdm
 
 _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if _root not in sys.path:
@@ -218,7 +218,7 @@ def UPDATE_1D_ORIGIN():
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as pool:
         future_to_code = {pool.submit(fn_origin, c): c for c in stock_codes}
         results: dict[str, object] = {}
-        with tqdm(total=len(future_to_code), desc="1D_ORIGIN", ncols=90) as bar:
+        with tqdm(total=len(future_to_code), desc="1D_ORIGIN", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_code):
                 results[future_to_code[fut]] = fut.result()
                 bar.set_postfix(code=future_to_code[fut], refresh=False)
@@ -307,7 +307,7 @@ def UPDATE_1D():
     _SZ200_1D_ALL_CACHE.clear()
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as pool:
         future_to_code = {pool.submit(GENERATE_1D, c): c for c in stock_codes}
-        with tqdm(total=len(future_to_code), desc="1D", ncols=90) as bar:
+        with tqdm(total=len(future_to_code), desc="1D", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_code):
                 fut.result()
                 bar.set_postfix(code=future_to_code[fut], refresh=False)

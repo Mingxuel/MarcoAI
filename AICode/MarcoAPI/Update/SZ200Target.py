@@ -21,7 +21,7 @@ import os
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
-from tqdm import tqdm
+from .progress import ProgressBar as tqdm
 
 _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if _root not in sys.path:
@@ -34,13 +34,13 @@ from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS, _rotate_dir
 
 
 def UPDATE_TARGET_TPO_3():
-    """实盘候选池 TPO_3：市值统一用 T-2 日收盘价计算（>= 200 亿）"""
-    _UPDATE_TARGET_CANDIDATE("TPO_3", market_index=2)
+    """实盘候选池 TPO_3：市值统一用 T-2 日收盘价计算（200 亿~1300 亿）"""
+    _UPDATE_TARGET_CANDIDATE("TPO_3", market_index=2, market_max=1.3e11)
 
 
 def UPDATE_TARGET_TPO_TOP():
     """实盘候选池 TPO_TOP：条件同 TPO_3，按流通市值倒序排列（市值最大的排第一）"""
-    _UPDATE_TARGET_CANDIDATE("TPO_TOP", market_index=2, sort_by_market=True)
+    _UPDATE_TARGET_CANDIDATE("TPO_TOP", market_index=2, sort_by_market=True, market_max=1.3e11)
 
 
 def UPDATE_TARGET_TPO_M5():
@@ -57,7 +57,7 @@ def _UPDATE_TARGET_CANDIDATE(strategy_name: str, market_index: int, sort_by_mark
     with ProcessPoolExecutor(max_workers=32) as pool:
         fn = partial(GENERATE_TARGET_CANDIDATE, stock_codes, target_dir, market_index, sort_by_market, require_first_plate, market_max)
         future_to_date = {pool.submit(fn, d): d for d in trading_dates}
-        with tqdm(total=len(future_to_date), desc=f"TARGET {strategy_name}", ncols=90) as bar:
+        with tqdm(total=len(future_to_date), desc=f"TARGET {strategy_name}", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_date):
                 fut.result()
                 bar.set_postfix(date=future_to_date[fut], refresh=False)
