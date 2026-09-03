@@ -166,11 +166,11 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
 
         # 区间复利收益
         ym = date[:6]
-        month[ym] = month.get(ym, 1.0) * (1 + ret)
+        month[ym] = month.get(ym, 1.0) * (1 + net_ret)
         qm = _quarter_of(date)
-        quarter[qm] = quarter.get(qm, 1.0) * (1 + ret)
+        quarter[qm] = quarter.get(qm, 1.0) * (1 + net_ret)
         y = date[:4]
-        year[y] = year.get(y, 1.0) * (1 + ret)
+        year[y] = year.get(y, 1.0) * (1 + net_ret)
 
         # 资金 K 线：开盘按开盘价、收盘按实际卖出价（与 _stock_return 一致）换算成资金
         try:
