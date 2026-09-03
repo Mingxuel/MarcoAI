@@ -2248,5 +2248,100 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
     return out_path
 
 
+def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser: bool = True) -> str:
+    """生成完全离线（单文件、内联图表库、零外网依赖）的策略看板 HTML。
+
+    与 GENERATE_STRATEGY_UI 的唯一区别：把 chart.js / lightweight-charts 两个库直接
+    内联进 HTML，因此把该 HTML 拷到任意无外网环境、用 file:// 直接打开都能完整显示，
+    不再依赖 CDN。命令面板在 file:// 下本就走自定义协议（IS_FILE_PROTOCOL），无需后端。
+
+    返回生成的文件路径；无策略时返回空串。
+    """
+    if strategy_name:
+        strategies = [strategy_name]
+    else:
+        strategies = _list_strategies()
+        if not strategies:
+            print("STRATEGY_UI: Strategy 目录下无策略")
+            return ""
+
+    # 回测数据：同时预计算 day（日线卖出）与 5m（5 分钟日内卖出）两套
+    backtest = {}
+    for name in strategies:
+        backtest[name] = {
+            "day": _build_strategy_payload(name, "day"),
+            "5m": _build_strategy_payload(name, "5m"),
+        }
+
+    # 候选池 + K 线
+    candidates = {}
+    all_codes = set()
+    code_names: dict[str, str] = {}
+    for name in strategies:
+        candidates[name] = _load_candidates(name)
+        for rows in candidates[name].values():
+            for r in rows:
+                all_codes.add(r[0])
+                if len(r) >= 2 and r[0] not in code_names:
+                    code_names[r[0]] = r[1]
+    kline = _load_kline(all_codes, code_names)
+
+    # 涨停列表（按市值倒序）
+    top = _load_top()
+    top_codes = set()
+    top_names: dict[str, str] = {}
+    for rows in top.values():
+        for r in rows:
+            top_codes.add(r[0])
+            if r[0] not in top_names:
+                top_names[r[0]] = r[1]
+    top_kline = _load_kline(top_codes, top_names, max_days=120)
+    kline.update(top_kline)  # 涨停股 K 线并入（若已有则跳过/覆盖同名）
+
+    # 策略选股详情
+    strategy_detail = _load_strategy_detail(strategies)
+
+    data = {
+        "strategies": strategies,
+        "backtest": backtest,
+        "candidates": candidates,
+        "top": top,
+        "kline": kline,
+        "strategy_detail": strategy_detail,
+    }
+
+    html = _render_html(data)
+
+    # 把 CDN <script src> 替换为本地内联库，使 HTML 彻底离线、可独立分发
+    here = os.path.dirname(os.path.abspath(__file__))
+    vendor = os.path.join(here, "UI", "vendor")
+    lib_map = {
+        "https://cdn.jsdelivr.net/npm/chart.js":
+            "chart.umd.js",
+        "https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js":
+            "lightweight-charts.standalone.production.js",
+    }
+    for cdn, fname in lib_map.items():
+        path = os.path.join(vendor, fname)
+        if not os.path.isfile(path):
+            print(f"STRATEGY_UI: 离线库缺失，跳过内联（仍将依赖 CDN）：{path}")
+            continue
+        with open(path, "r", encoding="utf-8") as f:
+            lib = f.read()
+        # 防止库内含 </script> 字面量截断 HTML：转义其中的斜杠
+        lib = lib.replace("</script>", "<\\/script>")
+        inline = "<script>/* inlined vendor lib: " + fname + " */\n" + lib + "\n</script>"
+        html = html.replace('<script src="' + cdn + '"></script>', inline)
+
+    out_path = os.path.join(here, "UI", "StrategyDashboardOffline.html")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"STRATEGY_UI: 离线看板已生成 {out_path}")
+
+    if open_browser:
+        webbrowser.open("file:///" + out_path.replace("\\", "/"))
+    return out_path
+
+
 if __name__ == "__main__":
     GENERATE_STRATEGY_UI()

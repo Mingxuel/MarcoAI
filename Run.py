@@ -42,7 +42,7 @@ except Exception:
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
 from AICode.MarcoAPI.Update.Path import PATH_AIDATA
-from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI, CMD_UPDATE_THS, _list_strategies
+from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI, GENERATE_STRATEGY_UI_OFFLINE, CMD_UPDATE_THS, _list_strategies
 from AICode.AITrading.Structure.callbacks import watch as qmt_watch
 from AICode.AITrading import commands as CMD
 
@@ -120,6 +120,11 @@ def _do_update_5m():
 
 def _do_ui():
     GENERATE_STRATEGY_UI()
+
+
+def _do_ui_offline():
+    """菜单 8：生成离线看板（内联图表库，单文件可拷到任意无外网环境打开）。"""
+    GENERATE_STRATEGY_UI_OFFLINE()
 
 
 def _do_qmt():
@@ -277,6 +282,7 @@ def _menu_loop():
         print(f"  {G}1{R}  {B}更新数据{R}    同步交易日历 / 日线 / 涨停 / 策略 / 目标池")
         print(f"  {G}2{R}  {B}更新5M数据{R}  下载 5 分钟级原始行情（2026 起）")
         print(f"  {G}3{R}  {B}显示看板{R}    生成并打开策略 UI")
+        print(f"  {G}8{R}  {B}离线看板{R}    生成内联库的单文件看板（无外网也能打开）")
         print(f"  {G}4{R}  {B}QMT 自动交易{R} 买入 / 卖出监控 / 常驻 watch")
         print(f"  {G}5{R}  {B}上传 Gitee{R}    提交改动并推送到 Gitee 仓库")
         print(f"  {G}6{R}  {B}上传 GitHub{R}   提交改动并推送到 GitHub 仓库")
@@ -290,6 +296,8 @@ def _menu_loop():
             _do_update_5m()
         elif choice == "3":
             _do_ui()
+        elif choice == "8":
+            _do_ui_offline()
         elif choice == "4":
             _do_qmt()
         elif choice == "5":
@@ -304,7 +312,7 @@ def _menu_loop():
             print(f"\n  {Y}已退出。{R}\n")
             break
         else:
-            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 5 / 6 / 7 / 0。{R}")
+            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 8 / 4 / 5 / 6 / 7 / 0。{R}")
 
 
 def main():
