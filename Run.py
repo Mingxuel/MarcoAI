@@ -8,11 +8,13 @@ Run.py —— 主交互菜单
 功能：
     1. 更新数据   —— 运行完整数据更新管线（交易日历/股票代码/日线/涨停/策略/目标池）
     2. 更新5M数据 —— 下载 5 分钟级原始行情（2026 起，需通达信联网）
-    3. 显示 UI    —— 生成策略看板并在浏览器中打开
-    4. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
-    5. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
-    6. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
-    7. 更新同花顺 —— 选策略后写入同花顺板块（自动关闭/重启同花顺生效）
+    3. 更新同花顺 —— 选策略后写入同花顺板块（自动关闭/重启同花顺生效）
+    4. 离线看板   —— 生成内联图表库的单文件看板，无外网也能打开
+    5. 显示 UI    —— 生成策略看板并在浏览器中打开
+    6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
+    7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
+    77. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
+    88. 一条龙更新 —— 依次：更新数据 → 更新 5M 数据 → 更新同花顺板块
     0. 退出
 执行完任一项后自动回到主菜单。
 """
@@ -268,6 +270,29 @@ def _do_ths():
         print(f"  {G}── 更新完成，可继续选择其它策略或输入 0 返回 ──{R}")
 
 
+def _do_pipeline():
+    """菜单 88：一条龙数据更新 —— 依次执行 更新数据(1D) → 更新 5M → 更新同花顺板块。
+
+    三步串行：先刷新日线/策略/目标池，再下载 5 分钟行情，最后把最新策略股票
+    写入同花顺板块（自动关闭/重启同花顺生效）。各步骤错误互不影响，最终汇总结果。
+    """
+    print(f"\n  {C}{B}═══ 一条龙更新：① 更新数据 → ② 更新 5M → ③ 更新同花顺 ═══{R}")
+    try:
+        _do_update()
+    except BaseException as exc:
+        print(f"  {Y}!!!!! ① 更新数据失败：{type(exc).__name__}: {exc}{R}")
+    try:
+        _do_update_5m()
+    except BaseException as exc:
+        print(f"  {Y}!!!!! ② 更新 5M 数据失败：{type(exc).__name__}: {exc}{R}")
+    print(f"\n  {C}{B}── ③ 更新同花顺板块 ──{R}")
+    try:
+        _do_ths()
+    except BaseException as exc:
+        print(f"  {Y}!!!!! ③ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
+    print(f"\n  {G}{B}── 一条龙更新结束 ──{R}")
+
+
 def _banner():
     print()
     print(f"{C}{B}╔══════════════════════════════════════════╗{R}")
@@ -281,12 +306,13 @@ def _menu_loop():
         _banner()
         print(f"  {G}1{R}  {B}更新数据{R}    同步交易日历 / 日线 / 涨停 / 策略 / 目标池")
         print(f"  {G}2{R}  {B}更新5M数据{R}  下载 5 分钟级原始行情（2026 起）")
-        print(f"  {G}3{R}  {B}显示看板{R}    生成并打开策略 UI")
-        print(f"  {G}8{R}  {B}离线看板{R}    生成内联库的单文件看板（无外网也能打开）")
-        print(f"  {G}4{R}  {B}QMT 自动交易{R} 买入 / 卖出监控 / 常驻 watch")
-        print(f"  {G}5{R}  {B}上传 Gitee{R}    提交改动并推送到 Gitee 仓库")
-        print(f"  {G}6{R}  {B}上传 GitHub{R}   提交改动并推送到 GitHub 仓库")
-        print(f"  {G}7{R}  {B}更新同花顺{R}    按策略把股票写入同花顺板块（自动关闭/重启生效）")
+        print(f"  {G}3{R}  {B}更新同花顺{R}    按策略把股票写入同花顺板块（自动关闭/重启生效）")
+        print(f"  {G}4{R}  {B}离线看板{R}    生成内联库的单文件看板（无外网也能打开）")
+        print(f"  {G}5{R}  {B}显示看板{R}    生成并打开策略 UI")
+        print(f"  {G}6{R}  {B}上传 Gitee{R}    提交改动并推送到 Gitee 仓库")
+        print(f"  {G}7{R}  {B}上传 GitHub{R}   提交改动并推送到 GitHub 仓库")
+        print(f"  {G}77{R} {B}QMT 自动交易{R} 买入 / 卖出监控 / 常驻 watch")
+        print(f"  {G}88{R} {B}一条龙更新{R}  数据 → 5M → 同花顺，一步到位")
         print(f"  {Y}0{R}  {B}退出{R}")
         print()
         choice = input(f"  {C}请选择 → {R}").strip()
@@ -294,25 +320,27 @@ def _menu_loop():
             _do_update()
         elif choice == "2":
             _do_update_5m()
-        elif choice == "3":
-            _do_ui()
-        elif choice == "8":
-            _do_ui_offline()
-        elif choice == "4":
-            _do_qmt()
         elif choice == "5":
+            _do_ui()
+        elif choice == "4":
+            _do_ui_offline()
+        elif choice == "77":
+            _do_qmt()
+        elif choice == "6":
             _do_gitee()
             input("\n  按回车返回主菜单...")
-        elif choice == "6":
+        elif choice == "7":
             _do_github()
             input("\n  按回车返回主菜单...")
-        elif choice == "7":
+        elif choice == "3":
             _do_ths()
+        elif choice == "88":
+            _do_pipeline()
         elif choice in ("0", "q", "Q", "exit", "quit"):
             print(f"\n  {Y}已退出。{R}\n")
             break
         else:
-            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 8 / 4 / 5 / 6 / 7 / 0。{R}")
+            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 5 / 6 / 7 / 77 / 88 / 0。{R}")
 
 
 def main():
