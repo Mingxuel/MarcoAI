@@ -14,7 +14,11 @@ miniQMT（xtquant）实盘配置 —— AITrading/QMT
 策略说明：
     TPO_M5（用户口中的 TPO_MA5）策略：以 TARGET/TPO_M5 最新文件为预选买入池，
     在买入确认日（T-1）尾盘按完整 TPO_M5 形态 + MA5 预测条件做实时判定，单股全仓买入；
-    次日（T-0）按“最低价<止损→止损卖 / 最高价触涨停→涨停卖 / 否则收盘卖”规则卖出。
+    次日（T-0）卖出，默认走「5 分钟 K 线卖出」（SELL_MODE="5m"），与回测
+    Backtest._sell_price_5m 完全一致：对当日 5min K 线逐根判定，
+    high 触涨停 → 涨停价卖；close 跌破「前收×(1+STOP_LOSS)」→ 止损卖（同根内涨停优先）；
+    始终未触发则由 14:55 起的收盘三阶段强平兜底。
+    SELL_MODE="tick" 可切回旧的「最新价 vs 成本」止损逻辑；5min 数据不可用时也会自动回退。
 
 外部配置（config.json，热加载）：
     同目录 config.json 可覆盖本文件任意可覆盖常量（账号、参数），并控制日志开关。
@@ -51,6 +55,15 @@ BUY_TIME = "14:57:00"
 SELL_STOP_TIME = "09:30:00"
 SELL_LIMIT_MONITOR_TIME = "09:30:00"
 SELL_CLOSE_TIME = "14:55:00"
+
+# 卖出方式（QMT 实盘）：
+#   "5m"   —— 5 分钟卖出（默认）：涨停由 tick 实时判定（tick 是最高频源，封板瞬间即捕捉），
+#             止损由当日 5min K 线「收盘价」判定，基准为前收（非成本价），
+#             与回测 Backtest._sell_price_5m 的止损分支一致，抗盘中插针误杀；
+#             5min 数据不可用时自动回退 "tick"。
+#   "tick" —— 最新价卖出（旧逻辑）：最新价跌破「成本×(1+STOP_LOSS)」止损，最高价触涨停即卖。
+SELL_MODE = "5m"
+SELL_5M_REFRESH_SEC = 5   # 当日 5min K 线刷新节流（秒），避免每个 tick 都向 miniQMT 拉行情
 
 # 收盘强平三阶段（自 SELL_CLOSE_TIME 起算；14:57 进入集合竞价后不可撤单）
 FORCE_CLOSE_P1_SEC = 60      # 阶段一：卖一价挂单，每 FORCE_CLOSE_RETRY_SEC 撤单重挂
@@ -95,6 +108,7 @@ _OVERRIDABLE = [
     "FORCE_CLOSE_P1_SEC", "FORCE_CLOSE_P2_SEC", "FORCE_CLOSE_P2_MAX",
     "FORCE_CLOSE_P2_TICK", "FORCE_CLOSE_RETRY_SEC",
     "STRATEGY_NAME", "MAX_RATIO", "MARKET_MIN", "MARKET_MAX", "STOP_LOSS",
+    "SELL_MODE", "SELL_5M_REFRESH_SEC",
 ]
 
 

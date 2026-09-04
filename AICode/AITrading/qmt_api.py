@@ -39,6 +39,14 @@ def connect():
     return t, sess
 
 
+def current_trader():
+    """返回已连接的 xt_trader；未连接返回 None。
+
+    供 tick 回调等「拿不到交易对象」的场景使用（回调由行情线程触发，无 xt_trader 入参）。
+    """
+    return _xt_trader
+
+
 def is_trading_day(date_str):
     """判断指定日期（YYYYMMDD）是否为交易日，仅依赖 miniQMT 实时接口（xtdata.get_trading_dates）。
 
@@ -140,6 +148,50 @@ def get_pre_close(code):
     except Exception:
         pass
     return None
+
+
+def _bar_date(ts):
+    """把 xtdata 返回的 K 线时间索引规范为 'YYYY-MM-DD'；无法识别返回 ''。
+
+    兼容 str / datetime / YYYYMMDDHHMMSS 等常见索引形态：提取全部数字后取前 8 位，
+    年份需落在 2000~2100 之间（用于排除 epoch 毫秒这类非日期索引）。
+    """
+    digits = "".join(ch for ch in str(ts) if ch.isdigit())
+    if len(digits) < 8:
+        return ""
+    year = int(digits[0:4])
+    if year < 2000 or year > 2100:
+        return ""
+    return f"{digits[0:4]}-{digits[4:6]}-{digits[6:8]}"
+
+
+def get_5m_bars(code, count=96):
+    """返回最近 count 根 5 分钟 K 线 [(time, open, high, low, close, volume, amount)]，按时间升序。
+
+    count 默认 96 约覆盖 2 个交易日，足够筛出「当日」全部 5min bar；
+    最后一根为「正在形成的 bar」，其 close/high 随行情实时更新，故可用于盘中即时判定。
+    取不到数据时返回 []（异常仅告警不抛出，由上层回退其它卖出方式）。
+    """
+    try:
+        from xtquant import xtdata
+        data = xtdata.get_market_data_ex(
+            [code], ["open", "high", "low", "close", "volume", "amount"],
+            period="5m", count=count)
+        df = data.get(code) if data else None
+        if df is None or len(df) == 0:
+            return []
+        out = []
+        for ts, row in df.iterrows():
+            try:
+                out.append((str(ts), float(row["open"]), float(row["high"]),
+                            float(row["low"]), float(row["close"]),
+                            float(row["volume"]), float(row["amount"])))
+            except Exception:
+                continue
+        return out
+    except Exception as e:
+        C.log("qmt", f"获取 {code} 5 分钟 K 线失败：{e}")
+        return []
 
 
 def submit_buy(xt_trader, code, vol, price):

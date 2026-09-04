@@ -23,6 +23,7 @@ import datetime
 import os
 import subprocess
 import sys
+import unicodedata
 
 # 项目根（Run.py 所在目录）加入 sys.path，保证 AICode.* 可被导入
 _ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -293,28 +294,74 @@ def _do_pipeline():
     print(f"\n  {G}{B}── 一条龙更新结束 ──{R}")
 
 
-def _banner():
+# 菜单结构：(编号, 名称, 说明)。每个元组为一组，组之间会画一条分隔线。
+_MENU_GROUPS = (
+    (("1", "更新数据", "同步交易日历 / 日线 / 涨停 / 策略 / 目标池"),
+     ("2", "更新5M数据", "下载 5 分钟级原始行情（2026 起）"),
+     ("3", "更新同花顺", "按策略写入同花顺板块（自动关闭/重启生效）"),
+     ("4", "离线看板", "生成内联库单文件看板，无外网也能打开"),
+     ("5", "显示看板", "生成并打开策略 UI")),
+    (("6", "上传 Gitee", "提交改动并推送到 Gitee 仓库"),
+     ("7", "上传 GitHub", "提交改动并推送到 GitHub 仓库")),
+    (("77", "QMT 自动交易", "买入 / 卖出监控 / 常驻 watch"),
+     ("88", "一条龙更新", "数据 → 5M → 同花顺，一步到位")),
+)
+
+
+def _dw(s: str) -> int:
+    """按终端实际显示宽度计算字符串宽度（CJK 全角字符占 2 列）。"""
+    return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1 for ch in s)
+
+
+def _pad(s: str, width: int) -> str:
+    """按显示宽度在右侧补空格，保证中英混排也能对齐。"""
+    return s + " " * max(0, width - _dw(s))
+
+
+def _print_menu():
+    """打印带边框的主菜单面板：标题居中，编号/名称/说明三列按显示宽度对齐，分组间加分隔线。"""
+    items = [r for g in _MENU_GROUPS for r in g] + [("0", "退出", "")]
+    badge_w = max(_dw("[ " + n + " ]") for n, _, _ in items) + 2
+    name_w = max(_dw(nm) for _, nm, _ in items) + 2
+    desc_w = max(_dw(d) for _, _, d in items)
+    left, gap, right = 2, 2, 2
+    inner = left + badge_w + gap + name_w + gap + desc_w + right
+    edge = C + B  # 边框颜色
+
     print()
-    print(f"{C}{B}╔══════════════════════════════════════════╗{R}")
-    print(f"{C}{B}║            MarcoAI 量化数据终端           ║{R}")
-    print(f"{C}{B}╚══════════════════════════════════════════╝{R}")
+    print(edge + "╔" + "═" * inner + "╗" + R)
+    title = "MarcoAI 量化数据终端"
+    pad_total = inner - _dw(title)
+    lp = pad_total // 2
+    print(edge + "║" + R + " " * lp + edge + title + R
+          + " " * (pad_total - lp) + edge + "║" + R)
+    print(edge + "╠" + "═" * inner + "╣" + R)
+
+    def row(num: str, name: str, desc: str) -> None:
+        body = (" " * left
+                + G + _pad("[ " + num + " ]", badge_w) + R
+                + " " * gap
+                + B + _pad(name, name_w) + R
+                + " " * gap
+                + _pad(desc, desc_w)
+                + " " * right)
+        print(edge + "║" + R + body + edge + "║" + R)
+
+    for gi, group in enumerate(_MENU_GROUPS):
+        if gi:  # 组间分隔线（细线，区别于表头粗线）
+            print(edge + "║" + R + " " * 2 + "─" * (inner - 4) + " " * 2 + edge + "║" + R)
+        for num, name, desc in group:
+            row(num, name, desc)
+
+    print(edge + "╠" + "═" * inner + "╣" + R)
+    row("0", "退出", "")
+    print(edge + "╚" + "═" * inner + "╝" + R)
     print()
 
 
 def _menu_loop():
     while True:
-        _banner()
-        print(f"  {G}1{R}  {B}更新数据{R}    同步交易日历 / 日线 / 涨停 / 策略 / 目标池")
-        print(f"  {G}2{R}  {B}更新5M数据{R}  下载 5 分钟级原始行情（2026 起）")
-        print(f"  {G}3{R}  {B}更新同花顺{R}    按策略把股票写入同花顺板块（自动关闭/重启生效）")
-        print(f"  {G}4{R}  {B}离线看板{R}    生成内联库的单文件看板（无外网也能打开）")
-        print(f"  {G}5{R}  {B}显示看板{R}    生成并打开策略 UI")
-        print(f"  {G}6{R}  {B}上传 Gitee{R}    提交改动并推送到 Gitee 仓库")
-        print(f"  {G}7{R}  {B}上传 GitHub{R}   提交改动并推送到 GitHub 仓库")
-        print(f"  {G}77{R} {B}QMT 自动交易{R} 买入 / 卖出监控 / 常驻 watch")
-        print(f"  {G}88{R} {B}一条龙更新{R}  数据 → 5M → 同花顺，一步到位")
-        print(f"  {Y}0{R}  {B}退出{R}")
-        print()
+        _print_menu()
         choice = input(f"  {C}请选择 → {R}").strip()
         if choice == "1":
             _do_update()

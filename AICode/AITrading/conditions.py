@@ -109,6 +109,55 @@ def is_limit_up(code, tick):
 
 
 # ----------------------------------------------------------------------
+# 5 分钟 K 线卖出判定（只负责「止损」，与回测 Backtest._sell_price_5m 的止损分支一致）
+#   职责划分（重要，勿合并）：
+#     · 涨停 —— 必须在 tick 环境判定（见上方 is_limit_up，用 tick 的 high 对涨停价）。
+#               tick 是最高频数据源，封板瞬间即可捕捉；若改用 5min K 线会延迟最多 5 分钟。
+#     · 止损 —— 放这里，用 5 分钟 K 线的「收盘价」判定（而非瞬时最新价），
+#               避免盘中瞬时插针把仓位震出去；基准为前收（T-1 收盘），
+#               止损线 C.STOP_LOSS（TPO_M5 为 -5%）。
+#   5min 数据取不到时不在此处兜底，交由 tick_logic 回退「最新价止损」，避免漏掉大幅下跌。
+# ----------------------------------------------------------------------
+_5M_BARS_CACHE = {}  # code -> (上次刷新时刻, bars)
+
+
+def today_5m_bars(code):
+    """当日 5 分钟 K 线（含正在形成的最后一根），带节流缓存；取不到返回 None。
+
+    缓存 C.SELL_5M_REFRESH_SEC 秒，避免每个 tick 都向 miniQMT 拉行情。
+    """
+    now = time.time()
+    ent = _5M_BARS_CACHE.get(code)
+    if ent is None or (now - ent[0]) >= C.SELL_5M_REFRESH_SEC:
+        bars = Q.get_5m_bars(code)
+        ent = (now, bars)
+        _5M_BARS_CACHE[code] = ent
+    bars = ent[1]
+    if not bars:
+        return None
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    day = [b for b in bars if Q._bar_date(b[0]) == today]
+    return day or None
+
+
+def hit_stop_loss_5m(code, bars):
+    """5 分钟 K 线止损判定：当日任一 5min bar 的 close 相对前收跌幅 < STOP_LOSS 即触发。
+
+    与回测 Backtest._sell_price_5m 的「止损分支」一致：以 K 线收盘价而非瞬时最新价为准，
+    避免盘中瞬时插针被误杀。前收 = T-1 收盘（Q.get_pre_close），止损线 = C.STOP_LOSS。
+    取不到前收时返回 False（保守，不误卖）。
+    """
+    pre_close = Q.get_pre_close(code)
+    if not pre_close or pre_close <= 0:
+        return False
+    stop = C.STOP_LOSS
+    for _t, _o, _h, _l, c, _v, _a in bars:
+        if (c - pre_close) / pre_close < stop:
+            return True
+    return False
+
+
+# ----------------------------------------------------------------------
 # 收盘强平：阶段判断（当前处于三阶段中的第几阶段）与执行时机判断（节流/次数）
 # ----------------------------------------------------------------------
 def _secs_since(t):
