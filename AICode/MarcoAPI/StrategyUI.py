@@ -119,6 +119,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         total: 总收益率
         final: 最终资金
         month/quarter/year: 每月/季度/年收益（first）
+        month_trades: 每月交易次数（当日有票即 1 笔；无交易的月份不含该键）
         kline: 资金 K 线 [{time,open,high,low,close,volume,pre_close}]，
                每根蜡烛为当日资金 OHLC（由 O/C/H/L 涨跌幅 × 前收资金复利算出），时间 YYYY-MM-DD
         dist: {open,high,low,close} 四组每日涨跌幅序列（相对前收）
@@ -133,6 +134,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
     month = {}
     quarter = {}
     year = {}
+    month_trades = {}  # 每月交易次数（当日有票即算 1 笔，策略每日最多买 1 只）
     kline = []      # 资金 K 线：每根蜡烛为当日资金 OHLC（由涨跌幅×前收资金复利算出）
     dist = {"open": [], "high": [], "low": [], "close": []}
     prev_capital = INIT_CAPITAL  # 前收资金（首日 = 起始资金）
@@ -167,6 +169,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         # 区间复利收益
         ym = date[:6]
         month[ym] = month.get(ym, 1.0) * (1 + net_ret)
+        month_trades[ym] = month_trades.get(ym, 0) + 1
         qm = _quarter_of(date)
         quarter[qm] = quarter.get(qm, 1.0) * (1 + net_ret)
         y = date[:4]
@@ -218,11 +221,11 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         "total": round(capital / INIT_CAPITAL - 1.0, 6),
         "final": round(capital, 2),
         "month": month,
+        "month_trades": month_trades,
         "quarter": quarter,
         "year": year,
         "kline": kline,
         "dist": dist,
-        "sentiment_kline": BUILD_SENTIMENT_KLINE(),
     }
 
 
@@ -281,7 +284,7 @@ def _load_candidates(strategy_name: str) -> dict[str, list[list[str]]]:
     if not os.path.isdir(base):
         return {}
     candidates = {}
-    for f in os.listdir(base):
+    for f in sorted(os.listdir(base)):      # 排序：os.listdir 顺序不稳定，排序保证结果可复现
         if not f.isdigit():
             continue
         rows = []
@@ -363,7 +366,9 @@ def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: 
     """
     names = names or {}
     kline = {}
-    for code in codes:
+    # 按代码排序遍历：codes 是 set，直接遍历顺序不稳定，会导致两次生成的
+    # payload（在线/离线）字节不一致（内容相同但键顺序不同），排序保证可复现
+    for code in sorted(codes):
         path = os.path.join(PATH_AIDATA_1D_ORIGIN(), code)
         if not os.path.exists(path):
             continue
@@ -387,9 +392,25 @@ def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: 
     return kline
 
 
-def _render_html(data: dict[str, Any]) -> str:
+# 左侧快捷命令侧边栏：命令按钮依赖本地服务 / marcoai:// 自定义协议，
+# 离线单文件拷到别的机器后这些按钮无意义，故离线看板不再输出（show_sidebar=False）。
+_SIDEBAR_HTML = """<!-- ============ 左侧快捷命令侧边栏 ============ -->
+<div class="sidebar">
+  <div class="brand">MarcoAI 控制台<small>策略回测 &amp; 实盘看板</small></div>
+  <div class="section">数据更新</div>
+  <div class="cmds" id="cmd-list"></div>
+  <div class="cmd-output">
+    <div class="label">命令输出</div>
+    <pre id="cmd-output"></pre>
+  </div>
+</div>
+"""
+
+
+def _render_html(data: dict[str, Any], show_sidebar: bool = True) -> str:
     payload = json.dumps(data, ensure_ascii=False)
     strategies_json = json.dumps(data.get("strategies", []), ensure_ascii=False)
+    sidebar_html = _SIDEBAR_HTML if show_sidebar else ""
     return f"""<!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -461,6 +482,7 @@ select {{ background: #151827; color: #e6e9f0; border: 1px solid #2a3249; paddin
 .bt-ret3 .bt-td-month {{ font-size: 11px; color: #b8c0cc; }}
 .bt-ret3 .bt-td-month .bt-cell-inline {{ display: flex; align-items: center; gap: 8px; }}
 .bt-ret3 .bt-mon {{ font-size: 10px; color: #7a7f8a; width: 26px; flex-shrink: 0; text-align: left; letter-spacing: 1px; }}
+.bt-ret3 .bt-cnt {{ font-size: 10px; color: #8a93a8; width: 38px; flex-shrink: 0; text-align: right; }}
 .bt-ret3 .bt-val {{ font-weight: 500; }}
 .bt-ret3 .bt-cumtrack {{ position: relative; flex: 1 1 0; height: 12px; background: #161a24; border-radius: 2px; overflow: hidden; min-width: 40px; }}
 .bt-ret3 .bt-cum {{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; opacity: .85; }}
@@ -535,6 +557,10 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
 .b-last {{ background: #ef5350; color: #2a0b0b; }}
 .b-avg {{ background: #26a69a; color: #07201c; }}
 .legend {{ display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }}
+/* 情绪曲线下方「单均线」小图与周期按钮选中态 */
+.sent-ma-head {{ margin: 12px 0 6px; font-size: 13px; color: #9aa0a6; }}
+#sent-ma-kline {{ height: 240px; }}
+.sent-ma-btn.active {{ background: #1b2036; border-color: #00e5ff; box-shadow: 0 0 8px rgba(0,229,255,.25); }}
 /* 候选池 */
 .cand-layout {{ display: grid; grid-template-columns: 220px 280px 1fr; gap: 14px; }}
 @media (max-width: 1000px) {{ .cand-layout {{ grid-template-columns: 1fr; }} }}
@@ -588,17 +614,7 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
 </style>
 </head>
 <body>
-<!-- ============ 左侧快捷命令侧边栏 ============ -->
-<div class="sidebar">
-  <div class="brand">MarcoAI 控制台<small>策略回测 &amp; 实盘看板</small></div>
-  <div class="section">数据更新</div>
-  <div class="cmds" id="cmd-list"></div>
-  <div class="cmd-output">
-    <div class="label">命令输出</div>
-    <pre id="cmd-output"></pre>
-  </div>
-</div>
-
+{sidebar_html}
 <!-- ============ 主内容区 ============ -->
 <div class="main">
 <h1>📊 策略回测 & 实盘目标股看板</h1>
@@ -638,26 +654,22 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
     <div id="bt-kline"><div id="bt-kline-main"><div class="empty-hint">暂无资金 K 线数据</div></div></div>
   </div>
   <div class="card capital-card">
-    <h2>情绪 K 线（T-3 日首板涨停股在 T-0 日的 O/H/L/C 涨跌幅均值，起始 10 万复利）</h2>
+    <h2>情绪曲线（T-3 日首板涨停股在 T-1 / T-0 / T-0+1 的收盘均涨幅，起始 10 万复利）</h2>
     <div class="toolbar">
       <div><label>均线：</label>
-        <select id="sent-ma-select">
-          <option value="">无</option>
-          <option value="5">MA5</option>
-          <option value="10">MA10</option>
-          <option value="20">MA20</option>
-          <option value="30">MA30</option>
-          <option value="60">MA60</option>
-        </select>
+        <button id="sent-ma-5" class="sent-ma-btn" type="button">MA5</button>
+        <button id="sent-ma-10" class="sent-ma-btn" type="button">MA10</button>
+        <button id="sent-ma-20" class="sent-ma-btn" type="button">MA20</button>
       </div>
-      <button id="sent-ma-btn" type="button">均线</button>
-      <button id="sent-ma-add" type="button" style="display:none">+</button>
       <button id="sent-color-btn" type="button">涨跌颜色</button>
     </div>
     <div class="kline-bars" id="sent-bars"></div>
-    <div class="kline-ma-config" id="sent-ma-config"></div>
     <div class="kline-color-config" id="sent-color-config"></div>
-    <div id="sent-kline"><div id="sent-kline-main"><div class="empty-hint">暂无情绪 K 线数据</div></div></div>
+    <div class="legend" id="sent-legend" style="margin-bottom:6px"></div>
+    <div id="sent-kline"><div id="sent-kline-main"><div class="empty-hint">暂无情绪曲线数据</div></div></div>
+    <div class="sent-ma-head"><span id="sent-ma-title">MA5</span> 均线（基于三条情绪曲线分别计算）</div>
+    <div class="legend" id="sent-ma-legend" style="margin-bottom:4px"></div>
+    <div id="sent-ma-kline"><div id="sent-ma-kline-main"><div class="empty-hint">暂无均线数据</div></div></div>
   </div>
   <div class="card">
     <div class="toolbar">
@@ -846,7 +858,7 @@ function updateCharts() {{
     ` 最终资金: ${{st.final.toFixed(2)}}` +
     ` 交易天数: ${{st.dates.length}}`;
   renderBacktestKline(st);
-  renderSentimentKline(st);
+  renderSentimentKline();
   renderPeriodTables(st);
   renderBtStats(st);
   renderDistCharts(st);
@@ -977,14 +989,20 @@ function rerenderBtKline() {{
   if (st) requestAnimationFrame(() => renderBacktestKline(st));
 }}
 
-/* 情绪 K 线：T-3 首板涨停股在 T-0 的 O/H/L/C 涨跌幅均值，复用 klineState 渲染逻辑 */
-function renderSentimentKline(st) {{
+/* 情绪曲线：T-3 首板涨停股在 T-1 / T-0 / T-0+1 三个时点的收盘均涨幅复利曲线。
+   改为线条展示（不再画蜡烛）；均线/BOLL/VWAP/指标栏仍基于 T-0 的 O/H/L/C 资金 K 线。 */
+const SENT_LINE_COLORS = ['#42a5f5', '#66bb6a', '#ffca28', '#ab47bc'];
+function renderSentimentKline() {{
   const box = document.getElementById('sent-kline');
   box.innerHTML = '<div id="sent-kline-main"></div>';
   if (window.sentKlineChart) {{ try {{ window.sentKlineChart.remove(); }} catch(e) {{}} window.sentKlineChart = null; }}
-  const data = (st.sentiment_kline || []).filter(Boolean);
-  if (!data.length) {{
-    box.innerHTML = '<div id="sent-kline-main"><div class="empty-hint">无情绪 K 线数据</div></div>';
+  const sent = DATA.sentiment || {{}};
+  const lines = (sent.lines || []).filter(l => l && l.data && l.data.length);
+  const data = (sent.kline || []).filter(Boolean);
+  const legendEl = document.getElementById('sent-legend');
+  if (!lines.length && !data.length) {{
+    box.innerHTML = '<div id="sent-kline-main"><div class="empty-hint">无情绪曲线数据</div></div>';
+    if (legendEl) legendEl.innerHTML = '';
     return;
   }}
   const mainEl = document.getElementById('sent-kline-main');
@@ -996,16 +1014,21 @@ function renderSentimentKline(st) {{
     crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
     height: mainEl.offsetHeight || 600,
   }});
-  const c = sentKlineState.colors;
-  const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {{
-    upColor: c.up, downColor: c.down, borderUpColor: c.up, borderDownColor: c.down,
-    wickUpColor: c.up, wickDownColor: c.down,
+  // 三条曲线：T-1 / T-0 / T-0+1
+  lines.forEach((ln, i) => {{
+    chart.addSeries(LightweightCharts.LineSeries, {{
+      color: SENT_LINE_COLORS[i % SENT_LINE_COLORS.length],
+      lineWidth: 2, title: ln.name,
+      priceLineVisible: false, lastValueVisible: true,
+    }}).setData(ln.data);
   }});
-  candle.setData(data.map(d => ({{ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }})));
-  sentKlineState.ma.forEach(ma => {{
-    if (ma.p <= 0) return;
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(calcMA(data, ma.p));
-  }});
+  if (legendEl) {{
+    legendEl.innerHTML = lines.map((ln, i) =>
+      '<span><i style="display:inline-block;width:12px;height:3px;vertical-align:middle;' +
+      'margin-right:5px;background:' + SENT_LINE_COLORS[i % SENT_LINE_COLORS.length] + '"></i>' +
+      ln.name + '</span>').join('');
+  }}
+  // 主图不叠加均线（均线单独放到下方 renderSentimentMa 的图里）
   if (sentKlineState.showBOLL) {{
     const boll = calcBOLL(data);
     chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
@@ -1021,22 +1044,52 @@ function renderSentimentKline(st) {{
   }});
   chart.timeScale().fitContent();
   window.sentKlineChart = chart;
+  renderSentimentMa();                       // 下方均线小图随主图一起刷新
 }}
-function renderSentMaConfig() {{
-  const cfg = document.getElementById('sent-ma-config');
-  if (cfg.style.display === 'none') return;
-  cfg.innerHTML = '';
-  sentKlineState.ma.forEach((ma, i) => {{
-    const row = document.createElement('div');
-    row.className = 'ma-row';
-    row.innerHTML = '<span>MA</span><input type="number" class="ma-p" value="' + ma.p + '" min="1" max="250" title="周期">' +
-      '<input type="color" class="ma-c" value="' + ma.c + '" title="颜色">' +
-      '<button type="button" class="ma-del">×</button>';
-    row.querySelector('.ma-p').onchange = e => {{ ma.p = +e.target.value || 5; rerenderSentKline(); }};
-    row.querySelector('.ma-c').oninput = e => {{ ma.c = e.target.value; rerenderSentKline(); }};
-    row.querySelector('.ma-del').onclick = () => {{ sentKlineState.ma.splice(i, 1); renderSentMaConfig(); rerenderSentKline(); }};
-    cfg.appendChild(row);
+
+/* 情绪曲线均线：单独画在下方 —— 三条情绪曲线各算一条均线（同一周期，颜色与主图一致），
+   周期由上方 5/10/20 按钮切换，同一时刻只显示一个周期的均线。 */
+const sentMaState = {{ period: 5 }};
+function renderSentimentMa() {{
+  const box = document.getElementById('sent-ma-kline');
+  box.innerHTML = '<div id="sent-ma-kline-main"></div>';
+  if (window.sentMaChart) {{ try {{ window.sentMaChart.remove(); }} catch(e) {{}} window.sentMaChart = null; }}
+  const titleEl = document.getElementById('sent-ma-title');
+  const legendEl = document.getElementById('sent-ma-legend');
+  const p = sentMaState.period;
+  if (titleEl) titleEl.textContent = 'MA' + p;
+  const lines = ((DATA.sentiment || {{}}).lines || []).filter(l => l && l.data && l.data.length);
+  if (!lines.length) {{
+    box.innerHTML = '<div id="sent-ma-kline-main"><div class="empty-hint">暂无均线数据</div></div>';
+    if (legendEl) legendEl.innerHTML = '';
+    return;
+  }}
+  const mainEl = document.getElementById('sent-ma-kline-main');
+  const chart = LightweightCharts.createChart(mainEl, {{
+    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#171a21' }}, textColor: '#d1d4dc' }},
+    grid: {{ vertLines: {{ color: '#2b2b43' }}, horzLines: {{ color: '#2b2b43' }} }},
+    rightPriceScale: {{ borderColor: '#2b2b43' }},
+    timeScale: {{ borderColor: '#2b2b43' }},
+    crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
+    height: mainEl.offsetHeight || 240,
   }});
+  // 三条情绪曲线各自的均线：value 转成 calcMA 需要的 close 字段
+  lines.forEach((ln, i) => {{
+    const asClose = ln.data.map(d => ({{ time: d.time, close: d.value }}));
+    chart.addSeries(LightweightCharts.LineSeries, {{
+      color: SENT_LINE_COLORS[i % SENT_LINE_COLORS.length],
+      lineWidth: 2, title: ln.name + ' MA' + p,
+      priceLineVisible: false, lastValueVisible: true,
+    }}).setData(calcMA(asClose, p));
+  }});
+  if (legendEl) {{
+    legendEl.innerHTML = lines.map((ln, i) =>
+      '<span><i style="display:inline-block;width:12px;height:3px;vertical-align:middle;' +
+      'margin-right:5px;background:' + SENT_LINE_COLORS[i % SENT_LINE_COLORS.length] + '"></i>' +
+      ln.name + ' MA' + p + '</span>').join('');
+  }}
+  chart.timeScale().fitContent();
+  window.sentMaChart = chart;
 }}
 function renderSentColorConfig() {{
   const box = document.getElementById('sent-color-config');
@@ -1051,8 +1104,7 @@ function renderSentColorConfig() {{
   }});
 }}
 function rerenderSentKline() {{
-  const st = backtestPayload();
-  if (st) requestAnimationFrame(() => renderSentimentKline(st));
+  requestAnimationFrame(() => renderSentimentKline());
 }}
 
 /* 综合收益：每日(柱状图) + 每月(表) + 每年(标题)，按年份切换 */
@@ -1097,16 +1149,19 @@ function renderBtYearView(st) {{
     const c = val > 0 ? '#ff2d95' : '#00e5ff';
     return `<div class="bt-cum" style="width:${{w.toFixed(1)}}%;background:${{c}}"></div>`;
   }};
-  const monthRow = (m, mr) => {{
+  // 当月交易次数（无交易的月份不显示）
+  const cntHtml = cnt => (cnt === undefined || cnt === null) ? '' : `<span class="bt-cnt">${{cnt}}次</span>`;
+  const monthRow = (m, mr, cnt) => {{
     if (mr === undefined || mr === null) {{
       // 空白月：只显示月份，不显示条/累计盈亏
-      return `<div class="bt-cell-inline"><span class="bt-mon">${{m}}月</span></div>`;
+      return `<div class="bt-cell-inline"><span class="bt-mon">${{m}}月</span>${{cntHtml(cnt)}}</div>`;
     }}
     const v = fmtPct(mr);
     const cumVal = cumRets[m - 1];
     const cumStr = (cumVal !== undefined && cumVal !== null) ? fmtPct(cumVal) : '';
     return `<div class="bt-cell-inline">` +
       `<span class="bt-mon">${{m}}月</span>` +
+      cntHtml(cnt) +
       `<span class="bt-val ${{pctClass(mr)}}">${{v}}</span>` +
       `<span class="bt-cumtrack">${{cumBar(cumVal)}}</span>` +
       `<span class="bt-cumval ${{pctClass(cumVal)}}">${{cumStr}}</span>` +
@@ -1120,6 +1175,7 @@ function renderBtYearView(st) {{
   for (let m = 1; m <= 12; m++) {{
     const mm = String(m).padStart(2, '0');
     const monthRet = st.month ? st.month[year + mm] : null;  // 无数据的月份显示空行
+    const monthCnt = st.month_trades ? st.month_trades[year + mm] : null;  // 当月交易次数
     const qNum = quarterNum(m);
     const quarterRet = st.quarter ? st.quarter[year + 'Q' + qNum] : null;
     let qCell = '';
@@ -1135,7 +1191,7 @@ function renderBtYearView(st) {{
       yCell = '<td></td>';
     }}
     html += `<tr>
-      <td class="bt-td-month">${{monthRow(m, monthRet)}}</td>
+      <td class="bt-td-month">${{monthRow(m, monthRet, monthCnt)}}</td>
       ${{qCell}}
       ${{yCell}}
     </tr>`;
@@ -1328,7 +1384,6 @@ const btKlineState = {{
 
 const sentKlineState = {{
   bars: [],
-  ma: klineState.ma.slice(),
   showBOLL: false,
   showVWAP: false,
   colors: klineState.colors,                  // 共享涨跌颜色
@@ -1768,18 +1823,19 @@ function initBtKlineControls() {{
     if (show) renderBtColorConfig();
   }};
   renderBtBarConfig();
-  // 情绪 K 线工具栏
-  const sentMaCfg = document.getElementById('sent-ma-config');
-  document.getElementById('sent-ma-btn').onclick = () => {{
-    const show = (sentMaCfg.style.display === 'none' || sentMaCfg.style.display === '');
-    sentMaCfg.style.display = show ? 'block' : 'none';
-    if (show) renderSentMaConfig();
-  }};
-  document.getElementById('sent-ma-add').onclick = () => {{
-    sentKlineState.ma.push({{ p: 5, c: '#e91e63' }});
-    renderSentMaConfig(); rerenderSentKline();
-  }};
-  document.getElementById('sent-ma-add').style.display = 'inline-block';
+  // 情绪曲线工具栏：5 / 10 / 20 三个均线按钮，切换下方单均线小图的周期
+  [5, 10, 20].forEach(p => {{
+    const btn = document.getElementById('sent-ma-' + p);
+    if (!btn) return;
+    btn.onclick = () => {{
+      sentMaState.period = p;
+      document.querySelectorAll('.sent-ma-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderSentimentMa();
+    }};
+  }});
+  const firstMaBtn = document.getElementById('sent-ma-' + sentMaState.period);
+  if (firstMaBtn) firstMaBtn.classList.add('active');
   const sentColorCfg = document.getElementById('sent-color-config');
   document.getElementById('sent-color-btn').onclick = () => {{
     const show = (sentColorCfg.style.display === 'none' || sentColorCfg.style.display === '');
@@ -1918,8 +1974,10 @@ document.getElementById('bt-year-select').addEventListener('change', e => {{
 }});
 
 /* ==================== 左侧快捷命令 ==================== */
-const cmdList = document.getElementById('cmd-list');
-const cmdOutput = document.getElementById('cmd-output');
+// 离线看板不输出侧栏，此时回退为游离的哑元素：
+// 命令按钮的 appendChild / logCmd 都是脚本加载期执行的，取不到真实节点会抛错并中断整页脚本
+const cmdList = document.getElementById('cmd-list') || document.createElement('div');
+const cmdOutput = document.getElementById('cmd-output') || document.createElement('pre');
 const STRATEGIES = {strategies_json};
 
 function logCmd(msg) {{
@@ -2228,6 +2286,7 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
     # 策略选股详情（第三个 TAB）
     strategy_detail = _load_strategy_detail(strategies)
 
+    # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
     data = {
         "strategies": strategies,
         "backtest": backtest,
@@ -2235,6 +2294,7 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
         "top": top,
         "kline": kline,
         "strategy_detail": strategy_detail,
+        "sentiment": BUILD_SENTIMENT_KLINE(),
     }
 
     html = _render_html(data)
@@ -2301,6 +2361,7 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
     # 策略选股详情
     strategy_detail = _load_strategy_detail(strategies)
 
+    # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
     data = {
         "strategies": strategies,
         "backtest": backtest,
@@ -2308,9 +2369,11 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
         "top": top,
         "kline": kline,
         "strategy_detail": strategy_detail,
+        "sentiment": BUILD_SENTIMENT_KLINE(),
     }
 
-    html = _render_html(data)
+    # 不输出左侧命令侧边栏：离线单文件拷到别处后命令按钮（依赖本地服务/自定义协议）无意义
+    html = _render_html(data, show_sidebar=False)
 
     # 把 CDN <script src> 替换为本地内联库，使 HTML 彻底离线、可独立分发
     here = os.path.dirname(os.path.abspath(__file__))

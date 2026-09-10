@@ -237,16 +237,42 @@ if __name__ == "__main__":
     #SHOW_TARGET_1D()
 
 
-def BUILD_SENTIMENT_KLINE() -> list[dict]:
-    """情绪 K 线：对每个交易日 T-0，取 T-3 日首板涨停股（is_top==1 且 lian_ban==1）集合，
-    计算这些股在 T-0 日的 O/H/L/C 涨跌幅（相对各自前收）均值，作为当日资金涨跌幅，
-    起始资金 10W 复利累积成资金 K 线。返回 [{time,open,high,low,close,volume,pre_close}]。
-    无首板股的交易日不计入（资金不动）。"""
-    from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_ALL
+# 情绪曲线的三条线：T-3 日首板涨停股在各时点的收盘均涨幅，各自独立复利成一条曲线。
+#   (显示名, 测量时点(方向, 偏移), 前一交易日(方向, 偏移))
+#   方向：prev = 自 T-0 往前第 n 个交易日，after = 自 T-0 往后第 n 个交易日
+#   附加条件：测量时点的「前一交易日」不能是涨停（is_top != 1），否则该股不计入该时点均值，
+#             避免把「连板 / 已涨停」状态的票算进来而扭曲均值。
+SENTIMENT_LINES_SPEC = (
+    ("T-1",   ("prev", 1),  ("prev", 2)),   # 算 T-1 时，T-2 不能是涨停
+    ("T-0",   ("prev", 0),  ("prev", 1)),   # 算 T-0 时，T-1 不能是涨停
+    ("T-0+1", ("after", 1), ("after", 0)),  # 算 T-0+1 时，T-0 不能是涨停
+)
+
+
+def BUILD_SENTIMENT_KLINE() -> dict:
+    """情绪曲线：对每个交易日 T-0，取 T-3 日首板涨停股（is_top==1 且 lian_ban==1）集合，
+    分别统计这些股在 T-1 / T-0 / T-0+1 三个时点的「收盘涨跌幅」（相对各自前收）均值，
+    各时点独立以起始资金 10W 复利累积成一条曲线，用于对比首板后各日介入的表现差异。
+
+    每个时点附加条件：该时点的「前一交易日」不能是涨停（is_top != 1）——
+      算 T-1 时要求 T-2 非涨停；算 T-0 时要求 T-1 非涨停；算 T-0+1 时要求 T-0 非涨停。
+    前一日数据缺失或当日涨停的个股均不计入该时点均值（缺失即无法确认非涨停，保守剔除）。
+
+    返回:
+        kline: T-0 的 O/H/L/C 资金 K 线 [{time,open,high,low,close,volume,pre_close}]，
+               供均线 / BOLL / VWAP / 指标栏复用（与原情绪 K 线口径一致）
+        lines: 三条复利曲线 [{"name": "T-1", "data": [{"time","value"}]}, ...]，
+               UI 以线条展示（不再画蜡烛图）
+    无首板股的交易日不计入（资金不动）；某时点当日无有效数据则跳过该点（不打断复利）。
+    """
+    from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_ALL, GET_SZ200_1D_AFTER
     GET_SZ200_1D_ALL()  # 预热全量缓存，避免逐次读文件（命中后仅 dict 查找）
     codes = STOCK_CODES()
     dates = TRADING_DATES()
     kline: list[dict] = []
+    names = [name for name, _, _ in SENTIMENT_LINES_SPEC]
+    series: dict[str, list[dict]] = {name: [] for name in names}
+    capital: dict[str, float] = {name: 100000.0 for name in names}
     prev = 100000.0
     for t0 in dates:
         plate = []
@@ -254,28 +280,55 @@ def BUILD_SENTIMENT_KLINE() -> list[dict]:
             rec3 = GET_SZ200_1D_PREVIOUS(code, t0, 3)
             if rec3 is None or rec3.is_top != 1 or rec3.lian_ban != 1:
                 continue
+            plate.append(code)
+        if not plate:
+            continue
+        t = t0[:4] + '-' + t0[4:6] + '-' + t0[6:8]
+
+        # —— T-0 的 O/H/L/C 均值：资金 K 线（供均线/BOLL/VWAP/指标栏复用）——
+        ohlc = []
+        for code in plate:
             rec0 = GET_SZ200_1D_PREVIOUS(code, t0, 0)
             if rec0 is None or rec0.pre_close <= 0:
                 continue
             pc = rec0.pre_close
-            plate.append(((rec0.open - pc) / pc, (rec0.high - pc) / pc,
-                          (rec0.low - pc) / pc, (rec0.close - pc) / pc))
-        if not plate:
-            continue
-        n = len(plate)
-        co = sum(x[0] for x in plate) / n
-        ch = sum(x[1] for x in plate) / n
-        cl = sum(x[2] for x in plate) / n
-        cc = sum(x[3] for x in plate) / n
-        t = t0[:4] + '-' + t0[4:6] + '-' + t0[6:8]
-        ko = prev * (1 + co)
-        kh = prev * (1 + ch)
-        kl = prev * (1 + cl)
-        kc = prev * (1 + cc)
-        kline.append({
-            "time": t, "open": round(ko, 2), "high": round(kh, 2),
-            "low": round(kl, 2), "close": round(kc, 2),
-            "volume": n, "pre_close": round(prev, 2),
-        })
-        prev = kc
-    return kline
+            ohlc.append(((rec0.open - pc) / pc, (rec0.high - pc) / pc,
+                         (rec0.low - pc) / pc, (rec0.close - pc) / pc))
+        if ohlc:
+            n = len(ohlc)
+            co = sum(x[0] for x in ohlc) / n
+            ch = sum(x[1] for x in ohlc) / n
+            cl = sum(x[2] for x in ohlc) / n
+            cc = sum(x[3] for x in ohlc) / n
+            ko = prev * (1 + co)
+            kc = prev * (1 + cc)
+            kline.append({
+                "time": t, "open": round(ko, 2), "high": round(prev * (1 + ch), 2),
+                "low": round(prev * (1 + cl), 2), "close": round(kc, 2),
+                "volume": n, "pre_close": round(prev, 2),
+            })
+            prev = kc
+
+        # —— 三条曲线：各时点收盘涨跌幅均值，各自独立复利 ——
+        # 剔除「测量时点的前一交易日为涨停」的个股（连板状态会扭曲均值）
+        for name, (m_dir, m_idx), (p_dir, p_idx) in SENTIMENT_LINES_SPEC:
+            m_get = GET_SZ200_1D_AFTER if m_dir == "after" else GET_SZ200_1D_PREVIOUS
+            p_get = GET_SZ200_1D_AFTER if p_dir == "after" else GET_SZ200_1D_PREVIOUS
+            rets = []
+            for code in plate:
+                pre = p_get(code, t0, p_idx)             # 测量时点的前一交易日
+                if pre is None or pre.is_top == 1:        # 缺失无法确认 / 当日涨停 → 剔除
+                    continue
+                rec = m_get(code, t0, m_idx)
+                if rec is None or rec.pre_close <= 0:
+                    continue
+                rets.append((rec.close - rec.pre_close) / rec.pre_close)
+            if not rets:
+                continue
+            capital[name] *= (1 + sum(rets) / len(rets))
+            series[name].append({"time": t, "value": round(capital[name], 2)})
+
+    return {
+        "kline": kline,
+        "lines": [{"name": name, "data": series[name]} for name in names],
+    }

@@ -9,8 +9,7 @@ Run.py —— 主交互菜单
     1. 更新数据   —— 运行完整数据更新管线（交易日历/股票代码/日线/涨停/策略/目标池）
     2. 更新5M数据 —— 下载 5 分钟级原始行情（2026 起，需通达信联网）
     3. 更新同花顺 —— 选策略后写入同花顺板块（自动关闭/重启同花顺生效）
-    4. 离线看板   —— 生成内联图表库的单文件看板，无外网也能打开
-    5. 显示 UI    —— 生成策略看板并在浏览器中打开
+    4. 离线看板   —— 生成内联图表库的单文件看板，无外网也能打开（统一用此项查看看板）
     6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
     77. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
@@ -45,7 +44,7 @@ except Exception:
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
 from AICode.MarcoAPI.Update.Path import PATH_AIDATA
-from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI, GENERATE_STRATEGY_UI_OFFLINE, CMD_UPDATE_THS, _list_strategies
+from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI_OFFLINE, CMD_UPDATE_THS, _list_strategies
 from AICode.AITrading.Structure.callbacks import watch as qmt_watch
 from AICode.AITrading import commands as CMD
 
@@ -119,10 +118,6 @@ def _do_update_5m():
     except BaseException as exc:
         print(f"!!!!! CLEANUP 5M RESIDUAL FAILED: {type(exc).__name__}: {exc}")
     print("5M DATA UPDATE COMPLETED")
-
-
-def _do_ui():
-    GENERATE_STRATEGY_UI()
 
 
 def _do_ui_offline():
@@ -299,8 +294,7 @@ _MENU_GROUPS = (
     (("1", "更新数据", "同步交易日历 / 日线 / 涨停 / 策略 / 目标池"),
      ("2", "更新5M数据", "下载 5 分钟级原始行情（2026 起）"),
      ("3", "更新同花顺", "按策略写入同花顺板块（自动关闭/重启生效）"),
-     ("4", "离线看板", "生成内联库单文件看板，无外网也能打开"),
-     ("5", "显示看板", "生成并打开策略 UI")),
+     ("4", "离线看板", "生成内联库单文件看板，无外网也能打开")),
     (("6", "上传 Gitee", "提交改动并推送到 Gitee 仓库"),
      ("7", "上传 GitHub", "提交改动并推送到 GitHub 仓库")),
     (("77", "QMT 自动交易", "买入 / 卖出监控 / 常驻 watch"),
@@ -367,8 +361,6 @@ def _menu_loop():
             _do_update()
         elif choice == "2":
             _do_update_5m()
-        elif choice == "5":
-            _do_ui()
         elif choice == "4":
             _do_ui_offline()
         elif choice == "77":
@@ -387,7 +379,7 @@ def _menu_loop():
             print(f"\n  {Y}已退出。{R}\n")
             break
         else:
-            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 5 / 6 / 7 / 77 / 88 / 0。{R}")
+            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 6 / 7 / 77 / 88 / 0。{R}")
 
 
 def main():
