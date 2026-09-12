@@ -36,6 +36,7 @@ from AICode.MarcoAPI.Update.Path import (
     PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP
 )
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
+from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS
 from AICode.MarcoAPI.Update.SZ200Strategy import BUILD_SENTIMENT_KLINE
 from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO
 
@@ -50,6 +51,7 @@ THS_BLOCK_NAME = "blockstockV3.xml"
 # 板块占位符
 PLACEHOLDER_TPO3  = "===TPO3==="
 PLACEHOLDER_TPO31 = "===TPO31==="
+PLACEHOLDER_TOP   = "===TOP==="   # 当天（最新交易日）涨停股
 
 
 def _read_text(path):
@@ -2167,6 +2169,64 @@ def _read_strategy_stocks(strategy_name: str, date: str) -> list[str]:
     return codes
 
 
+def _list_top_dates() -> list[str]:
+    """涨停数据（AIData/TOP）下全部日期文件名，升序。"""
+    base = PATH_AIDATA_TOP()
+    if not os.path.isdir(base):
+        return []
+    return sorted(d for d in os.listdir(base) if d.isdigit())
+
+
+def _norm_code(code: str) -> str:
+    """代码补市场后缀：无后缀时 6 开头 -> .SH，其余 -> .SZ（与 _load_top 归一化口径一致）"""
+    c = code.strip()
+    return c if "." in c else (f"{c}.SH" if c.startswith("6") else f"{c}.SZ")
+
+
+def _top_code_set(date: str | None) -> set[str]:
+    """某日期涨停代码集合（带后缀）；无该日数据或无日期返回空集合。"""
+    if not date:
+        return set()
+    path = os.path.join(PATH_AIDATA_TOP(), date)
+    if not os.path.isfile(path):
+        return set()
+    return {_norm_code(x) for x in _read_text(path).splitlines() if x.strip()}
+
+
+def _read_first_plate_stocks(date: str) -> list[str]:
+    """读取某日期的【首板涨停】股票代码列表，口径与 UI「涨停股」列表完全一致。
+
+    条件（与 TPO_M5 的 T-3 日条件完全一致）：
+      · 涨停    —— 在当日 TOP 名单中（隐含 is_top==1）
+      · 首板    —— lian_ban==1，用 TOP 集合差判定（当天涨停 − 前一交易日涨停）
+      · 放量    —— 当日日线 is_volume_up==1
+    做法：复用 _load_top() 取候选（已含「流通股本有效 + 当日收盘价存在」过滤，且按
+    流通市值倒序），再依次叠加首板与放量过滤，保证 UI 涨停股列表与写入 ===TOP===
+    的内容同源、同过滤、同排序（不会出现两边不一致）。
+    """
+    rows = _load_top().get(date) or []       # 已过滤 + 按流通市值倒序
+    if not rows:
+        return []
+    dates = _list_top_dates()
+    idx = dates.index(date) if date in dates else -1
+    prev_date = dates[idx - 1] if idx >= 1 else None
+    yday = _top_code_set(prev_date)          # 前一交易日涨停集合
+    out = []
+    for r in rows:
+        code = r[0]
+        if code in yday:                     # 昨日也涨停 → 连板，非首板
+            continue
+        # 放量：与 TPO_M5 的 T-3 一致，要求当日 is_volume_up==1
+        try:
+            rec = GET_SZ200_1D_PREVIOUS(code, date, 0)
+        except OSError:
+            continue                         # 无加工日线文件 → 无法判定放量，跳过
+        if rec is None or rec.is_volume_up != 1:
+            continue
+        out.append(code)
+    return out
+
+
 def _code_to_ths_security(code: str) -> str:
     """把带后缀代码转成同花顺板块 security 行，如 603087.SH -> <security market="USHA" code="603087" />"""
     c = code.strip()
@@ -2194,6 +2254,7 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
 
     - 最新日期股票 -> 替换模板 ===TPO3===
     - 最新日前一日期股票 -> 替换模板 ===TPO31===（该日为空则替换为空值，板块留空）
+    - 当天（TOP 最新交易日）首板涨停股（lian_ban==1）-> 替换模板 ===TOP===
     - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件，然后删除本地拷贝。
     """
     if not strategy_name:
@@ -2210,12 +2271,20 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     tpo3 = _read_strategy_stocks(strategy_name, latest)
     tpo31 = _read_strategy_stocks(strategy_name, prev) if prev else []
 
+    # 首板涨停股：取 TOP 最新交易日（即"当天"）中 lian_ban==1 的票
+    top_dates = _list_top_dates()
+    top_date = top_dates[-1] if top_dates else None
+    tops = _read_first_plate_stocks(top_date) if top_date else []
+
     tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
     tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
+    top_block = "\n".join(_code_to_ths_security(c) for c in tops)
 
     # 读取模板并替换占位符：有股票则填入 securities（首尾不加换行），为空则整行清理（不留占位符/空行，兼容 CRLF/LF）
     raw = _read_text(THS_TEMPLATE_FILE)
-    for ph, block in ((PLACEHOLDER_TPO3, tpo3_block), (PLACEHOLDER_TPO31, tpo31_block)):
+    for ph, block in ((PLACEHOLDER_TPO3, tpo3_block),
+                      (PLACEHOLDER_TPO31, tpo31_block),
+                      (PLACEHOLDER_TOP, top_block)):
         if block:
             raw = raw.replace(ph, block)
         else:
@@ -2231,7 +2300,8 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
 
     detail = (
         f"策略 {strategy_name}: {latest} 共 {len(tpo3)} 只(TPO3), "
-        f"{prev or '无'} 共 {len(tpo31)} 只(TPO31)"
+        f"{prev or '无'} 共 {len(tpo31)} 只(TPO31), "
+        f"首板涨停 {top_date or '无'} 共 {len(tops)} 只(TOP)"
     )
     print(f"CMD_UPDATE_THS: 已写入 {target_file}\n{detail}")
     return f"同花顺板块已更新:\n{detail}\n已覆盖: {target_file}"
