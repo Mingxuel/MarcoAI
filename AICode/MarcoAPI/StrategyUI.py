@@ -271,7 +271,9 @@ def _list_strategies() -> list[str]:
     base = PATH_AIDATA_STRATEGY()
     if not os.path.isdir(base):
         return []
-    names = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)) and d != "RESULT"]
+    # 排除 RESULT 与 _rotate_dir 产生的 .old_ 备份目录（否则会被当成策略列进下拉框）
+    names = [d for d in os.listdir(base)
+             if os.path.isdir(os.path.join(base, d)) and d != "RESULT" and ".old_" not in d]
     # TPO_M5 优先排首位，其余按字母序
     ordered = [n for n in names if n == "TPO_M5"]
     rest = sorted(n for n in names if n != "TPO_M5")
@@ -559,7 +561,7 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
 .legend {{ display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }}
 /* 情绪曲线下方「单均线」小图与周期按钮选中态 */
 .sent-ma-head {{ margin: 12px 0 6px; font-size: 13px; color: #9aa0a6; }}
-#sent-ma-kline {{ height: 240px; }}
+#sent-ma-kline {{ height: 720px; }}
 .sent-ma-btn.active {{ background: #1b2036; border-color: #00e5ff; box-shadow: 0 0 8px rgba(0,229,255,.25); }}
 /* 候选池 */
 .cand-layout {{ display: grid; grid-template-columns: 220px 280px 1fr; gap: 14px; }}
@@ -1071,7 +1073,7 @@ function renderSentimentMa() {{
     rightPriceScale: {{ borderColor: '#2b2b43' }},
     timeScale: {{ borderColor: '#2b2b43' }},
     crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
-    height: mainEl.offsetHeight || 240,
+    height: mainEl.offsetHeight || 720,
   }});
   // 三条情绪曲线各自的均线：value 转成 calcMA 需要的 close 字段
   lines.forEach((ln, i) => {{
