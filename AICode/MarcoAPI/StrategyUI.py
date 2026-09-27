@@ -40,7 +40,7 @@ from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS
 from AICode.MarcoAPI.Update.SZ200Strategy import BUILD_SENTIMENT_KLINE
 from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO
 
-KLINE_DAYS = 120  # 内嵌每只候选股最近 120 天 K 线数据
+# K 线内嵌【全部历史】日线（1D_ORIGIN 有多少就嵌多少，不再截断到 120 根）
 
 # 同花顺板块 XML：模板与拷贝目标目录（实盘机）
 THS_TEMPLATE_FILE = PATH_AIDATA() + "/THS/blockstockV3.xml"
@@ -110,6 +110,24 @@ def _load_strategy_detail(strategies: list[str]) -> dict[str, dict[str, list[dic
     return out
 
 
+def _touched_limit(cols: list[str]) -> bool:
+    """当日是否「摸到涨停」：最高价 >= 涨停价（前收 × 涨跌幅限制，主板10%/创业板20%）。
+
+    与回测 Backtest._sell_price_1d / _sell_price_5m 的涨停卖规则同源（high >= limit_p），
+    盘中触板但未封板（is_top==0）同样算摸到，因为回测此时已按涨停价卖出。
+    数据无效（缺列/前收<=0）返回 False。
+    """
+    try:
+        code = cols[0]
+        high = float(cols[5])
+        pre_close = float(cols[10])
+    except (ValueError, IndexError, TypeError):
+        return False
+    if pre_close <= 0:
+        return False
+    return high >= _limit_price(pre_close, _limit_ratio(code))
+
+
 def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[str, object]:
     """构建单个策略的回测数据（first：每日买入第一只股票即市值最大；
     sell_mode="5m" 用 5 分钟 K 线日内卖出，sell_mode="day" 用日线 O/H/L/C 卖出。
@@ -122,6 +140,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         final: 最终资金
         month/quarter/year: 每月/季度/年收益（first）
         month_trades: 每月交易次数（当日有票即 1 笔；无交易的月份不含该键）
+        month_tops: 每月「摸到涨停」个数（当日最高价触及涨停价即算，不要求收盘封板）
         kline: 资金 K 线 [{time,open,high,low,close,volume,pre_close}]，
                每根蜡烛为当日资金 OHLC（由 O/C/H/L 涨跌幅 × 前收资金复利算出），时间 YYYY-MM-DD
         dist: {open,high,low,close} 四组每日涨跌幅序列（相对前收）
@@ -137,6 +156,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
     quarter = {}
     year = {}
     month_trades = {}  # 每月交易次数（当日有票即算 1 笔，策略每日最多买 1 只）
+    month_tops = {}    # 每月「抓到涨停」个数（当日买入股在 T-0 涨停，即数据第 12 列 is_top==1）
     kline = []      # 资金 K 线：每根蜡烛为当日资金 OHLC（由涨跌幅×前收资金复利算出）
     dist = {"open": [], "high": [], "low": [], "close": []}
     prev_capital = INIT_CAPITAL  # 前收资金（首日 = 起始资金）
@@ -172,6 +192,9 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         ym = date[:6]
         month[ym] = month.get(ym, 1.0) * (1 + net_ret)
         month_trades[ym] = month_trades.get(ym, 0) + 1
+        # 摸到涨停：当日【最高价触及涨停价】即算（与回测「涨停卖」规则一致：high >= 涨停价），
+        # 不要求收盘封板（is_top==1 只是封板，会漏掉盘中触板又打开的票）
+        month_tops[ym] = month_tops.get(ym, 0) + (1 if _touched_limit(first) else 0)
         qm = _quarter_of(date)
         quarter[qm] = quarter.get(qm, 1.0) * (1 + net_ret)
         y = date[:4]
@@ -224,6 +247,7 @@ def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[s
         "final": round(capital, 2),
         "month": month,
         "month_trades": month_trades,
+        "month_tops": month_tops,
         "quarter": quarter,
         "year": year,
         "kline": kline,
@@ -473,21 +497,33 @@ select {{ background: #151827; color: #e6e9f0; border: 1px solid #2a3249; paddin
 .ret-table th, .ret-table td {{ padding: 4px 8px; text-align: right; border-bottom: 1px solid #232a36; }}
 .ret-table th:first-child, .ret-table td:first-child {{ text-align: left; }}
 /* 月/季/年收益三列表：字号 月<季<年 递进 */
+/* 整体宽度取卡片的一半（对应下方 .dist-grid 四个分布图中「2 个表」的宽度） */
 .bt-ret3 {{ width: 50%; table-layout: fixed; border-collapse: collapse; border-spacing: 0; }}
 .bt-ret3 th, .bt-ret3 td {{ padding: 6px 10px; text-align: center; vertical-align: middle; }}
-/* 列宽：月份占主体，季/年宽度一致（年=季宽），紧凑靠左 */
-.bt-ret3 td:nth-child(1) {{ width: 66%; }}
-.bt-ret3 td:nth-child(2) {{ width: 17%; }}
-.bt-ret3 td:nth-child(3) {{ width: 17%; }}
+/* 列宽：月份占主体，季/年等宽。必须同时作用于 th 与 td，否则表头与数据列对不齐 */
+.bt-ret3 th:nth-child(1), .bt-ret3 td:nth-child(1) {{ width: 66%; }}
+.bt-ret3 th:nth-child(2), .bt-ret3 td:nth-child(2) {{ width: 17%; }}
+.bt-ret3 th:nth-child(3), .bt-ret3 td:nth-child(3) {{ width: 17%; }}
 .bt-ret3 td.bt-td-month {{ font-size: 11px; color: #b8c0cc; }}
 .bt-ret3 td.bt-td-quarter {{ font-size: 13px; }}
 .bt-ret3 td.bt-td-year {{ font-size: 15px; font-weight: 600; }}
 /* 月/季/年收益：月为「月份+当月收益+累计条」一行；季/年只显示数值（无条） */
 .bt-ret3 .bt-td-month {{ font-size: 11px; color: #b8c0cc; }}
+/* 表头(th.bt-th-month)与数据行(td.bt-td-month)共用同一套子列布局：
+   必须让 flex 同时作用于两者，否则表头里的 span 是 inline 元素，width 会被忽略、完全不对齐 */
+.bt-ret3 .bt-th-month .bt-cell-inline,
 .bt-ret3 .bt-td-month .bt-cell-inline {{ display: flex; align-items: center; gap: 8px; }}
 .bt-ret3 .bt-mon {{ font-size: 10px; color: #7a7f8a; width: 26px; flex-shrink: 0; text-align: left; letter-spacing: 1px; }}
 .bt-ret3 .bt-cnt {{ font-size: 10px; color: #8a93a8; width: 38px; flex-shrink: 0; text-align: right; }}
-.bt-ret3 .bt-val {{ font-weight: 500; }}
+/* 抓到涨停个数：放在「次数」右侧，只显示数字（列宽收窄），用暖色区分 */
+.bt-ret3 .bt-tops {{ font-size: 10px; color: #ff6d9e; width: 30px; flex-shrink: 0; text-align: right; }}
+/* 表头：弱化、居中，与数据行区分 */
+.bt-ret3 thead th {{ font-size: 11px; font-weight: 600; color: #8a93a8; text-align: center;
+  padding: 4px 10px 8px; letter-spacing: .5px; border-bottom: 1px solid #252c3f !important; }}
+/* 表头中对应「累计条」的占位（与数据行的 .bt-cumtrack 同为 flex:1，保证列宽一致） */
+.bt-ret3 .bt-th-cum {{ flex: 1 1 0; text-align: center; min-width: 40px; }}
+/* 收益列给固定宽度：否则表头「收益」与数据「-61.37%」内容宽度不同，会让后面几列错位 */
+.bt-ret3 .bt-val {{ font-weight: 500; width: 60px; flex-shrink: 0; }}
 .bt-ret3 .bt-cumtrack {{ position: relative; flex: 1 1 0; height: 12px; background: #161a24; border-radius: 2px; overflow: hidden; min-width: 40px; }}
 .bt-ret3 .bt-cum {{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; opacity: .85; }}
 .bt-ret3 .bt-cum.zero, .bt-ret3 .bt-cum.empty {{ background: transparent; }}
@@ -544,16 +580,22 @@ table.detail-table th:first-child, table.detail-table td:first-child {{ text-ali
 table.detail-table thead th {{ position: sticky; top: 0; background: #141821; color: #9aa0a6; font-weight: 600; z-index: 1; }}
 table.detail-table tbody tr:hover {{ background: #1c2029; }}
 /* 固定列宽 */
+/* 列宽：# / 代码 / 名称 / 涨跌幅% / 实际卖出% / 市值 / 最高时% / 最低时% */
 table.detail-table th:nth-child(1) {{ width: 30px; }}
-table.detail-table th:nth-child(2) {{ width: 78px; }}
-table.detail-table th:nth-child(3) {{ width: 86px; }}
+table.detail-table th:nth-child(2) {{ width: 80px; }}
+table.detail-table th:nth-child(3) {{ width: 92px; }}
 table.detail-table th:nth-child(4) {{ width: 66px; }}
-table.detail-table th:nth-child(5) {{ width: 70px; }}
-table.detail-table th:nth-child(6) {{ width: 76px; }}
-table.detail-table th:nth-child(n+7):nth-child(-n+11) {{ width: 56px; }}
-table.detail-table th:nth-child(12) {{ width: 78px; }}
-table.detail-table th:nth-child(13) {{ width: 82px; }}
-#panel-detail .card {{ padding: 12px 16px 8px; max-width: 1120px; }}
+table.detail-table th:nth-child(5) {{ width: 78px; }}
+table.detail-table th:nth-child(6) {{ width: 74px; }}
+table.detail-table th:nth-child(7) {{ width: 74px; }}
+table.detail-table th:nth-child(8) {{ width: 80px; }}
+/* 策略选股：左侧选股表格 + 右侧 K 线（参照实盘候选池）。去掉原 max-width 以便表格铺开 */
+#panel-detail .card {{ padding: 12px 16px 8px; }}
+/* 左侧数据 1/3、右侧 K 线 2/3；minmax(0,1fr) 允许列收缩，避免宽表格把网格撑破 */
+.detail-layout {{ display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }}
+@media (max-width: 1100px) {{ .detail-layout {{ grid-template-columns: 1fr; }} }}
+/* 选股表格行可点击 */
+table.detail-table tbody tr {{ cursor: pointer; }}
 #panel-backtest.active {{ display: flex; flex-direction: column; }}
 #panel-backtest .capital-card {{ order: 99; }}
 .mode-badge {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 6px; }}
@@ -576,6 +618,14 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
 .stock-market {{ color: #6b7280; font-size: 11px; margin-left: 4px; }}
 #kline {{ width: 100%; height: 62vh; display: flex; flex-direction: column; }}
 #kline-main {{ flex: 3 1 0; min-height: 0; }}
+/* 策略选股右侧 K 线容器（与实盘候选池同规格） */
+#detail-kline {{ width: 100%; height: 62vh; display: flex; flex-direction: column; }}
+#detail-kline-main {{ flex: 3 1 0; min-height: 0; }}
+/* 重要日期高亮框：覆盖层需父容器定位基准 */
+#kline-main, #top-kline-main, #detail-kline-main {{ position: relative; }}
+.kline-hlbox {{ position: absolute; pointer-events: none; z-index: 5;
+  border: 1px solid #ffd700; border-radius: 2px;
+  background: rgba(255, 215, 0, .10); box-shadow: 0 0 10px rgba(255, 215, 0, .5); }}
 .kline-ind {{ flex: 1 1 0; min-height: 0; margin-top: 4px; }}
 .chart-title {{ font-size: 13px; color: #c9cdd4; margin-bottom: 8px; min-height: 18px; }}
 .kline-info {{ font-size: 12px; color: #9aa0a6; margin-bottom: 6px; min-height: 16px; font-family: Consolas, monospace; }}
@@ -684,6 +734,24 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
     </div>
     <div id="bt-stats" class="bt-stats"></div>
     <table class="ret-table bt-ret3">
+      <thead>
+        <tr>
+          <!-- 月份列的表头用与数据行相同的 bt-cell-inline + 同名子列 class，
+               宽度与下方数据逐列严格对齐（月/次数/涨停/收益/累计条/累计） -->
+          <th class="bt-th-month">
+            <div class="bt-cell-inline">
+              <span class="bt-mon">月份</span>
+              <span class="bt-cnt">次数</span>
+              <span class="bt-tops">涨停</span>
+              <span class="bt-val">收益</span>
+              <span class="bt-th-cum">年内累计走势</span>
+              <span class="bt-cumval">累计</span>
+            </div>
+          </th>
+          <th class="bt-th-quarter">季度</th>
+          <th class="bt-th-year">年度</th>
+        </tr>
+      </thead>
       <tbody id="bt-month"></tbody>
     </table>
   </div>
@@ -751,7 +819,33 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
     </div>
     <div id="detail-count" style="font-size:12px;color:#9aa0a6;"></div>
   </div>
-  <div id="detail-groups" class="card"></div>
+  <div class="detail-layout">
+    <div style="padding:10px">
+      <div id="detail-groups" class="card"></div>
+    </div>
+    <div style="padding:10px">
+      <div class="chart-title" id="detail-kline-title"></div>
+      <div class="kline-info" id="detail-kline-info"></div>
+      <div class="kline-toolbar">
+        <select id="detail-kline-period" title="周期">
+          <option value="day">日线</option>
+          <option value="month">月线</option>
+        </select>
+        <button id="detail-kline-bar-btn" type="button">指标栏</button>
+        <label class="kline-chk"><input type="checkbox" id="detail-kline-boll"> BOLL</label>
+        <label class="kline-chk"><input type="checkbox" id="detail-kline-vwap"> VWAP</label>
+        <button id="detail-kline-ma-btn" type="button">MA 配置</button>
+        <button id="detail-kline-ma-add" type="button" style="display:none">+</button>
+        <button id="detail-kline-color-btn" type="button">涨跌颜色</button>
+      </div>
+      <div class="kline-bars" id="detail-kline-bars"></div>
+      <div class="kline-ma-config" id="detail-kline-ma-config"></div>
+      <div class="kline-color-config" id="detail-kline-color-config"></div>
+      <div id="detail-kline">
+        <div id="detail-kline-main"><div class="empty-hint">请点击左侧任意一行查看 K 线</div></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="panel-top" class="tab-panel">
@@ -794,7 +888,8 @@ table.detail-table th:nth-child(13) {{ width: 82px; }}
 
 <script>
 const DATA = {payload};
-let current = {{ strategy: null, candStrategy: null, date: null, code: null, topDate: null, topCode: null, sellMode: "5m" }};
+let current = {{ strategy: null, candStrategy: null, date: null, code: null, topDate: null, topCode: null,
+                detailDate: null, detailCode: null, sellMode: "5m" }};
 
 function switchTab(name) {{
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -810,6 +905,10 @@ function switchTab(name) {{
   if (name === 'top') {{
     klineTarget = 'top';
     if (current.topCode) requestAnimationFrame(() => selectTopStock(current.topCode));
+  }}
+  if (name === 'detail') {{
+    klineTarget = 'detail';
+    if (current.detailCode) requestAnimationFrame(() => selectDetailStock(current.detailCode));
   }}
 }}
 
@@ -1155,10 +1254,12 @@ function renderBtYearView(st) {{
   }};
   // 当月交易次数（无交易的月份不显示）
   const cntHtml = cnt => (cnt === undefined || cnt === null) ? '' : `<span class="bt-cnt">${{cnt}}次</span>`;
-  const monthRow = (m, mr, cnt) => {{
+  // 当月摸到涨停个数（最高价触及涨停价即算，不要求封板）；放在次数右侧只显示数字，0 也显示
+  const topHtml = tp => (tp === undefined || tp === null) ? '' : `<span class="bt-tops" title="摸到涨停个数">${{tp}}</span>`;
+  const monthRow = (m, mr, cnt, tp) => {{
     if (mr === undefined || mr === null) {{
       // 空白月：只显示月份，不显示条/累计盈亏
-      return `<div class="bt-cell-inline"><span class="bt-mon">${{m}}月</span>${{cntHtml(cnt)}}</div>`;
+      return `<div class="bt-cell-inline"><span class="bt-mon">${{m}}月</span>${{cntHtml(cnt)}}${{topHtml(tp)}}</div>`;
     }}
     const v = fmtPct(mr);
     const cumVal = cumRets[m - 1];
@@ -1166,6 +1267,7 @@ function renderBtYearView(st) {{
     return `<div class="bt-cell-inline">` +
       `<span class="bt-mon">${{m}}月</span>` +
       cntHtml(cnt) +
+      topHtml(tp) +
       `<span class="bt-val ${{pctClass(mr)}}">${{v}}</span>` +
       `<span class="bt-cumtrack">${{cumBar(cumVal)}}</span>` +
       `<span class="bt-cumval ${{pctClass(cumVal)}}">${{cumStr}}</span>` +
@@ -1180,6 +1282,7 @@ function renderBtYearView(st) {{
     const mm = String(m).padStart(2, '0');
     const monthRet = st.month ? st.month[year + mm] : null;  // 无数据的月份显示空行
     const monthCnt = st.month_trades ? st.month_trades[year + mm] : null;  // 当月交易次数
+    const monthTop = st.month_tops ? st.month_tops[year + mm] : null;      // 当月抓到涨停个数
     const qNum = quarterNum(m);
     const quarterRet = st.quarter ? st.quarter[year + 'Q' + qNum] : null;
     let qCell = '';
@@ -1195,7 +1298,7 @@ function renderBtYearView(st) {{
       yCell = '<td></td>';
     }}
     html += `<tr>
-      <td class="bt-td-month">${{monthRow(m, monthRet, monthCnt)}}</td>
+      <td class="bt-td-month">${{monthRow(m, monthRet, monthCnt, monthTop)}}</td>
       ${{qCell}}
       ${{yCell}}
     </tr>`;
@@ -1304,6 +1407,7 @@ function loadCandidates() {{
 
 function selectDate(date) {{
   current.date = date;
+  klineHighlight.candidate = ymdDash(date);   // 候选池日期（T-2 选股日）在 K 线上高亮
   document.querySelectorAll('.date-item').forEach(el => {{
     el.classList.toggle('active', el.textContent.startsWith(date));
   }});
@@ -1339,6 +1443,7 @@ function loadTop() {{
 }}
 function selectTopDate(date) {{
   current.topDate = date;
+  klineHighlight.top = ymdDash(date);         // 涨停日在 K 线上高亮
   document.querySelectorAll('#top-date-list .date-item').forEach(el => {{
     el.classList.toggle('active', el.textContent.startsWith(date));
   }});
@@ -1529,9 +1634,18 @@ function calcVolMA(data, period) {{
 
 /* ---- K 线渲染（LightweightCharts v5 原生分栏：主图 + 最多3个指标栏，自动对齐与十字线贯穿） ---- */
 let _chart = null;
-/* K 线渲染目标：'candidate'（实盘候选池）或 'top'（涨停股）。共用一套渲染函数，切换目标访问不同 DOM。 */
+/* K 线渲染目标：'candidate'（实盘候选池）、'top'（涨停股）、'detail'（策略选股）。
+   共用一套渲染函数，按目标给 DOM id 加不同前缀，从而访问各自面板的元素。 */
 let klineTarget = 'candidate';
-function klineEl(id) {{ return (klineTarget === 'top' && id.indexOf('top-') !== 0) ? 'top-' + id : id; }}
+const KLINE_PREFIX = {{ candidate: '', top: 'top-', detail: 'detail-' }};
+/* 各面板的「重要日期」（YYYY-MM-DD），在 K 线上用标记高亮：
+     candidate = 候选池日期（T-2 选股日）；top = 涨停日；detail = 该行卖出日（T-0） */
+const KLINE_HL_LABEL = {{ candidate: '选股日', top: '涨停日', detail: '卖出日' }};
+const klineHighlight = {{ candidate: '', top: '', detail: '' }};
+function klineEl(id) {{
+  const p = KLINE_PREFIX[klineTarget] || '';
+  return (p && id.indexOf(p) !== 0) ? p + id : id;
+}}
 function destroyKline() {{
   if (_chart) {{ try {{ _chart.remove(); }} catch(e) {{}} _chart = null; }}
 }}
@@ -1585,6 +1699,53 @@ function renderIndicatorBar(pane, bar, data, limitMap) {{
     pane.addSeries(LightweightCharts.LineSeries, {{ color: '#ab47bc', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.J.toFixed(2) }})));
   }}
 }}
+/* YYYYMMDD -> YYYY-MM-DD（K 线时间轴格式） */
+function ymdDash(d) {{ return String(d || '').length === 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : (d || ''); }}
+
+/* 重要日期高亮：v5 已移除 series.setMarkers（仅 markers 原语 createSeriesMarkers 才有），
+   故改用 HTML 覆盖层自绘「高亮框」：坐标换算用 timeToCoordinate / priceToCoordinate，
+   并随缩放、平移、窗口变化重绘。全程 try/catch：高亮失败绝不影响主图渲染。 */
+let hlResizeHandler = null;
+function applyKlineHighlight(candleSeries, data) {{
+  const host = document.getElementById(klineEl('kline-main'));
+  const old = document.getElementById(klineEl('kline-hlbox'));
+  if (old) {{ try {{ old.remove(); }} catch (e) {{}} }}
+  if (hlResizeHandler) {{ try {{ window.removeEventListener('resize', hlResizeHandler); }} catch (e) {{}} hlResizeHandler = null; }}
+  const raw = klineHighlight[klineTarget] || '';
+  if (!raw || !_chart || !host) return;
+  // 月线周期下时间是 YYYY-MM-01，需把日期归到所属月份
+  const t = (klineState.period === 'month') ? raw.slice(0, 7) + '-01' : raw;
+  const d = data.find(x => x.time === t);
+  if (!d) return;
+
+  const box = document.createElement('div');
+  box.id = klineEl('kline-hlbox');
+  box.className = 'kline-hlbox';
+  host.appendChild(box);
+
+  const place = () => {{
+    try {{
+      const ts = _chart.timeScale();
+      const x = ts.timeToCoordinate(t);
+      const yTop = candleSeries.priceToCoordinate(d.high);
+      const yBot = candleSeries.priceToCoordinate(d.low);
+      if (x === null || x === undefined || yTop === null || yTop === undefined
+          || yBot === null || yBot === undefined) {{ box.style.display = 'none'; return; }}
+      // 更细更长的竖框：宽 ~10px，上下各外扩 26px，便于一眼定位到该根 K 线
+      const padX = 3, padY = 26, w = 4;
+      box.style.display = 'block';
+      box.style.left = (x - w / 2 - padX) + 'px';
+      box.style.width = (w + padX * 2) + 'px';
+      box.style.top = (Math.min(yTop, yBot) - padY) + 'px';
+      box.style.height = (Math.abs(yBot - yTop) + padY * 2) + 'px';
+    }} catch (e) {{ box.style.display = 'none'; }}
+  }};
+  place();
+  requestAnimationFrame(place);              // 等布局稳定后再校准一次
+  try {{ _chart.timeScale().subscribeVisibleTimeRangeChange(place); }} catch (e) {{}}
+  hlResizeHandler = place;
+  window.addEventListener('resize', place);
+}}
 function renderKline(k) {{
   const data = getSeriesData(k);
   const box = document.getElementById(klineEl('kline'));
@@ -1615,6 +1776,8 @@ function renderKline(k) {{
     if (limitMap.has(d.time)) o.color = c.limitUp;
     return o;
   }}));
+  // 高亮该面板的「重要日期」：出错也不影响主图与均线的渲染
+  try {{ applyKlineHighlight(candle, data); }} catch (e) {{}}
   // 主图：MA（可配置周期与颜色）
   klineState.ma.forEach(ma => {{
     if (ma.p <= 0) return;
@@ -1902,6 +2065,7 @@ function loadDetail() {{
   // 收集该月所有日期（降序），同一天的多只股票框在一起
   const dates = Object.keys(detail).filter(d => d.startsWith(m)).sort().reverse();
   let total = 0;
+  const allRows = [];                     // 本月全部选中项（代码+日期），用于保持/回落选中
   const box = document.getElementById('detail-groups');
   box.innerHTML = '';
   dates.forEach(date => {{
@@ -1915,7 +2079,7 @@ function loadDetail() {{
     // 该日股票表格
     const table = document.createElement('table');
     table.className = 'detail-table';
-    table.innerHTML = '<thead><tr><th>#</th><th>代码</th><th>名称</th><th>涨跌幅%</th><th>实际卖出%(' + (current.sellMode === '5m' ? '5m' : '日线') + ')</th><th>市值(亿)</th><th>开盘</th><th>最高</th><th>最低</th><th>收盘</th><th>前收</th><th>成交量</th><th>成交额(万)</th></tr></thead>';
+    table.innerHTML = '<thead><tr><th>#</th><th>代码</th><th>名称</th><th>涨跌幅%</th><th>实际卖出%(' + (current.sellMode === '5m' ? '5m' : '日线') + ')</th><th>最高时%</th><th>最低时%</th><th>市值(亿)</th></tr></thead>';
     const tbody = document.createElement('tbody');
     rows.forEach((row, i) => {{
       total++;
@@ -1923,23 +2087,101 @@ function loadDetail() {{
       const sellVal = current.sellMode === '5m' ? (row.sell_chg_5m ?? row.sell_chg) : row.sell_chg;
       const scls = (sellVal || 0) >= 0 ? 'neg' : 'pos';  // 实际卖出涨跌颜色
       const tr = document.createElement('tr');
-      if (i === 0) tr.className = 'row-selected';  // 选中股（当日第一只）高亮
+      tr.dataset.code = row.code;                   // 供点击后定位与高亮
+      tr.onclick = () => selectDetailStock(row.code, date);
+      if (row.code === current.detailCode) tr.className = 'row-selected';  // 当前选中股高亮
+      allRows.push({{ code: row.code, date: date }});
+      // 最高/最低时的涨跌幅（相对前收）：(high-pre)/pre、(low-pre)/pre
+      const pre = row.pre || 0;
+      const highPct = pre > 0 ? (row.high - pre) / pre * 100 : 0;
+      const lowPct = pre > 0 ? (row.low - pre) / pre * 100 : 0;
+      const hcls = highPct >= 0 ? 'neg' : 'pos';   // 涨红跌绿
+      const lcls = lowPct >= 0 ? 'neg' : 'pos';
       tr.innerHTML = '<td>' + (i + 1) + '</td>' +
         '<td>' + row.code + '</td><td>' + row.name + '</td>' +
         '<td class="' + cls + '">' + row.chg.toFixed(2) + '</td>' +
         '<td class="' + scls + '">' + (sellVal || 0).toFixed(2) + '</td>' +
-        '<td>' + fmtNum(row.market) + '</td>' +
-        '<td>' + row.open.toFixed(2) + '</td><td>' + row.high.toFixed(2) + '</td>' +
-        '<td>' + row.low.toFixed(2) + '</td><td>' + row.close.toFixed(2) + '</td>' +
-        '<td>' + row.pre.toFixed(2) + '</td>' +
-        '<td>' + fmtNum(row.vol) + '</td>' +
-        '<td>' + fmtNum(row.amount) + '</td>';
+        '<td class="' + hcls + '">' + highPct.toFixed(2) + '</td>' +
+        '<td class="' + lcls + '">' + lowPct.toFixed(2) + '</td>' +
+        '<td>' + fmtNum(row.market) + '</td>';
       tbody.appendChild(tr);
     }});
     table.appendChild(tbody);
     box.appendChild(table);
   }});
   document.getElementById('detail-count').textContent = m.slice(0, 4) + '年' + m.slice(4, 6) + '月 共选股 ' + total + ' 只（' + dates.length + ' 个交易日）';
+  // 默认选中：保留已在看的个股；换月后原个股不在本月则回落到本月第一只
+  if (allRows.length) {{
+    const keep = allRows.find(x => x.code === current.detailCode) || allRows[0];
+    current.detailCode = keep.code;
+    klineHighlight.detail = ymdDash(keep.date);
+    document.querySelectorAll('#detail-groups tr[data-code]').forEach(tr => {{
+      tr.classList.toggle('row-selected', tr.dataset.code === keep.code);
+    }});
+    // 面板未激活时（如刚打开页面）不渲染：隐藏容器高度为 0，切到本 TAB 时 switchTab 会重绘
+    if (document.getElementById('panel-detail').classList.contains('active')) {{
+      selectDetailStock(keep.code, keep.date);
+    }}
+  }}
+}}
+function selectDetailStock(code, date) {{
+  klineTarget = 'detail';                 // K 线渲染到策略选股面板
+  current.detailCode = code;
+  if (date) klineHighlight.detail = ymdDash(date);   // 该行卖出日（T-0）在 K 线上高亮
+  document.querySelectorAll('#detail-groups tr[data-code]').forEach(tr => {{
+    tr.classList.toggle('row-selected', tr.dataset.code === code);
+  }});
+  selectStock(code);
+}}
+function initDetailKlineControls() {{
+  const ps = document.getElementById('detail-kline-period');
+  if (ps) ps.onchange = e => {{
+    klineState.period = e.target.value;
+    klineTarget = 'detail';
+    const k = current.detailCode && DATA.kline[current.detailCode];
+    document.getElementById('detail-kline-title').innerHTML = klineTitleHtml(k, current.detailCode || '');
+    rerenderKline();
+  }};
+  const b = document.getElementById('detail-kline-boll');
+  if (b) b.onchange = e => {{ klineState.showBOLL = e.target.checked; klineTarget = 'detail'; rerenderKline(); }};
+  const v = document.getElementById('detail-kline-vwap');
+  if (v) v.onchange = e => {{ klineState.showVWAP = e.target.checked; klineTarget = 'detail'; rerenderKline(); }};
+  // 指标栏 / MA 配置 / 涨跌颜色：复用候选池的渲染函数（按 klineTarget 落到本面板）
+  const barsPanel = document.getElementById('detail-kline-bars');
+  const barBtn = document.getElementById('detail-kline-bar-btn');
+  if (barBtn) barBtn.onclick = () => {{
+    klineTarget = 'detail';
+    const show = (barsPanel.style.display === 'none' || barsPanel.style.display === '');
+    barsPanel.style.display = show ? 'block' : 'none';
+    if (show) renderBarConfig();
+  }};
+  const maBtn = document.getElementById('detail-kline-ma-btn');
+  const maCfg = document.getElementById('detail-kline-ma-config');
+  if (maBtn) maBtn.onclick = () => {{
+    klineTarget = 'detail';
+    const show = (maCfg.style.display === 'none' || maCfg.style.display === '');
+    maCfg.style.display = show ? 'block' : 'none';
+    if (show) renderMaConfig();
+  }};
+  const addBtn = document.getElementById('detail-kline-ma-add');
+  if (addBtn) {{
+    addBtn.onclick = () => {{
+      klineTarget = 'detail';
+      klineState.ma.push({{ p: 5, c: '#e91e63' }});
+      renderMaConfig(); rerenderKline();
+    }};
+    addBtn.style.display = 'inline-block';
+  }}
+  const colorBtn = document.getElementById('detail-kline-color-btn');
+  const colorCfg = document.getElementById('detail-kline-color-config');
+  if (colorBtn) colorBtn.onclick = () => {{
+    klineTarget = 'detail';
+    const show = (colorCfg.style.display === 'none' || colorCfg.style.display === '');
+    colorCfg.style.display = show ? 'block' : 'none';
+    if (show) renderColorConfig();
+  }};
+  klineTarget = 'detail';
+  renderBarConfig();
 }}
 function initDetailTab() {{
   const sel = document.getElementById('detail-strategy');
@@ -1968,6 +2210,7 @@ function fillDetailDates() {{
   loadDetail();
 }}
 initDetailTab();
+initDetailKlineControls();
 
 strategySelect.addEventListener('change', loadStrategy);
 strategySelect2.addEventListener('change', loadCandidates);
@@ -2352,11 +2595,32 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
             top_codes.add(r[0])
             if r[0] not in top_names:
                 top_names[r[0]] = r[1]
-    top_kline = _load_kline(top_codes, top_names, max_days=120)
-    kline.update(top_kline)  # 涨停股 K 线并入（若已有则跳过/覆盖同名）
+    # 涨停股 K 线并入：不再截断。此前 max_days=120 的截断版经 update() 覆盖掉候选池的
+    # 完整历史，导致三个面板的 K 线都只剩最近 120 根（约 4 月起）
+    top_kline = _load_kline(top_codes, top_names)
+    for code, val in top_kline.items():
+        kline.setdefault(code, val)     # 已有完整历史的候选股不覆盖
 
     # 策略选股详情（第三个 TAB）
     strategy_detail = _load_strategy_detail(strategies)
+
+    # 策略选股详情个股的 K 线并入：这些个股不一定在候选池/涨停列表中，
+    # 但点击详情行需要展示其 K 线，故单独加载并合并（已存在的完整历史不覆盖）
+    detail_codes: set[str] = set()
+    detail_names: dict[str, str] = {}
+    for _d in strategy_detail.values():
+        for _rows in _d.values():
+            for _it in _rows:
+                _code = _it.get("code")
+                if _code:
+                    _code = str(_code)
+                    detail_codes.add(_code)
+                    _nm = _it.get("name")
+                    if _code not in detail_names and _nm:
+                        detail_names[_code] = str(_nm)
+    detail_kline = _load_kline(detail_codes, detail_names)
+    for _code, _val in detail_kline.items():
+        kline.setdefault(_code, _val)
 
     # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
     data = {
@@ -2427,11 +2691,32 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
             top_codes.add(r[0])
             if r[0] not in top_names:
                 top_names[r[0]] = r[1]
-    top_kline = _load_kline(top_codes, top_names, max_days=120)
-    kline.update(top_kline)  # 涨停股 K 线并入（若已有则跳过/覆盖同名）
+    # 涨停股 K 线并入：不再截断。此前 max_days=120 的截断版经 update() 覆盖掉候选池的
+    # 完整历史，导致三个面板的 K 线都只剩最近 120 根（约 4 月起）
+    top_kline = _load_kline(top_codes, top_names)
+    for code, val in top_kline.items():
+        kline.setdefault(code, val)     # 已有完整历史的候选股不覆盖
 
     # 策略选股详情
     strategy_detail = _load_strategy_detail(strategies)
+
+    # 策略选股详情个股的 K 线并入：这些个股不一定在候选池/涨停列表中，
+    # 但点击详情行需要展示其 K 线，故单独加载并合并（已存在的完整历史不覆盖）
+    detail_codes: set[str] = set()
+    detail_names: dict[str, str] = {}
+    for _d in strategy_detail.values():
+        for _rows in _d.values():
+            for _it in _rows:
+                _code = _it.get("code")
+                if _code:
+                    _code = str(_code)
+                    detail_codes.add(_code)
+                    _nm = _it.get("name")
+                    if _code not in detail_names and _nm:
+                        detail_names[_code] = str(_nm)
+    detail_kline = _load_kline(detail_codes, detail_names)
+    for _code, _val in detail_kline.items():
+        kline.setdefault(_code, _val)
 
     # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
     data = {
