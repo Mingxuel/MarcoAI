@@ -11,9 +11,10 @@
 ====================================================
 二、存储文件
 ====================================================
-  MarcoAI/AIData/5M/CODE        原始前复权 5 分钟线（每只股票一个文件）
-      每行: time|open|high|low|close|volume|amount
+  MarcoAI/AIData/5M/CODE        前复权 5 分钟线（每只股票一个文件）
+      每行: time|open|high|low|close|volume|amount|ma5|ma10|ma20|ma30|ma60|ma120
         time 形如 2025-01-02 09:35:00（含日期与时分秒）
+        ma* 为收盘价 N 根 5 分钟 K 线均价（需满 N 根，不足为 0.00），与 1D 均线口径一致
 
 ====================================================
 三、API 说明
@@ -45,13 +46,19 @@ from AICode.MarcoAPI.Update.Constants import *
 from AICode.MarcoAPI.Update.StockCodes import *
 from AICode.MarcoAPI.Update.Path import *
 from AICode.MarcoAPI.Update.Data import DATA_5M
-from AICode.MarcoAPI.Update.SZ2001D import _rotate_dir
+from AICode.MarcoAPI.Update.SZ2001D import _rotate_dir, _MA_PERIODS
+
+
+def _round_ma(value: float) -> float:
+    """价格四舍五入到分（两位），两步 ROUND_HALF_UP（先3位再2位），与 1D 的 _ROUND_PRICE 口径一致。"""
+    d = int(value * 1000 + 0.5) / 1000.0
+    return int(d * 100 + 0.5) / 100.0
 
 _SZ200_5M_ALL_CACHE: dict[str, list[DATA_5M]] = {}
 
 
 def _PARSE_DATA_5M(line: str) -> DATA_5M:
-    """解析 5M 文件一行 time|open|high|low|close|volume|amount"""
+    """解析 5M 文件一行 time|open|high|low|close|volume|amount|ma5|ma10|ma20|ma30|ma60|ma120"""
     parts = line.strip().split("|")
     return DATA_5M(
         time=parts[0],
@@ -61,6 +68,12 @@ def _PARSE_DATA_5M(line: str) -> DATA_5M:
         close=float(parts[4]),
         volume=float(parts[5]),
         amount=float(parts[6]),
+        ma5=float(parts[7]) if len(parts) > 7 else 0.0,
+        ma10=float(parts[8]) if len(parts) > 8 else 0.0,
+        ma20=float(parts[9]) if len(parts) > 9 else 0.0,
+        ma30=float(parts[10]) if len(parts) > 10 else 0.0,
+        ma60=float(parts[11]) if len(parts) > 11 else 0.0,
+        ma120=float(parts[12]) if len(parts) > 12 else 0.0,
     )
 
 
@@ -81,15 +94,30 @@ def _WRITE_5M_BATCH(data: dict[str, pd.DataFrame], stock_codes: list[str]) -> li
         c = data["Close"][stock_code]
         v = data["Volume"][stock_code]
         a = data["Amount"][stock_code]
+        # 先收集非停牌（非 NaN）的 5M 棒，保证 MA 窗口基于连续真实成交棒（与 1D 一致）
+        rows: list[tuple] = []
+        for dt, ov, hv, lv, cv, vv, av in zip(
+            o.index, o.values, h.values, l.values, c.values, v.values, a.values
+        ):
+            if pd.isna(ov):
+                continue
+            rows.append((str(dt), ov, hv, lv, cv, vv, av))
+        closes = [r[4] for r in rows]
+        n = len(closes)
+        # 各周期 MA = 收盘价 N 根 5 分钟 K 线滑动均价，需满 N 根才计算，不足为 0.00
+        ma: dict[int, list[float]] = {p: [0.0] * n for p in _MA_PERIODS}
+        for p in _MA_PERIODS:
+            run = 0.0
+            for i in range(n):
+                run += closes[i]
+                if i >= p:
+                    run -= closes[i - p]
+                if i >= p - 1:
+                    ma[p][i] = _round_ma(run / p)
         with open(f"{PATH_AIDATA_5M()}/{stock_code}", "w") as file:
-            # o.index 为 datetime（各字段共享同一索引）；按行写出，跳过空值（停牌）
-            for dt, ov, hv, lv, cv, vv, av in zip(
-                o.index, o.values, h.values, l.values, c.values, v.values, a.values
-            ):
-                if pd.isna(ov):
-                    continue
-                _time = str(dt)  # pd.Timestamp -> "2026-01-05 09:35:00"
-                file.write(f"{_time}|{ov}|{hv}|{lv}|{cv}|{vv}|{av}\n")
+            for i, r in enumerate(rows):
+                ma_str = "|".join(f"{ma[p][i]:.2f}" for p in _MA_PERIODS)
+                file.write(f"{r[0]}|{r[1]}|{r[2]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}|{ma_str}\n")
         written.append(stock_code)
     return written
 
@@ -97,7 +125,7 @@ def _WRITE_5M_BATCH(data: dict[str, pd.DataFrame], stock_codes: list[str]) -> li
 def UPDATE_5M_ORIGIN(stock_codes: list[str] | None = None) -> str:
     """拉取原始前复权 5 分钟线：父进程单批拉取全市场数据，再分片多进程写出（同 1D 模式）。
 
-    数据为原始行情（time|open|high|low|close|volume|amount），不计算任何加工字段。
+    数据为前复权行情，并在写出时追加 MA5/10/20/30/60/120 均线（收盘价 N 根 5 分钟 K 线均价），与 1D 加工口径一致。
 
     多进程并行的是"写出文件"这一步（每只股票独立成文件），tqcenter 仅在父进程初始化一次；
     全量 data 按股票分批切片后交给进程池，避免把整份数据重复 pickle 给每个任务。

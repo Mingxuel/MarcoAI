@@ -40,6 +40,13 @@ class DATA_5M:
     close: float
     volume: float
     amount: float
+    # ---- 加工字段（由 UPDATE_5M_ORIGIN 从原始数据计算，默认值保证向后兼容）----
+    ma5: float = 0.0            # 5 根 5 分钟 K 线收盘价均价
+    ma10: float = 0.0           # 10 根
+    ma20: float = 0.0           # 20 根
+    ma30: float = 0.0           # 30 根
+    ma60: float = 0.0           # 60 根
+    ma120: float = 0.0          # 120 根
 
 @dataclass
 class DATA_1D_TARGET:

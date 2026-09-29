@@ -452,18 +452,18 @@ def _render_html(data: dict[str, Any], show_sidebar: bool = True) -> str:
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 html, body {{ height: 100%; }}
 /* ---- 朋克深色主题 ---- */
-body {{ font-family: 'Microsoft YaHei', sans-serif; background: #0a0a12; color: #e6e9f0; display: flex; overflow: hidden; }}
+body {{ font-family: 'Microsoft YaHei', sans-serif; background: #000000; color: #e6e9f0; display: flex; overflow: hidden; }}
 /* ---- 左侧快捷命令侧边栏 ---- */
-.sidebar {{ width: 420px; min-width: 420px; background: #10121b; border-right: 1px solid #252c3f; display: flex; flex-direction: column; height: 100vh; }}
-.sidebar .brand {{ padding: 18px 16px; font-size: 15px; font-weight: 700; color: #e6e9f0; border-bottom: 1px solid #252c3f; letter-spacing: .5px; text-shadow: 0 0 8px rgba(0,229,255,.4); }}
+.sidebar {{ width: 420px; min-width: 420px; background: #000000; border-right: 1px solid #252c3f; display: flex; flex-direction: column; height: 100vh; }}
+.sidebar .brand {{ padding: 18px 16px; font-size: 15px; font-weight: 700; color: #e6e9f0; border-bottom: 1px solid #252c3f; letter-spacing: .5px; text-shadow: 0 0 8px rgba(207,212,220,.4); }}
 .sidebar .brand small {{ display: block; font-size: 11px; color: #8a93a8; font-weight: 400; margin-top: 3px; }}
 .sidebar .section {{ padding: 14px 16px 6px; font-size: 11px; color: #8a93a8; text-transform: uppercase; letter-spacing: 1px; }}
 .sidebar .cmds {{ padding: 4px 12px 12px; overflow-y: auto; }}
-.sidebar .cmd {{ display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: #151827; color: #e6e9f0; border: 1px solid #2a3249; border-radius: 6px; padding: 9px 11px; margin-bottom: 7px; font-size: 13px; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s; }}
-.sidebar .cmd:hover {{ background: #1b2036; border-color: #00e5ff; box-shadow: 0 0 8px rgba(0,229,255,.25); }}
+.sidebar .cmd {{ display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: #000000; color: #e6e9f0; border: 1px solid #2a3249; border-radius: 6px; padding: 9px 11px; margin-bottom: 7px; font-size: 13px; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s; }}
+.sidebar .cmd:hover {{ background: #1b2036; border-color: #cfd4dc; box-shadow: 0 0 8px rgba(207,212,220,.25); }}
 .sidebar .cmd:active {{ transform: translateY(1px); }}
-.sidebar .cmd .dot {{ width: 8px; height: 8px; border-radius: 50%; background: #00e5ff; flex-shrink: 0; box-shadow: 0 0 6px rgba(0,229,255,.8); }}
-.sidebar .cmd.danger .dot {{ background: #ff2d95; box-shadow: 0 0 6px rgba(255,45,149,.8); }}
+.sidebar .cmd .dot {{ width: 8px; height: 8px; border-radius: 50%; background: #cfd4dc; flex-shrink: 0; box-shadow: 0 0 6px rgba(207,212,220,.8); }}
+.sidebar .cmd.danger .dot {{ background: #ffffff; box-shadow: 0 0 6px rgba(255,255,255,.8); }}
 .sidebar .cmd.running {{ opacity: .6; pointer-events: none; }}
 .sidebar .cmd.running .spinner {{ display: inline-block; width: 12px; height: 12px; border: 2px solid #8a93a8; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0; }}
 @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
@@ -477,19 +477,19 @@ body {{ font-family: 'Microsoft YaHei', sans-serif; background: #0a0a12; color: 
 h1 {{ font-size: 22px; margin-bottom: 16px; color: #e6e9f0; }}
 .toolbar {{ display: flex; gap: 16px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }}
 .toolbar label {{ font-size: 13px; color: #8a93a8; }}
-select {{ background: #151827; color: #e6e9f0; border: 1px solid #2a3249; padding: 8px 10px; border-radius: 6px; font-size: 14px; }}
+select {{ background: #000000; color: #e6e9f0; border: 1px solid #2a3249; padding: 8px 10px; border-radius: 6px; font-size: 14px; }}
 /* TAB */
 .tabs {{ display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #252c3f; }}
 .tab {{ padding: 10px 22px; cursor: pointer; font-size: 14px; color: #8a93a8; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; transition: color .15s; }}
-.tab:hover {{ color: #00e5ff; }}
-.tab.active {{ color: #fff; background: #10121b; border-color: #252c3f; box-shadow: inset 0 -2px 0 #00e5ff; }}
+.tab:hover {{ color: #cfd4dc; }}
+.tab.active {{ color: #fff; background: #000000; border-color: #252c3f; box-shadow: inset 0 -2px 0 #cfd4dc; }}
 .tab-panel {{ display: none; }}
 .tab-panel.active {{ display: block; }}
 /* 策略选股详情 TAB：内部填满 main 剩余高度，消除底部空白 */
-#panel-detail.active {{ display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }}
+#panel-detail.active {{ display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 0; overflow: hidden; }}
 #panel-detail.active > .toolbar {{ flex: 0 0 auto; }}
 #panel-detail.active > .card {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }}
-.card {{ padding: 18px; margin-bottom: 18px; }}
+.card {{ padding: 18px; margin-bottom: 18px; background: #000000; }}
 .card h2 {{ font-size: 15px; color: #8a93a8; margin-bottom: 12px; font-weight: 500; }}
 .grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }}
 @media (max-width: 900px) {{ .grid {{ grid-template-columns: 1fr; }} }}
@@ -516,7 +516,7 @@ select {{ background: #151827; color: #e6e9f0; border: 1px solid #2a3249; paddin
 .bt-ret3 .bt-mon {{ font-size: 10px; color: #7a7f8a; width: 26px; flex-shrink: 0; text-align: left; letter-spacing: 1px; }}
 .bt-ret3 .bt-cnt {{ font-size: 10px; color: #8a93a8; width: 38px; flex-shrink: 0; text-align: right; }}
 /* 抓到涨停个数：放在「次数」右侧，只显示数字（列宽收窄），用暖色区分 */
-.bt-ret3 .bt-tops {{ font-size: 10px; color: #ff6d9e; width: 30px; flex-shrink: 0; text-align: right; }}
+.bt-ret3 .bt-tops {{ font-size: 10px; color: #ffffff; width: 30px; flex-shrink: 0; text-align: right; }}
 /* 表头：弱化、居中，与数据行区分 */
 .bt-ret3 thead th {{ font-size: 11px; font-weight: 600; color: #8a93a8; text-align: center;
   padding: 4px 10px 8px; letter-spacing: .5px; border-bottom: 1px solid #252c3f !important; }}
@@ -531,29 +531,29 @@ select {{ background: #151827; color: #e6e9f0; border: 1px solid #2a3249; paddin
 .bt-ret3 td {{ vertical-align: middle; }}
 .bt-ret3 .bt-plain {{ text-align: left; vertical-align: middle; padding-left: 16px; }}
 .bt-ret3 .bt-big {{ font-weight: 700; padding: 8px 14px; border-radius: 6px; display: inline-block; letter-spacing: .5px; }}
-.bt-ret3 .bt-big.bt-q {{ font-size: 18px; color: #00e5ff; text-shadow: 0 0 6px rgba(0,229,255,.45); }}
-.bt-ret3 .bt-big.bt-y {{ font-size: 26px; color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,.55); }}
-.bt-ret3 .bt-big.pos {{ color: #ff2d95; text-shadow: 0 0 8px rgba(255,45,149,.55); }}
-.bt-ret3 .bt-big.neg {{ color: #00e5ff; text-shadow: 0 0 8px rgba(0,229,255,.55); }}
+.bt-ret3 .bt-big.bt-q {{ font-size: 18px; color: #cfd4dc; text-shadow: 0 0 6px rgba(207,212,220,.45); }}
+.bt-ret3 .bt-big.bt-y {{ font-size: 26px; color: #ffffff; text-shadow: 0 0 8px rgba(255,255,255,.55); }}
+.bt-ret3 .bt-big.pos {{ color: #ffffff; text-shadow: 0 0 8px rgba(255,255,255,.55); }}
+.bt-ret3 .bt-big.neg {{ color: #cfd4dc; text-shadow: 0 0 8px rgba(207,212,220,.55); }}
 .bt-ret3 td[rowspan] {{ background: transparent; border-bottom: none !important; border-top: none !important; }}
 .bt-ret3 td, .bt-ret3 th {{ border: none !important; border-bottom: none !important; border-top: none !important; background-color: transparent !important; }}
 /* 收益统计条 */
 .bt-stats {{ display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }}
-.bt-stat {{ background: #131725; border: 1px solid #232b3d; border-radius: 6px; padding: 8px 14px; text-align: center; min-width: 92px; }}
+.bt-stat {{ background: #000000; border: 1px solid #232b3d; border-radius: 6px; padding: 8px 14px; text-align: center; min-width: 92px; }}
 .bt-stat .k {{ display: block; font-size: 10px; color: #7a8398; letter-spacing: .5px; margin-bottom: 3px; }}
 .bt-stat .v {{ display: block; font-size: 16px; font-weight: 700; color: #e6e9f0; }}
-.bt-stat .v.pos {{ color: #ff2d95; text-shadow: 0 0 8px rgba(255,45,149,.5); }}
-.bt-stat .v.neg {{ color: #00e5ff; text-shadow: 0 0 8px rgba(0,229,255,.5); }}
-.bt-stat .v.gold {{ color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,.5); }}
+.bt-stat .v.pos {{ color: #ffffff; text-shadow: 0 0 8px rgba(255,255,255,.5); }}
+.bt-stat .v.neg {{ color: #cfd4dc; text-shadow: 0 0 8px rgba(207,212,220,.5); }}
+.bt-stat .v.gold {{ color: #ffffff; text-shadow: 0 0 8px rgba(255,255,255,.5); }}
 .dist-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }}
 /* 标题居中显眼，颜色说明放边缘 */
 .dist-grid .dist-head {{ position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }}
-.dist-grid .dist-head h3 {{ margin: 0; font-size: 14px; font-weight: 700; color: #fff; letter-spacing: .5px; text-shadow: 0 0 8px rgba(0,229,255,.35); }}
+.dist-grid .dist-head h3 {{ margin: 0; font-size: 14px; font-weight: 700; color: #fff; letter-spacing: .5px; text-shadow: 0 0 8px rgba(207,212,220,.35); }}
 .dist-grid .dist-legend {{ position: absolute; right: 0; font-size: 9px; color: #7a8398; display: inline-flex; align-items: center; gap: 4px; }}
 .dist-grid .dist-legend .lg {{ display: inline-block; width: 8px; height: 8px; border-radius: 2px; }}
-.dist-grid .dist-legend .lg-all {{ background: #42a5f5; }}
-.dist-grid .dist-legend .lg-last {{ background: #ef5350; }}
-.dist-grid .dist-box {{ background: #10131e; border: 1px solid #242b3d; border-radius: 6px; padding: 8px; aspect-ratio: 1 / 1; min-height: 140px; display: flex; flex-direction: column; }}
+.dist-grid .dist-legend .lg-all {{ background: #cfd4dc; }}
+.dist-grid .dist-legend .lg-last {{ background: #ffffff; }}
+.dist-grid .dist-box {{ background: #000000; border: 1px solid #242b3d; border-radius: 6px; padding: 8px; aspect-ratio: 1 / 1; min-height: 140px; display: flex; flex-direction: column; }}
 .dist-grid .dist-canvas {{ flex: 1 1 0; position: relative; min-height: 0; }}
 .dist-grid canvas {{ width: 100% !important; height: 100% !important; display: block; }}
 @media (max-width: 1200px) {{ .dist-grid {{ grid-template-columns: 1fr 1fr; }} }}
@@ -561,24 +561,24 @@ select {{ background: #151827; color: #e6e9f0; border: 1px solid #2a3249; paddin
 table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
 th, td {{ padding: 6px 8px; text-align: left; border-bottom: 1px solid #262c38; }}
 th {{ color: #9aa0a6; font-weight: 500; }}
-.pos {{ color: #26a69a; }} .neg {{ color: #ef5350; }}
+.pos {{ color: #d62828; }} .neg {{ color: #0077b6; }} .limit-up {{ color: #f5c518; }}
 .chart-wrap {{ position: relative; height: 320px; }}
 #panel-detail table {{ font-size: 12px; }}
 #panel-detail td {{ white-space: nowrap; }}
-#panel-detail tbody tr:hover {{ background: #1c2029; }}
-table.detail-table tbody tr.row-selected {{ background: #3a3220; border-left: 3px solid #ffca28; }}
-table.detail-table tbody tr.row-selected:hover {{ background: #4a4022; }}
-table.detail-table tbody tr.row-selected td {{ color: #ffca28; font-weight: 600; }}
-table.detail-table tbody tr.row-selected td.pos {{ color: #9be7a0; }}
-table.detail-table tbody tr.row-selected td.neg {{ color: #ff9b8a; }}
+#panel-detail tbody tr:hover {{ background: #000000; }}
+table.detail-table tbody tr.row-selected {{ background: #2a2f3a; border-left: 3px solid #e8eaed; }}
+table.detail-table tbody tr.row-selected:hover {{ background: #343c4a; }}
+table.detail-table tbody tr.row-selected td {{ color: #e8eaed; font-weight: 600; }}
+table.detail-table tbody tr.row-selected td.pos {{ color: #ffffff; }}
+table.detail-table tbody tr.row-selected td.neg {{ color: #5aa9e6; }} table.detail-table tbody tr.row-selected td.limit-up {{ color: #f5c518; }}
 #detail-groups {{ flex: 1 1 0; min-height: 0; }}
-.detail-date-head {{ background: #1c2029; color: #ffca28; font-size: 12px; font-weight: 600; padding: 6px 10px; margin: 8px 0 4px; border-radius: 5px; border-left: 3px solid #ffca28; }}
+.detail-date-head {{ background: #000000; color: #e8eaed; font-size: 12px; font-weight: 600; padding: 6px 10px; margin: 8px 0 4px; border-radius: 5px; border-left: 3px solid #e8eaed; }}
 .detail-date-head:first-child {{ margin-top: 0; }}
 table.detail-table {{ width: auto; max-width: 100%; border-collapse: collapse; margin-bottom: 4px; table-layout: fixed; }}
 table.detail-table th, table.detail-table td {{ padding: 5px 6px; text-align: right; border-bottom: 1px solid #232a36; overflow: hidden; text-overflow: ellipsis; }}
 table.detail-table th:first-child, table.detail-table td:first-child {{ text-align: center; }}
 table.detail-table thead th {{ position: sticky; top: 0; background: #141821; color: #9aa0a6; font-weight: 600; z-index: 1; }}
-table.detail-table tbody tr:hover {{ background: #1c2029; }}
+table.detail-table tbody tr:hover {{ background: #000000; }}
 /* 固定列宽 */
 /* 列宽：# / 代码 / 名称 / 涨跌幅% / 实际卖出% / 市值 / 最高时% / 最低时% */
 table.detail-table th:nth-child(1) {{ width: 30px; }}
@@ -592,77 +592,92 @@ table.detail-table th:nth-child(8) {{ width: 80px; }}
 /* 策略选股：左侧选股表格 + 右侧 K 线（参照实盘候选池）。去掉原 max-width 以便表格铺开 */
 #panel-detail .card {{ padding: 12px 16px 8px; }}
 /* 左侧数据 1/3、右侧 K 线 2/3；minmax(0,1fr) 允许列收缩，避免宽表格把网格撑破 */
-.detail-layout {{ display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }}
-@media (max-width: 1100px) {{ .detail-layout {{ grid-template-columns: 1fr; }} }}
+.detail-layout {{ display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: stretch; }}
+/* 策略选股整页不出现最外框滚动条：面板按视口高度铺满，仅左侧列表在面板内独立滚动（表头 sticky 随容器固定） */
+#panel-detail.active > .detail-layout {{ flex: 1 1 0; min-height: 0; }}
+#panel-detail.active > .detail-layout > div:first-child {{ height: 100%; min-height: 0; overflow-y: auto; }}
+@media (max-width: 1100px) {{ .detail-layout {{ grid-template-columns: 1fr; }} #panel-detail.active {{ height: auto; overflow: visible; }} #panel-detail.active > .detail-layout > div:first-child {{ height: auto; min-height: 0; overflow-y: visible; }} }}
 /* 选股表格行可点击 */
 table.detail-table tbody tr {{ cursor: pointer; }}
 #panel-backtest.active {{ display: flex; flex-direction: column; }}
 #panel-backtest .capital-card {{ order: 99; }}
 .mode-badge {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 6px; }}
-.b-first {{ background: #42a5f5; color: #0b1a2a; }}
-.b-last {{ background: #ef5350; color: #2a0b0b; }}
-.b-avg {{ background: #26a69a; color: #07201c; }}
+.b-first {{ background: #3a4150; color: #e8eaed; }}
+.b-last {{ background: #2b303c; color: #c9cdd4; }}
+.b-avg {{ background: #1f2530; color: #9aa0a6; }}
 .legend {{ display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }}
 /* 情绪曲线下方「单均线」小图与周期按钮选中态 */
 .sent-ma-head {{ margin: 12px 0 6px; font-size: 13px; color: #9aa0a6; }}
 #sent-ma-kline {{ height: 720px; }}
-.sent-ma-btn.active {{ background: #1b2036; border-color: #00e5ff; box-shadow: 0 0 8px rgba(0,229,255,.25); }}
+.sent-ma-btn.active {{ background: #1b2036; border-color: #cfd4dc; box-shadow: 0 0 8px rgba(207,212,220,.25); }}
 /* 候选池 */
 .cand-layout {{ display: grid; grid-template-columns: 220px 280px 1fr; gap: 14px; }}
 @media (max-width: 1000px) {{ .cand-layout {{ grid-template-columns: 1fr; }} }}
 .date-list, .stock-list {{ max-height: 62vh; overflow-y: auto; }}
+/* 候选池 / 涨停股：三列等高，K 线填满右侧列，与左右列表顶端对齐（顶到最上面） */
+#panel-candidate.active, #panel-top.active {{ display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 0; overflow: hidden; }}
+#panel-candidate.active > .card, #panel-top.active > .card {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }}
+#panel-candidate.active .cand-layout, #panel-top.active .cand-layout {{ flex: 1 1 0; min-height: 0; align-items: stretch; }}
+#panel-candidate.active .cand-layout > div, #panel-top.active .cand-layout > div {{ display: flex; flex-direction: column; min-height: 0; }}
+#panel-candidate .date-list, #panel-candidate .stock-list, #panel-top .date-list, #panel-top .stock-list {{ flex: 1 1 0; min-height: 0; max-height: none; }}
 .date-item, .stock-item {{ padding: 7px 10px; cursor: pointer; border-radius: 6px; font-size: 13px; margin-bottom: 2px; }}
 .date-item:hover, .stock-item:hover {{ background: #1f2530; }}
-.date-item.active, .stock-item.active {{ background: #2b6cb0; color: #fff; }}
+.date-item.active, .stock-item.active {{ background: #3a4150; color: #ffffff; }}
 .stock-count {{ color: #9aa0a6; font-size: 12px; margin-left: 6px; }}
 .stock-market {{ color: #6b7280; font-size: 11px; margin-left: 4px; }}
-#kline {{ width: 100%; height: 62vh; display: flex; flex-direction: column; }}
+#kline, #top-kline {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #kline-main {{ flex: 3 1 0; min-height: 0; }}
-/* 策略选股右侧 K 线容器（与实盘候选池同规格） */
-#detail-kline {{ width: 100%; height: 62vh; display: flex; flex-direction: column; }}
+/* K线容器兜底纯黑，防止图表背景异常时透出底色 */
+#bt-kline-main, #kline-main, #detail-kline-main {{ background: #000000; }}
+/* 策略选股右侧 K 线容器（与实盘候选池同规格，填满列高） */
+#detail-kline {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #detail-kline-main {{ flex: 3 1 0; min-height: 0; }}
+#panel-detail.active .detail-layout > div {{ display: flex; flex-direction: column; min-height: 0; }}
+#panel-detail.active .detail-layout > div:first-child > .card {{ flex: 1 1 0; min-height: 0; }}
 /* 重要日期高亮框：覆盖层需父容器定位基准 */
-#kline-main, #top-kline-main, #detail-kline-main {{ position: relative; }}
+#kline-main, #top-kline-main, #detail-kline-main {{ position: relative; flex: 3 1 0; min-height: 0; }}
 .kline-hlbox {{ position: absolute; pointer-events: none; z-index: 5;
-  border: 1px solid #ffd700; border-radius: 2px;
-  background: rgba(255, 215, 0, .10); box-shadow: 0 0 10px rgba(255, 215, 0, .5); }}
+  border: 1px solid #ffffff; border-radius: 2px;
+  background: rgba(255, 255, 255, .10); box-shadow: 0 0 10px rgba(255, 255, 255, .5); }}
 .kline-ind {{ flex: 1 1 0; min-height: 0; margin-top: 4px; }}
 .chart-title {{ font-size: 13px; color: #c9cdd4; margin-bottom: 8px; min-height: 18px; }}
 .kline-info {{ font-size: 12px; color: #9aa0a6; margin-bottom: 6px; min-height: 16px; font-family: Consolas, monospace; }}
-.kline-info .up {{ color: #ef5350; }}
-.kline-info .down {{ color: #26a69a; }}
+.kline-info .up {{ color: #d62828; }}
+.kline-info .down {{ color: #0077b6; }}
+.kline-info .limit-up {{ color: #f5c518; }}
 .chg-big {{ font-size: 20px; font-weight: 700; margin-right: 10px; }}
-.chg-big.up {{ color: #ef5350; }}
-.chg-big.down {{ color: #26a69a; }}
+.chg-big.up {{ color: #d62828; }}
+.chg-big.down {{ color: #0077b6; }}
+.chg-big.limit-up {{ color: #f5c518; }}
 .empty-hint {{ color: #6b7280; font-size: 13px; padding: 20px; text-align: center; }}
 /* K 线工具栏 */
 .kline-toolbar {{ display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }}
 .kline-toolbar select, .kline-toolbar input[type="color"] {{
-  background: #1c2029; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 6px; padding: 5px 8px; font-size: 12px; height: 28px;
+  background: #000000; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 6px; padding: 5px 8px; font-size: 12px; height: 28px;
 }}
-.kline-toolbar select:focus {{ outline: none; border-color: #2b6cb0; }}
+.kline-toolbar select:focus {{ outline: none; border-color: #cfd4dc; }}
 .kline-toolbar button {{
-  background: #1c2029; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; height: 28px;
+  background: #000000; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; height: 28px;
 }}
 .kline-toolbar button:hover {{ background: #252b38; border-color: #3a4556; }}
 .kline-chk {{ display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #c9cdd4; cursor: pointer; }}
-.kline-chk input {{ accent-color: #2b6cb0; }}
+.kline-chk input {{ accent-color: #cfd4dc; }}
 .kline-ma-config {{ display: none; padding: 8px; margin-bottom: 8px; }}
 .ma-row {{ display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }}
 .ma-row span {{ color: #9aa0a6; font-size: 12px; width: 24px; }}
-.ma-row input[type="number"] {{ width: 60px; background: #1c2029; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
+.ma-row input[type="number"] {{ width: 60px; background: #000000; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
 .ma-row input[type="color"] {{ width: 32px; height: 24px; padding: 0; border: 1px solid #2a3140; border-radius: 5px; background: none; cursor: pointer; }}
-.ma-row .ma-del {{ width: 24px; height: 24px; background: #1c2029; color: #ef5350; border: 1px solid #2a3140; border-radius: 5px; cursor: pointer; font-size: 14px; line-height: 1; }}
-.ma-row .ma-del:hover {{ background: #3a1f1f; border-color: #ef5350; }}
+.ma-row .ma-del {{ width: 24px; height: 24px; background: #000000; color: #e8eaed; border: 1px solid #2a3140; border-radius: 5px; cursor: pointer; font-size: 14px; line-height: 1; }}
+.ma-row .ma-del:hover {{ background: #2a2f3a; border-color: #e8eaed; }}
 /* 指标栏管理 */
 .kline-bars {{ display: none; padding: 8px; margin-bottom: 8px; }}
 .bar-row {{ display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }}
 .bar-row .bar-label {{ color: #9aa0a6; font-size: 12px; width: 26px; }}
-.bar-row select {{ background: #1c2029; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
+.bar-row select {{ background: #000000; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
 .bar-row .bar-volma {{ color: #9aa0a6; font-size: 11px; }}
-.bar-row .bar-volma-input {{ width: 70px; background: #1c2029; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
-.bar-row .bar-del {{ width: 24px; height: 24px; background: #1c2029; color: #ef5350; border: 1px solid #2a3140; border-radius: 5px; cursor: pointer; font-size: 14px; line-height: 1; }}
-.bar-row .bar-del:hover {{ background: #3a1f1f; border-color: #ef5350; }}
+.bar-row .bar-volma-input {{ width: 70px; background: #000000; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
+.bar-row .bar-del {{ width: 24px; height: 24px; background: #000000; color: #e8eaed; border: 1px solid #2a3140; border-radius: 5px; cursor: pointer; font-size: 14px; line-height: 1; }}
+.bar-row .bar-del:hover {{ background: #2a2f3a; border-color: #e8eaed; }}
 /* 涨跌颜色配置 */
 .kline-color-config {{ display: none; padding: 8px; margin-bottom: 8px; }}
 </style>
@@ -706,24 +721,6 @@ table.detail-table tbody tr {{ cursor: pointer; }}
     <div class="kline-ma-config" id="bt-ma-config"></div>
     <div class="kline-color-config" id="bt-color-config"></div>
     <div id="bt-kline"><div id="bt-kline-main"><div class="empty-hint">暂无资金 K 线数据</div></div></div>
-  </div>
-  <div class="card capital-card">
-    <h2>情绪曲线（T-3 日首板涨停股在 T-1 / T-0 / T-0+1 的收盘均涨幅，起始 10 万复利）</h2>
-    <div class="toolbar">
-      <div><label>均线：</label>
-        <button id="sent-ma-5" class="sent-ma-btn" type="button">MA5</button>
-        <button id="sent-ma-10" class="sent-ma-btn" type="button">MA10</button>
-        <button id="sent-ma-20" class="sent-ma-btn" type="button">MA20</button>
-      </div>
-      <button id="sent-color-btn" type="button">涨跌颜色</button>
-    </div>
-    <div class="kline-bars" id="sent-bars"></div>
-    <div class="kline-color-config" id="sent-color-config"></div>
-    <div class="legend" id="sent-legend" style="margin-bottom:6px"></div>
-    <div id="sent-kline"><div id="sent-kline-main"><div class="empty-hint">暂无情绪曲线数据</div></div></div>
-    <div class="sent-ma-head"><span id="sent-ma-title">MA5</span> 均线（基于三条情绪曲线分别计算）</div>
-    <div class="legend" id="sent-ma-legend" style="margin-bottom:4px"></div>
-    <div id="sent-ma-kline"><div id="sent-ma-kline-main"><div class="empty-hint">暂无均线数据</div></div></div>
   </div>
   <div class="card">
     <div class="toolbar">
@@ -961,7 +958,6 @@ function updateCharts() {{
     ` 最终资金: ${{st.final.toFixed(2)}}` +
     ` 交易天数: ${{st.dates.length}}`;
   renderBacktestKline(st);
-  renderSentimentKline();
   renderPeriodTables(st);
   renderBtStats(st);
   renderDistCharts(st);
@@ -979,8 +975,8 @@ function renderBacktestKline(st) {{
   }}
   const mainEl = document.getElementById('bt-kline-main');
   const chart = LightweightCharts.createChart(mainEl, {{
-    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#171a21' }}, textColor: '#d1d4dc' }},
-    grid: {{ vertLines: {{ color: '#2b2b43' }}, horzLines: {{ color: '#2b2b43' }} }},
+    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
+    grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
     rightPriceScale: {{ borderColor: '#2b2b43' }},
     timeScale: {{ borderColor: '#2b2b43' }},
     crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
@@ -989,8 +985,8 @@ function renderBacktestKline(st) {{
   // 主图：资金 K 线
   const c = btKlineState.colors;
   const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {{
-    upColor: c.up, downColor: c.down, borderUpColor: c.up, borderDownColor: c.down,
-    wickUpColor: c.up, wickDownColor: c.down,
+    upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
+    wickUpColor: '#d62828', wickDownColor: '#0077b6',
   }});
   candle.setData(data.map(d => ({{ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }})));
   // 主图：MA
@@ -1001,13 +997,13 @@ function renderBacktestKline(st) {{
   // 主图：BOLL
   if (btKlineState.showBOLL) {{
     const boll = calcBOLL(data);
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false }}).setData(boll.mid);
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.low);
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false }}).setData(boll.mid);
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.low);
   }}
   // 主图：VWAP
   if (btKlineState.showVWAP) {{
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#ff7043', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#c0c4cc', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
   }}
   // 指标栏：复用 renderIndicatorBar（v5 addPane 分栏，对齐/十字线自动）
   btKlineState.bars.forEach(bar => {{
@@ -1094,7 +1090,7 @@ function rerenderBtKline() {{
 
 /* 情绪曲线：T-3 首板涨停股在 T-1 / T-0 / T-0+1 三个时点的收盘均涨幅复利曲线。
    改为线条展示（不再画蜡烛）；均线/BOLL/VWAP/指标栏仍基于 T-0 的 O/H/L/C 资金 K 线。 */
-const SENT_LINE_COLORS = ['#42a5f5', '#66bb6a', '#ffca28', '#ab47bc'];
+const SENT_LINE_COLORS = ['#cfd4dc', '#9aa0a6', '#e8eaed', '#8a93a8'];
 function renderSentimentKline() {{
   const box = document.getElementById('sent-kline');
   box.innerHTML = '<div id="sent-kline-main"></div>';
@@ -1110,8 +1106,8 @@ function renderSentimentKline() {{
   }}
   const mainEl = document.getElementById('sent-kline-main');
   const chart = LightweightCharts.createChart(mainEl, {{
-    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#171a21' }}, textColor: '#d1d4dc' }},
-    grid: {{ vertLines: {{ color: '#2b2b43' }}, horzLines: {{ color: '#2b2b43' }} }},
+    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
+    grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
     rightPriceScale: {{ borderColor: '#2b2b43' }},
     timeScale: {{ borderColor: '#2b2b43' }},
     crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
@@ -1134,12 +1130,12 @@ function renderSentimentKline() {{
   // 主图不叠加均线（均线单独放到下方 renderSentimentMa 的图里）
   if (sentKlineState.showBOLL) {{
     const boll = calcBOLL(data);
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false }}).setData(boll.mid);
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.low);
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false }}).setData(boll.mid);
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.low);
   }}
   if (sentKlineState.showVWAP) {{
-    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#ff7043', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
+    chart.addSeries(LightweightCharts.LineSeries, {{ color: '#c0c4cc', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
   }}
   sentKlineState.bars.forEach(bar => {{
     const pane = chart.addPane();
@@ -1169,8 +1165,8 @@ function renderSentimentMa() {{
   }}
   const mainEl = document.getElementById('sent-ma-kline-main');
   const chart = LightweightCharts.createChart(mainEl, {{
-    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#171a21' }}, textColor: '#d1d4dc' }},
-    grid: {{ vertLines: {{ color: '#2b2b43' }}, horzLines: {{ color: '#2b2b43' }} }},
+    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
+    grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
     rightPriceScale: {{ borderColor: '#2b2b43' }},
     timeScale: {{ borderColor: '#2b2b43' }},
     crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
@@ -1249,7 +1245,7 @@ function renderBtYearView(st) {{
     if (val === undefined || val === null) return '<div class="bt-cum empty"></div>';
     if (val === 0) return '<div class="bt-cum zero"></div>';
     const w = Math.min(100, Math.abs(val) / cumMax * 100);
-    const c = val > 0 ? '#ff2d95' : '#00e5ff';
+    const c = val > 0 ? '#ffffff' : '#cfd4dc';
     return `<div class="bt-cum" style="width:${{w.toFixed(1)}}%;background:${{c}}"></div>`;
   }};
   // 当月交易次数（无交易的月份不显示）
@@ -1368,8 +1364,8 @@ function renderDistChart(id, distArr) {{
   window[key] = new Chart(el, {{
     type: 'line',
     data: {{ labels, datasets: [
-      {{ label: '全部', data: all, borderColor: '#42a5f5', backgroundColor: 'rgba(66,165,245,0.35)', fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2 }},
-      {{ label: '最近20日', data: lastArr, borderColor: '#ef5350', backgroundColor: 'rgba(239,83,80,0.4)', fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2 }},
+      {{ label: '全部', data: all, borderColor: '#cfd4dc', backgroundColor: 'rgba(207,212,220,0.3)', fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2 }},
+      {{ label: '最近20日', data: lastArr, borderColor: '#ffffff', backgroundColor: 'rgba(255,255,255,0.25)', fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2 }},
     ] }},
     options: {{ responsive: true, maintainAspectRatio: false, resizeDelay: 100, interaction: {{ mode: 'index', intersect: false }},
       plugins: {{ legend: {{ display: false }} }},
@@ -1475,10 +1471,10 @@ function selectTopStock(code) {{
 const klineState = {{
   period: 'day',
   bars: [{{ type: 'volume', volMA: [5, 10] }}],   // 指标栏列表，最多 MAX_BARS 个
-  ma: [{{ p: 5, c: '#42a5f5' }}, {{ p: 10, c: '#ffca28' }}, {{ p: 20, c: '#ab47bc' }}, {{ p: 60, c: '#66bb6a' }}],
+  ma: [{{ p: 5, c: '#cfd4dc' }}, {{ p: 10, c: '#e8eaed' }}, {{ p: 20, c: '#8a93a8' }}, {{ p: 60, c: '#9aa0a6' }}],
   showBOLL: false,
   showVWAP: false,
-  colors: {{ up: '#ef5350', down: '#26a69a', limitUp: '#f5c518' }},  // 涨/跌/涨停颜色
+  colors: {{ up: '#d62828', down: '#0077b6', limitUp: '#f5c518' }},  // 涨/跌/涨停颜色（涨深红、跌深蓝，涨停保留金）
 }};
 const MAX_BARS = 3;
 
@@ -1547,7 +1543,7 @@ function calcMACD(data) {{
   const dif = closes.map((_, i) => ema12[i] - ema26[i]);
   const dea = emaArr(dif, 9);
   const bars = data.map((d, i) => ({{
-    time: d.time, value: (dif[i] - dea[i]) * 2, color: (dif[i] - dea[i]) >= 0 ? '#ef535055' : '#26a69a55',
+    time: d.time, value: (dif[i] - dea[i]) * 2, color: (dif[i] - dea[i]) >= 0 ? '#e8eaed55' : '#9aa0a655',
   }}));
   const difLine = data.map((d, i) => ({{ time: d.time, value: +dif[i].toFixed(3) }}));
   const deaLine = data.map((d, i) => ({{ time: d.time, value: +dea[i].toFixed(3) }}));
@@ -1620,6 +1616,11 @@ function markLimitUp(data, code) {{
   }}
   return map;
 }}
+/* 单条记录是否「收盘涨停」（用于涨跌幅数字着色，与 K 线涨停金色一致） */
+function isLimitUp(row) {{
+  if (!row || !row.pre || !row.close) return false;
+  return row.close >= limitPrice(row.pre, limitRatio(row.code));
+}}
 /* 成交量均线（VOL MA），对成交量序列求均值 */
 function calcVolMA(data, period) {{
   const out = [];
@@ -1650,7 +1651,7 @@ function destroyKline() {{
   if (_chart) {{ try {{ _chart.remove(); }} catch(e) {{}} _chart = null; }}
 }}
 /* 主图悬浮时在标题栏下方显示当天数据 */
-function showDayInfo(chart, candleSeries, data) {{
+function showDayInfo(chart, candleSeries, data, limitMap) {{
   chart.subscribeCrosshairMove(param => {{
     const info = document.getElementById(klineEl('kline-info'));
     if (!param.time) {{ if (info && info.dataset.base) info.textContent = info.dataset.base; return; }}
@@ -1662,7 +1663,7 @@ function showDayInfo(chart, candleSeries, data) {{
     const base = info.dataset.base || '';
     const pc = d.pre_close || d.open;
     const chg = pc > 0 ? ((d.close - pc) / pc * 100).toFixed(2) : '0.00';
-    const cls = d.close >= pc ? 'up' : 'down';
+    const cls = (limitMap && limitMap.has(d.time)) ? 'limit-up' : (d.close >= pc ? 'up' : 'down');
     info.innerHTML = base + ' <span class="' + cls + '">' + d.time + '</span>' +
       ' 开 ' + d.open + ' 高 ' + d.high + ' 低 ' + d.low + ' 收 ' + d.close +
       ' 涨跌 <span class="' + cls + '">' + chg + '%</span>' +
@@ -1680,7 +1681,7 @@ function renderIndicatorBar(pane, bar, data, limitMap) {{
     // 成交量均线（可配置）
     (bar.volMA || []).forEach((p, i) => {{
       if (p <= 0) return;
-      pane.addSeries(LightweightCharts.LineSeries, {{ color: i === 0 ? '#ffca28' : '#ff7043', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }})
+      pane.addSeries(LightweightCharts.LineSeries, {{ color: i === 0 ? '#e8eaed' : '#c0c4cc', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }})
         .setData(calcVolMA(data, p));
     }});
   }} else if (bar.type === 'macd') {{
@@ -1690,13 +1691,13 @@ function renderIndicatorBar(pane, bar, data, limitMap) {{
       time: x.time, value: x.value,
       color: x.value >= 0 ? klineState.colors.up + '55' : klineState.colors.down + '55',
     }})));
-    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#ffca28', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(macd.dif);
-    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#66bb6a', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(macd.dea);
+    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#e8eaed', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(macd.dif);
+    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(macd.dea);
   }} else if (bar.type === 'kdj') {{
     const kdj = calcKDJ(data);
-    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#42a5f5', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.K.toFixed(2) }})));
-    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#ffca28', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.D.toFixed(2) }})));
-    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#ab47bc', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.J.toFixed(2) }})));
+    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#cfd4dc', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.K.toFixed(2) }})));
+    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#e8eaed', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.D.toFixed(2) }})));
+    pane.addSeries(LightweightCharts.LineSeries, {{ color: '#8a93a8', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(kdj.map(x => ({{ time: x.time, value: +x.J.toFixed(2) }})));
   }}
 }}
 /* YYYYMMDD -> YYYY-MM-DD（K 线时间轴格式） */
@@ -1754,8 +1755,8 @@ function renderKline(k) {{
 
   const mainEl = document.getElementById(klineEl('kline-main'));
   _chart = LightweightCharts.createChart(mainEl, {{
-    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#171a21' }}, textColor: '#d1d4dc' }},
-    grid: {{ vertLines: {{ color: '#2b2b43' }}, horzLines: {{ color: '#2b2b43' }} }},
+    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
+    grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
     rightPriceScale: {{ borderColor: '#2b2b43' }},
     timeScale: {{ borderColor: '#2b2b43' }},
     crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
@@ -1768,8 +1769,8 @@ function renderKline(k) {{
   // 主图：K线（涨停日黄色）
   const c = klineState.colors;
   const candle = _chart.addSeries(LightweightCharts.CandlestickSeries, {{
-    upColor: c.up, downColor: c.down, borderUpColor: c.up, borderDownColor: c.down,
-    wickUpColor: c.up, wickDownColor: c.down,
+    upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
+    wickUpColor: '#d62828', wickDownColor: '#0077b6',
   }});
   candle.setData(data.map(d => {{
     const o = {{ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }};
@@ -1786,13 +1787,13 @@ function renderKline(k) {{
   // 主图：BOLL
   if (klineState.showBOLL) {{
     const boll = calcBOLL(data);
-    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
-    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false }}).setData(boll.mid);
-    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#90caf9', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.low);
+    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.up);
+    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false }}).setData(boll.mid);
+    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#9aa0a6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(boll.low);
   }}
   // 主图：VWAP
   if (klineState.showVWAP) {{
-    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#ff7043', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
+    _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#c0c4cc', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
   }}
 
   // 各指标栏：v5 原生分栏（addPane），价格刻度/时间轴/十字线自动对齐
@@ -1802,7 +1803,7 @@ function renderKline(k) {{
   }});
 
   _chart.timeScale().fitContent();
-  showDayInfo(_chart, candle, data);
+  showDayInfo(_chart, candle, data, limitMap);
 }}
 
 /* 标题栏 HTML：涨跌幅放最前（大字号红绿色），后跟名称/代码/周期 */
@@ -1812,7 +1813,8 @@ function klineTitleHtml(k, code) {{
     const last = k.ohlcv[k.ohlcv.length - 1];
     const prev = last.pre_close || last.open;
     const pct = prev > 0 ? (last.close - prev) / prev * 100 : 0;
-    const cls = pct >= 0 ? 'up' : 'down';
+    const isLimit = last.close >= limitPrice(prev, limitRatio(code));
+    const cls = isLimit ? 'limit-up' : (pct >= 0 ? 'up' : 'down');
     chg = '<span class="chg-big ' + cls + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</span>';
   }}
   const name = (k && k.name ? k.name + '  ' : '');
@@ -1946,7 +1948,7 @@ function initKlineControls() {{
   }};
   const addBtn = document.getElementById('kline-ma-add');
   addBtn.onclick = () => {{
-    klineState.ma.push({{ p: 5, c: '#e91e63' }});
+    klineState.ma.push({{ p: 5, c: '#aab0bc' }});
     renderMaConfig(); rerenderKline();
   }};
   addBtn.style.display = 'inline-block';
@@ -1979,7 +1981,7 @@ function initBtKlineControls() {{
   }};
   const addBtn = document.getElementById('bt-ma-add');
   addBtn.onclick = () => {{
-    btKlineState.ma.push({{ p: 5, c: '#e91e63' }});
+    btKlineState.ma.push({{ p: 5, c: '#aab0bc' }});
     renderBtMaConfig(); rerenderBtKline();
   }};
   addBtn.style.display = 'inline-block';
@@ -1990,25 +1992,7 @@ function initBtKlineControls() {{
     if (show) renderBtColorConfig();
   }};
   renderBtBarConfig();
-  // 情绪曲线工具栏：5 / 10 / 20 三个均线按钮，切换下方单均线小图的周期
-  [5, 10, 20].forEach(p => {{
-    const btn = document.getElementById('sent-ma-' + p);
-    if (!btn) return;
-    btn.onclick = () => {{
-      sentMaState.period = p;
-      document.querySelectorAll('.sent-ma-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderSentimentMa();
-    }};
-  }});
-  const firstMaBtn = document.getElementById('sent-ma-' + sentMaState.period);
-  if (firstMaBtn) firstMaBtn.classList.add('active');
-  const sentColorCfg = document.getElementById('sent-color-config');
-  document.getElementById('sent-color-btn').onclick = () => {{
-    const show = (sentColorCfg.style.display === 'none' || sentColorCfg.style.display === '');
-    sentColorCfg.style.display = show ? 'block' : 'none';
-    if (show) renderSentColorConfig();
-  }};
+
 }}
 /* 涨停 TAB 的 K 线控制：复用共享 klineState，DOM 用 top- 前缀 */
 function initTopKlineControls() {{
@@ -2028,7 +2012,7 @@ function initTopKlineControls() {{
     if (show) renderMaConfig();
   }};
   document.getElementById('top-ma-add').onclick = () => {{
-    klineState.ma.push({{ p: 5, c: '#e91e63' }});
+    klineState.ma.push({{ p: 5, c: '#aab0bc' }});
     renderMaConfig(); rerenderKline();
   }};
   document.getElementById('top-ma-add').style.display = 'inline-block';
@@ -2083,9 +2067,9 @@ function loadDetail() {{
     const tbody = document.createElement('tbody');
     rows.forEach((row, i) => {{
       total++;
-      const cls = row.chg >= 0 ? 'neg' : 'pos';  // 涨红跌绿
+      const cls = isLimitUp(row) ? 'limit-up' : pctClass(row.chg);  // 涨停金；涨红跌蓝
       const sellVal = current.sellMode === '5m' ? (row.sell_chg_5m ?? row.sell_chg) : row.sell_chg;
-      const scls = (sellVal || 0) >= 0 ? 'neg' : 'pos';  // 实际卖出涨跌颜色
+      const scls = pctClass(sellVal || 0);  // 实际卖出涨跌颜色（红涨蓝跌）
       const tr = document.createElement('tr');
       tr.dataset.code = row.code;                   // 供点击后定位与高亮
       tr.onclick = () => selectDetailStock(row.code, date);
@@ -2095,8 +2079,8 @@ function loadDetail() {{
       const pre = row.pre || 0;
       const highPct = pre > 0 ? (row.high - pre) / pre * 100 : 0;
       const lowPct = pre > 0 ? (row.low - pre) / pre * 100 : 0;
-      const hcls = highPct >= 0 ? 'neg' : 'pos';   // 涨红跌绿
-      const lcls = lowPct >= 0 ? 'neg' : 'pos';
+      const hcls = pctClass(highPct);   // 涨红跌蓝
+      const lcls = pctClass(lowPct);
       tr.innerHTML = '<td>' + (i + 1) + '</td>' +
         '<td>' + row.code + '</td><td>' + row.name + '</td>' +
         '<td class="' + cls + '">' + row.chg.toFixed(2) + '</td>' +
@@ -2167,7 +2151,7 @@ function initDetailKlineControls() {{
   if (addBtn) {{
     addBtn.onclick = () => {{
       klineTarget = 'detail';
-      klineState.ma.push({{ p: 5, c: '#e91e63' }});
+      klineState.ma.push({{ p: 5, c: '#aab0bc' }});
       renderMaConfig(); rerenderKline();
     }};
     addBtn.style.display = 'inline-block';
