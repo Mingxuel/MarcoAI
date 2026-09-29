@@ -30,7 +30,7 @@ if _root not in sys.path:
 
 from AICode.MarcoAPI.StrategyUI import (
     CMD_UPDATE_DATA, CMD_UPDATE_THS,
-    GENERATE_STRATEGY_UI, _list_strategies,
+    GENERATE_STRATEGY_UI, _list_strategies, _read_5m_window,
 )
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 
@@ -203,8 +203,21 @@ class StrategyHandler(BaseHTTPRequestHandler):
             self.wfile.write(html)
         elif self.path == "/api/update_log":
             self._send_json(_update_status())
+        elif self.path.startswith("/api/5m"):
+            self._serve_5m(self.path)
         else:
             self._send_json({"ok": False, "error": f"未找到 {self.path}"}, 404)
+
+    # ---- 5 分钟 K 线窗口 ----
+    def _serve_5m(self, path: str):
+        """GET /api/5m?code=xxx&anchor=YYYYMMDD
+        返回该股票「重要日期(T)前 5 个交易日」起、最多 20 个交易日的 5 分钟 K 线窗口。"""
+        from urllib.parse import urlparse, parse_qs
+        q = parse_qs(urlparse(path).query)
+        code = (q.get("code") or [""])[0].strip()
+        anchor = (q.get("anchor") or [""])[0].strip()
+        bars = _read_5m_window(code, anchor) if code else []
+        self._send_json({"ok": True, "code": code, "anchor": anchor, "bars": bars})
 
     # ---- 命令 ----
     def do_POST(self):

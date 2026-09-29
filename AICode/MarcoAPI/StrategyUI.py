@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import webbrowser
+import datetime as _dt
 from typing import Any
 
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,7 +34,7 @@ from AICode.MarcoAPI.Backtest import (
     _stock_return_5m, _sell_price_5m, _sell_price_1d, _trade_net_return,
 )
 from AICode.MarcoAPI.Update.Path import (
-    PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP
+    PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP, PATH_AIDATA_5M
 )
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS
@@ -420,6 +421,91 @@ def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: 
     return kline
 
 
+def _read_5m_window(code: str, anchor_date: str, days_before: int = 5, days_span: int = 20) -> list[list]:
+    """读取单只股票 5 分钟 K 线，截取其「重要日期(T)前 5 个交易日」起、最多 20 个交易日的窗口。
+
+    返回紧凑数组 [unix_seconds, open, high, low, close, volume]（unix 秒，前端直接作为 time 使用），
+    避免把全部 5M 历史塞进 HTML。
+    """
+    path = os.path.join(PATH_AIDATA_5M(), code)
+    if not os.path.isfile(path):
+        return []
+    try:
+        if len(anchor_date or "") == 8 and str(anchor_date).isdigit():
+            a = _dt.datetime.strptime(anchor_date, "%Y%m%d").date()
+        else:
+            a = _dt.datetime.strptime(anchor_date, "%Y-%m-%d").date()
+    except Exception:
+        a = None
+    raw: list[tuple] = []
+    for line in _read_text(path).splitlines():
+        p = line.split("|")
+        if len(p) < 6:
+            continue
+        ts = p[0].strip()
+        if not ts:
+            continue
+        try:
+            dt = _dt.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            vals = [float(p[1]), float(p[2]), float(p[3]), float(p[4]), float(p[5])]
+        except (ValueError, TypeError):
+            continue
+        raw.append((dt, vals))
+    if not raw:
+        return []
+    udays = sorted({d.date() for d, _ in raw})
+    idx = None
+    for i, d in enumerate(udays):
+        if a is not None and d >= a:
+            idx = i
+            break
+    if idx is None:
+        idx = len(udays) - 1
+    start = max(0, idx - days_before)
+    end = min(len(udays), start + days_span)
+    keep = set(udays[start:end])
+    bars: list[list] = []
+    for dt, vals in raw:
+        if dt.date() in keep:
+            bars.append([int(dt.timestamp()), round(vals[0], 2), round(vals[1], 2),
+                         round(vals[2], 2), round(vals[3], 2), round(vals[4], 0)])
+    return bars
+
+
+def _build_five_min(strategies: list[str]) -> dict[str, list[list]]:
+    """为候选池 / 涨停股 / 策略选股详情中出现的个股，预生成窗口化（T-5 起约 20 日）的 5 分钟数据。
+
+    以每只个股在池中出现的【最晚日期】作为锚定日 T（默认选中即最新日），离线单文件模式下直接内嵌；
+    在线服务模式下，前端仍可按实际选中日期通过 /api/5m 精确取数。
+    """
+    anchor: dict[str, str] = {}
+    for name in strategies:
+        for d, rows in _load_candidates(name).items():
+            for r in rows:
+                c = r[0]
+                if d > anchor.get(c, ""):
+                    anchor[c] = d
+    top = _load_top()
+    for d, rows in top.items():
+        for r in rows:
+            c = r[0]
+            if d > anchor.get(c, ""):
+                anchor[c] = d
+    detail = _load_strategy_detail(strategies)
+    for _d in detail.values():
+        for _date_key, _rows in _d.items():
+            for _it in _rows:
+                c = str(_it.get("code") or "")
+                if c and _date_key > anchor.get(c, ""):
+                    anchor[c] = _date_key
+    five_min: dict[str, list[list]] = {}
+    for code, d in anchor.items():
+        bars = _read_5m_window(code, d)
+        if bars:
+            five_min[code] = bars
+    return five_min
+
+
 # 左侧快捷命令侧边栏：命令按钮依赖本地服务 / marcoai:// 自定义协议，
 # 离线单文件拷到别的机器后这些按钮无意义，故离线看板不再输出（show_sidebar=False）。
 _SIDEBAR_HTML = """<!-- ============ 左侧快捷命令侧边栏 ============ -->
@@ -636,6 +722,10 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 #panel-detail.active .detail-layout > div:first-child > .card {{ flex: 1 1 0; min-height: 0; }}
 /* 重要日期高亮框：覆盖层需父容器定位基准 */
 #kline-main, #top-kline-main, #detail-kline-main {{ position: relative; flex: 3 1 0; min-height: 0; }}
+/* 5 分钟 K 线容器：与日线各占约一半高度，置于日线下方 */
+#kline-5m, #top-kline-5m, #detail-kline-5m {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+#kline-5m-main, #top-kline-5m-main, #detail-kline-5m-main {{ position: relative; flex: 3 1 0; min-height: 0; background: #000000; }}
+.kline-subhead {{ font-size: 13px; color: #9aa0a6; margin: 10px 0 6px; border-top: 1px solid #252c3f; padding-top: 8px; }}
 .kline-hlbox {{ position: absolute; pointer-events: none; z-index: 5;
   border: 1px solid #ffffff; border-radius: 2px;
   background: rgba(255, 255, 255, .10); box-shadow: 0 0 10px rgba(255, 255, 255, .5); }}
@@ -801,6 +891,8 @@ table.detail-table tbody tr {{ cursor: pointer; }}
         <div id="kline">
           <div id="kline-main"><div class="empty-hint">请选择候选池日期与个股</div></div>
         </div>
+        <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+        <div id="kline-5m"><div id="kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
       </div>
     </div>
   </div>
@@ -841,6 +933,8 @@ table.detail-table tbody tr {{ cursor: pointer; }}
       <div id="detail-kline">
         <div id="detail-kline-main"><div class="empty-hint">请点击左侧任意一行查看 K 线</div></div>
       </div>
+      <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+      <div id="detail-kline-5m"><div id="detail-kline-5m-main"><div class="empty-hint">请点击左侧任意一行查看 5 分钟 K 线</div></div></div>
     </div>
   </div>
 </div>
@@ -878,6 +972,8 @@ table.detail-table tbody tr {{ cursor: pointer; }}
         <div id="top-kline">
           <div id="top-kline-main"><div class="empty-hint">请选择涨停日期与个股</div></div>
         </div>
+        <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+        <div id="top-kline-5m"><div id="top-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
       </div>
     </div>
   </div>
@@ -1633,6 +1729,92 @@ function calcVolMA(data, period) {{
   return out;
 }}
 
+/* 默认可见范围：总宽 日线2个月 / 月线24个月（≈2年），并以「重要日期」（选股日/涨停日/卖出日）为正中心；
+   未选中个股（或无重要日期）时退化为以最后一根为正中心（即最近2个月） */
+function setDefaultRange(chart, data) {{
+  if (!data || !data.length) return;
+  const last = data[data.length - 1].time;
+  const half = klineState.period === 'month' ? 12 : 1;   // 半窗：日线1月、月线12月
+  let center = last;
+  const hl = klineHighlight[klineTarget];
+  if (hl) {{
+    const cand = data.find(x => x.time === hl) || data.find(x => x.time.slice(0, 7) === String(hl).slice(0, 7));
+    if (cand) center = cand.time;
+  }}
+  const from = shiftMonth(center, -half);
+  const to = shiftMonth(center, half);
+  try {{ chart.timeScale().setVisibleRange({{ from: from, to: to }}); }}
+  catch (e) {{ try {{ chart.timeScale().fitContent(); }} catch (e2) {{}} }}
+}}
+function shiftMonth(dateStr, delta) {{
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + delta);
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}}
+/* 5 分钟 K 线的 MA：直接对紧凑数组 [ts,o,h,l,c,v] 的收盘价求均值 */
+function calcMA5m(bars, period) {{
+  const out = [];
+  let sum = 0;
+  for (let i = 0; i < bars.length; i++) {{
+    sum += bars[i][4];
+    if (i >= period) sum -= bars[i - period][4];
+    if (i >= period - 1) out.push({{ time: bars[i][0], value: +(sum / period).toFixed(3) }});
+  }}
+  return out;
+}}
+/* 获取某股的 5 分钟窗口数据：file:// 离线模式用内嵌的 DATA.fiveMin；http 服务模式向 /api/5m 按实际锚定日精确取数 */
+function get5m(code, anchor, cb) {{
+  if (IS_FILE_PROTOCOL) {{
+    cb(DATA.fiveMin && DATA.fiveMin[code] ? DATA.fiveMin[code] : null);
+    return;
+  }}
+  fetch('/api/5m?code=' + encodeURIComponent(code) + '&anchor=' + encodeURIComponent(anchor || ''))
+    .then(r => r.json()).then(d => cb(d && d.ok ? d.bars : null))
+    .catch(() => cb(null));
+}}
+/* 渲染 5 分钟 K 线（日线下方，约半高）：蜡烛 + MA（共享 klineState.ma）+ 成交量分栏 */
+let _chart5m = null;
+function destroyKline5m() {{
+  if (_chart5m) {{ try {{ _chart5m.remove(); }} catch (e) {{}} _chart5m = null; }}
+}}
+function renderKline5m(code, anchor) {{
+  const box = document.getElementById(klineEl('kline-5m'));
+  if (!box) return;
+  box.innerHTML = '<div id="' + klineEl('kline-5m-main') + '"></div>';
+  destroyKline5m();
+  get5m(code, anchor, (bars) => {{
+    const mainEl = document.getElementById(klineEl('kline-5m-main'));
+    if (!bars || !bars.length) {{
+      mainEl.innerHTML = '<div class="empty-hint">暂无 5 分钟数据（请确认已更新 5M 数据；离线模式可运行本地服务查看）</div>';
+      return;
+    }}
+    const chart = LightweightCharts.createChart(mainEl, {{
+      layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
+      grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
+      rightPriceScale: {{ borderColor: '#2b2b43' }},
+      timeScale: {{ borderColor: '#2b2b43', timeVisible: true, secondsVisible: false }},
+      crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
+      height: mainEl.offsetHeight || 300,
+    }});
+    _chart5m = chart;
+    const c = klineState.colors;
+    const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {{
+      upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
+      wickUpColor: '#d62828', wickDownColor: '#0077b6',
+    }});
+    candle.setData(bars.map(b => ({{ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }})));
+    klineState.ma.forEach(ma => {{
+      if (ma.p <= 0) return;
+      chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }})
+        .setData(calcMA5m(bars, ma.p));
+    }});
+    const pane = chart.addPane();
+    const vol = pane.addSeries(LightweightCharts.HistogramSeries, {{ priceFormat: {{ type: 'volume' }} }});
+    vol.setData(bars.map(b => ({{ time: b[0], value: b[5], color: b[4] >= b[1] ? c.up + '66' : c.down + '66' }})));
+    chart.timeScale().fitContent();
+  }});
+}}
 /* ---- K 线渲染（LightweightCharts v5 原生分栏：主图 + 最多3个指标栏，自动对齐与十字线贯穿） ---- */
 let _chart = null;
 /* K 线渲染目标：'candidate'（实盘候选池）、'top'（涨停股）、'detail'（策略选股）。
@@ -1803,6 +1985,7 @@ function renderKline(k) {{
   }});
 
   _chart.timeScale().fitContent();
+  setDefaultRange(_chart, data);
   showDayInfo(_chart, candle, data, limitMap);
 }}
 
@@ -1837,9 +2020,11 @@ function selectStock(code) {{
   if (!k || k.ohlcv.length === 0) {{
     destroyKline();
     document.getElementById(klineEl('kline')).innerHTML = '<div id="' + klineEl('kline-main') + '"><div class="empty-hint">暂无 K 线数据</div></div>';
+    destroyKline5m();
+    document.getElementById(klineEl('kline-5m')).innerHTML = '<div id="' + klineEl('kline-5m-main') + '"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div>';
     return;
   }}
-  requestAnimationFrame(() => renderKline(k));
+  requestAnimationFrame(() => {{ renderKline(k); renderKline5m(code, klineHighlight[klineTarget]); }});
 }}
 
 /* ---- MA 配置面板 ---- */
@@ -2607,6 +2792,7 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
         kline.setdefault(_code, _val)
 
     # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
+    five_min = _build_five_min(strategies)
     data = {
         "strategies": strategies,
         "backtest": backtest,
@@ -2614,6 +2800,7 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
         "top": top,
         "kline": kline,
         "strategy_detail": strategy_detail,
+        "fiveMin": five_min,
         "sentiment": BUILD_SENTIMENT_KLINE(),
     }
 
@@ -2703,6 +2890,7 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
         kline.setdefault(_code, _val)
 
     # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
+    five_min = _build_five_min(strategies)
     data = {
         "strategies": strategies,
         "backtest": backtest,
@@ -2710,6 +2898,7 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
         "top": top,
         "kline": kline,
         "strategy_detail": strategy_detail,
+        "fiveMin": five_min,
         "sentiment": BUILD_SENTIMENT_KLINE(),
     }
 
