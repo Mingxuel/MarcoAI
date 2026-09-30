@@ -711,21 +711,24 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 .date-item.active, .stock-item.active {{ background: #3a4150; color: #ffffff; }}
 .stock-count {{ color: #9aa0a6; font-size: 12px; margin-left: 6px; }}
 .stock-market {{ color: #6b7280; font-size: 11px; margin-left: 4px; }}
-#kline, #top-kline {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+#kline, #top-kline {{ width: auto; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+/* 日线(左) 与 5 分钟(右) 左右并排：各占一半宽度、整列高度 */
+.kline-split {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: row; gap: 12px; }}
+.kline-5m-col {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #kline-main {{ flex: 3 1 0; min-height: 0; }}
 /* K线容器兜底纯黑，防止图表背景异常时透出底色 */
 #bt-kline-main, #kline-main, #detail-kline-main {{ background: #000000; }}
 /* 策略选股右侧 K 线容器（与实盘候选池同规格，填满列高） */
-#detail-kline {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+#detail-kline {{ width: auto; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #detail-kline-main {{ flex: 3 1 0; min-height: 0; }}
 #panel-detail.active .detail-layout > div {{ display: flex; flex-direction: column; min-height: 0; }}
 #panel-detail.active .detail-layout > div:first-child > .card {{ flex: 1 1 0; min-height: 0; }}
 /* 重要日期高亮框：覆盖层需父容器定位基准 */
 #kline-main, #top-kline-main, #detail-kline-main {{ position: relative; flex: 3 1 0; min-height: 0; }}
-/* 5 分钟 K 线容器：与日线各占约一半高度，置于日线下方 */
+/* 5 分钟 K 线容器：置于右侧栏，与日线左右并排，各占一半宽度 */
 #kline-5m, #top-kline-5m, #detail-kline-5m {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #kline-5m-main, #top-kline-5m-main, #detail-kline-5m-main {{ position: relative; flex: 3 1 0; min-height: 0; background: #000000; }}
-.kline-subhead {{ font-size: 13px; color: #9aa0a6; margin: 10px 0 6px; border-top: 1px solid #252c3f; padding-top: 8px; }}
+.kline-subhead {{ font-size: 13px; color: #9aa0a6; margin: 0 0 6px; }}
 .kline-hlbox {{ position: absolute; pointer-events: none; z-index: 5;
   border: 1px solid #ffffff; border-radius: 2px;
   background: rgba(255, 255, 255, .10); box-shadow: 0 0 10px rgba(255, 255, 255, .5); }}
@@ -888,11 +891,15 @@ table.detail-table tbody tr {{ cursor: pointer; }}
         <div class="kline-bars" id="kline-bars"></div>
         <div class="kline-ma-config" id="kline-ma-config"></div>
         <div class="kline-color-config" id="kline-color-config"></div>
-        <div id="kline">
-          <div id="kline-main"><div class="empty-hint">请选择候选池日期与个股</div></div>
+        <div class="kline-split">
+          <div id="kline">
+            <div id="kline-main"><div class="empty-hint">请选择候选池日期与个股</div></div>
+          </div>
+          <div class="kline-5m-col">
+            <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+            <div id="kline-5m"><div id="kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
+          </div>
         </div>
-        <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
-        <div id="kline-5m"><div id="kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
       </div>
     </div>
   </div>
@@ -930,11 +937,15 @@ table.detail-table tbody tr {{ cursor: pointer; }}
       <div class="kline-bars" id="detail-kline-bars"></div>
       <div class="kline-ma-config" id="detail-kline-ma-config"></div>
       <div class="kline-color-config" id="detail-kline-color-config"></div>
-      <div id="detail-kline">
-        <div id="detail-kline-main"><div class="empty-hint">请点击左侧任意一行查看 K 线</div></div>
+      <div class="kline-split">
+        <div id="detail-kline">
+          <div id="detail-kline-main"><div class="empty-hint">请点击左侧任意一行查看 K 线</div></div>
+        </div>
+        <div class="kline-5m-col">
+          <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+          <div id="detail-kline-5m"><div id="detail-kline-5m-main"><div class="empty-hint">请点击左侧任意一行查看 5 分钟 K 线</div></div></div>
+        </div>
       </div>
-      <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
-      <div id="detail-kline-5m"><div id="detail-kline-5m-main"><div class="empty-hint">请点击左侧任意一行查看 5 分钟 K 线</div></div></div>
     </div>
   </div>
 </div>
@@ -969,11 +980,15 @@ table.detail-table tbody tr {{ cursor: pointer; }}
         <div class="kline-bars" id="top-bars"></div>
         <div class="kline-ma-config" id="top-ma-config"></div>
         <div class="kline-color-config" id="top-color-config"></div>
-        <div id="top-kline">
-          <div id="top-kline-main"><div class="empty-hint">请选择涨停日期与个股</div></div>
+        <div class="kline-split">
+          <div id="top-kline">
+            <div id="top-kline-main"><div class="empty-hint">请选择涨停日期与个股</div></div>
+          </div>
+          <div class="kline-5m-col">
+            <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+            <div id="top-kline-5m"><div id="top-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
+          </div>
         </div>
-        <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
-        <div id="top-kline-5m"><div id="top-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
       </div>
     </div>
   </div>
