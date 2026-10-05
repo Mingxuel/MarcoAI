@@ -36,7 +36,34 @@ def UPDATE_STRATEGY_TPO_M5():
     )
 
 
-def _UPDATE_STRATEGY_TPO(strategy_name: str, strategy_dir: str, market_index: int, max_ratio: float = 3.0, sort_by_market: bool = False, sort_by_vol_ratio: bool = False, sort_by_vol_ratio_asc: bool = False, require_first_plate: bool = True, market_min: float = 2e10, market_max: float = float("inf"), ma5_predict: bool = False, stop_loss: float = -0.06):
+def UPDATE_STRATEGY_TPO_M5_MID():
+    """策略 TPO_M5_MID：选股逻辑同 TPO_M5，市值区间改为 100 亿(含) ~ 200 亿(不含)。
+
+    与 TPO_M5（200 亿~1300 亿）、TPO_M5_SMALL（<100 亿）构成互不重叠的三档市值分档：
+    恰好 200 亿归入 TPO_M5，故此处上界取「不含」。
+    """
+    _UPDATE_STRATEGY_TPO(
+        "TPO_M5_MID", PATH_AIDATA_STRATEGY_TPO_M5_MID(),
+        market_index=2, max_ratio=3.0, sort_by_market=True,
+        market_min=1e10, market_max=2e10, market_max_inclusive=False,
+        ma5_predict=True, stop_loss=-0.05,
+    )
+
+
+def UPDATE_STRATEGY_TPO_M5_SMALL():
+    """策略 TPO_M5_SMALL：选股逻辑同 TPO_M5，市值区间改为小于 100 亿（不含 100 亿）。
+
+    100 亿归入 TPO_M5_MID，故此处上界取「不含」。
+    """
+    _UPDATE_STRATEGY_TPO(
+        "TPO_M5_SMALL", PATH_AIDATA_STRATEGY_TPO_M5_SMALL(),
+        market_index=2, max_ratio=3.0, sort_by_market=True,
+        market_min=0.0, market_max=1e10, market_max_inclusive=False,
+        ma5_predict=True, stop_loss=-0.05,
+    )
+
+
+def _UPDATE_STRATEGY_TPO(strategy_name: str, strategy_dir: str, market_index: int, max_ratio: float = 3.0, sort_by_market: bool = False, sort_by_vol_ratio: bool = False, sort_by_vol_ratio_asc: bool = False, require_first_plate: bool = True, market_min: float = 2e10, market_max: float = float("inf"), market_max_inclusive: bool = True, ma5_predict: bool = False, stop_loss: float = -0.06):
     """TPO 策略通用选股：生成回测数据到 Strategy/{strategy_name}/。
 
     写入 T-0 日全部加工数据（29列，末列为本策略止损线），供回测使用。
@@ -56,7 +83,7 @@ def _UPDATE_STRATEGY_TPO(strategy_name: str, strategy_dir: str, market_index: in
     stock_codes = STOCK_CODES_ALL()
     trading_dates = TRADING_DATES()
     with ProcessPoolExecutor(max_workers=32) as pool:
-        fn = partial(GENERATE_STRATEGY_TPO, stock_codes, strategy_dir, market_index, max_ratio, sort_by_market, sort_by_vol_ratio, sort_by_vol_ratio_asc, require_first_plate, market_min, market_max, ma5_predict, stop_loss)
+        fn = partial(GENERATE_STRATEGY_TPO, stock_codes, strategy_dir, market_index, max_ratio, sort_by_market, sort_by_vol_ratio, sort_by_vol_ratio_asc, require_first_plate, market_min, market_max, market_max_inclusive, ma5_predict, stop_loss)
         future_to_date = {pool.submit(fn, d): d for d in trading_dates}
         with tqdm(total=len(future_to_date), desc=f"STRATEGY {strategy_name}", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_date):
@@ -65,7 +92,7 @@ def _UPDATE_STRATEGY_TPO(strategy_name: str, strategy_dir: str, market_index: in
                 bar.update(1)
     return f"STRATEGY {strategy_name}: 完成 {len(trading_dates)} 个交易日"
 
-def GENERATE_STRATEGY_TPO(stock_codes: list[str], strategy_dir: str, market_index: int, max_ratio: float, sort_by_market: bool, sort_by_vol_ratio: bool, sort_by_vol_ratio_asc: bool, require_first_plate: bool, market_min: float, market_max: float, ma5_predict: bool, stop_loss: float, trading_date: str):
+def GENERATE_STRATEGY_TPO(stock_codes: list[str], strategy_dir: str, market_index: int, max_ratio: float, sort_by_market: bool, sort_by_vol_ratio: bool, sort_by_vol_ratio_asc: bool, require_first_plate: bool, market_min: float, market_max: float, market_max_inclusive: bool, ma5_predict: bool, stop_loss: float, trading_date: str):
     """worker（回测数据）: 以 trading_date 为 T-0，逐股按加工字段判断是否满足完整 TPO 形态。
 
     写入 T-0 日全部加工数据（29列，末列为止损线）到 Strategy/{strategy}/{T-0日期}，供回测使用。
@@ -117,8 +144,15 @@ def GENERATE_STRATEGY_TPO(stock_codes: list[str], strategy_dir: str, market_inde
             continue
         market_record = {3: record_3, 2: record_2, 1: record_1}[market_index]
         market_value = float(info[1]) * market_record.close
-        if market_value < market_min or market_value > market_max:
+        if market_value < market_min:
             continue
+        if market_max_inclusive:
+            if market_value > market_max:
+                continue
+        else:
+            # 上界「不含」：用于相邻市值分档互不重叠（如 MID 上界 200 亿归 TPO_M5）
+            if market_value >= market_max:
+                continue
         # T-2 / T-3 量比
         vol_ratio = (record_2.volume / record_3.volume) if (record_3.volume and record_3.volume > 0) else 0.0
         data.append((record_0, code, name, market_value, vol_ratio))

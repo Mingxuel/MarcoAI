@@ -52,6 +52,20 @@ def PATH_AIDATA_TOP() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "TOP")
 
 
+def PATH_AIDATA_TOP_FIRST() -> str:
+    return os.path.join(PROJECT_ROOT, "AIData", "TOP_FIRST")
+
+
+def PATH_AIDATA_TOP_FIRST_VOL() -> str:
+    """首板涨停放量股：AIData/TOP_FIRST_VOL（T-3 首板涨停放量 + T-2 上涨放量未涨停，不限市值）"""
+    return os.path.join(PROJECT_ROOT, "AIData", "TOP_FIRST_VOL")
+
+
+def PATH_AIDATA_TOP_FIRST_VOL_SUN() -> str:
+    """首板涨停放量连阳股：AIData/TOP_FIRST_VOL_SUN（TOP_FIRST_VOL 基础上再加 T-1 收>开 + T-1 创新高）"""
+    return os.path.join(PROJECT_ROOT, "AIData", "TOP_FIRST_VOL_SUN")
+
+
 def PATH_AIDATA_INFO_SZ100() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "INFO", "SZ100.xlsx")
 
@@ -153,6 +167,16 @@ def PATH_AIDATA_STRATEGY_TPO_TOP() -> str:
 
 def PATH_AIDATA_STRATEGY_TPO_M5() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "Strategy", "TPO_M5")
+
+
+def PATH_AIDATA_STRATEGY_TPO_M5_MID() -> str:
+    """TPO_M5_MID：市值 100 亿(含) ~ 200 亿(不含)"""
+    return os.path.join(PROJECT_ROOT, "AIData", "Strategy", "TPO_M5_MID")
+
+
+def PATH_AIDATA_STRATEGY_TPO_M5_SMALL() -> str:
+    """TPO_M5_SMALL：市值 < 100 亿(不含 100 亿)"""
+    return os.path.join(PROJECT_ROOT, "AIData", "Strategy", "TPO_M5_SMALL")
 
 
 def PATH_AIDATA_1D_MOTION_PRICE() -> str:

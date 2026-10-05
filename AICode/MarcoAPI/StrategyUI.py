@@ -34,12 +34,25 @@ from AICode.MarcoAPI.Backtest import (
     _stock_return_5m, _sell_price_5m, _sell_price_1d, _trade_net_return,
 )
 from AICode.MarcoAPI.Update.Path import (
-    PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP, PATH_AIDATA_5M
+    PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP,
+    PATH_AIDATA_TOP_FIRST, PATH_AIDATA_TOP_FIRST_VOL, PATH_AIDATA_TOP_FIRST_VOL_SUN, PATH_AIDATA_5M
 )
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
-from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS
+from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS, UPDATE_1D_ORIGIN, UPDATE_1D
 from AICode.MarcoAPI.Update.SZ200Strategy import BUILD_SENTIMENT_KLINE
-from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO
+from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO, UPDATE_STOCK_CODES
+from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES
+from AICode.MarcoAPI.Update.SZ200Top import UPDATE_TOP, UPDATE_TOP_FIRST, UPDATE_TOP_FIRST_VOL, UPDATE_TOP_FIRST_VOL_SUN
+from AICode.MarcoAPI.Update.SZ200Strategy import (
+    UPDATE_STRATEGY_TPO_3, UPDATE_STRATEGY_TPO_TOP, UPDATE_STRATEGY_TPO_M5,
+    UPDATE_STRATEGY_TPO_M5_MID, UPDATE_STRATEGY_TPO_M5_SMALL,
+)
+from AICode.MarcoAPI.Update.SZ200Target import (
+    UPDATE_TARGET_TPO_3, UPDATE_TARGET_TPO_TOP, UPDATE_TARGET_TPO_M5,
+    UPDATE_TARGET_TPO_M5_MID, UPDATE_TARGET_TPO_M5_SMALL,
+)
+from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
+from AICode.MarcoAPI.Update.SZ200TPO_M5_HL import UPDATE_TPO_M5_HL
 
 # K 线内嵌【全部历史】日线（1D_ORIGIN 有多少就嵌多少，不再截断到 120 根）
 
@@ -53,6 +66,7 @@ THS_BLOCK_NAME = "blockstockV3.xml"
 PLACEHOLDER_TPO3  = "===TPO3==="
 PLACEHOLDER_TPO31 = "===TPO31==="
 PLACEHOLDER_TOP   = "===TOP==="   # 当天（最新交易日）涨停股
+PLACEHOLDER_HISTORY = "===HISTORY==="   # 首板涨停放量连阳股（TAB7）最新 20 日去重全部股票
 
 
 def _read_text(path):
@@ -301,9 +315,10 @@ def _list_strategies() -> list[str]:
     # 排除 RESULT 与 _rotate_dir 产生的 .old_ 备份目录（否则会被当成策略列进下拉框）
     names = [d for d in os.listdir(base)
              if os.path.isdir(os.path.join(base, d)) and d != "RESULT" and ".old_" not in d]
-    # TPO_M5 优先排首位，其余按字母序
-    ordered = [n for n in names if n == "TPO_M5"]
-    rest = sorted(n for n in names if n != "TPO_M5")
+    # TPO_M5 系列（大/中/小市值三档）优先排前，其余按字母序
+    _m5 = ("TPO_M5", "TPO_M5_MID", "TPO_M5_SMALL")
+    ordered = [n for n in _m5 if n in names]
+    rest = sorted(n for n in names if n not in _m5)
     return ordered + rest
 
 
@@ -386,6 +401,115 @@ def _load_top() -> dict[str, list[list[str]]]:
     return dict(sorted(top.items(), key=lambda x: x[0], reverse=True))
 
 
+def _load_top_first() -> dict[str, list[list[str]]]:
+    """读取首板涨停列表 {日期: [[code, name, market_value], ...]}（来自 AIData/TOP_FIRST）。
+
+    格式与 _load_top 完全一致（仅数据源改为 TOP_FIRST），按流通市值倒序、日期倒序。
+    """
+    base = PATH_AIDATA_TOP_FIRST()
+    if not os.path.isdir(base):
+        return {}
+    top_first: dict[str, list[list[str]]] = {}
+    close_cache: dict[str, dict[str, float]] = {}
+    for date in sorted(os.listdir(base)):
+        if not date.isdigit():
+            continue
+        path = os.path.join(base, date)
+        codes = [line.strip() for line in _read_text(path).splitlines() if line.strip()]
+        rows = []
+        for code in codes:
+            norm = code if "." in code else (f"{code}.SH" if code.startswith("6") else f"{code}.SZ")
+            info = GET_STOCK_INFO(norm)
+            if info is None or info[1] <= 0:
+                continue
+            closes = close_cache.get(norm)
+            if closes is None:
+                closes = _stock_close_map(norm)
+                close_cache[norm] = closes
+            close = closes.get(date)
+            if close is None or close <= 0:
+                continue
+            name = info[0]
+            market_value = float(info[1]) * close
+            rows.append([norm, name, f"{market_value:.2f}"])
+        rows.sort(key=lambda r: float(r[2]), reverse=True)
+        top_first[date] = rows
+    return dict(sorted(top_first.items(), key=lambda x: x[0], reverse=True))
+
+
+def _load_top_first_vol() -> dict[str, list[list[str]]]:
+    """读取首板涨停放量股 {日期: [[code, name, market_value], ...]}（来自 AIData/TOP_FIRST_VOL）。
+
+    与 _load_top/_load_top_first 格式一致（按流通市值倒序、日期倒序），但**不做市值筛选**：
+    市值仅用于展示与排序；缺少流通股本或收盘价的个股仍保留（市值记 0），
+    因为本 TAB 的定义就是忽略市值条件。
+    """
+    base = PATH_AIDATA_TOP_FIRST_VOL()
+    if not os.path.isdir(base):
+        return {}
+    out: dict[str, list[list[str]]] = {}
+    close_cache: dict[str, dict[str, float]] = {}
+    for date in sorted(os.listdir(base)):
+        if not date.isdigit():
+            continue
+        path = os.path.join(base, date)
+        codes = [line.strip() for line in _read_text(path).splitlines() if line.strip()]
+        rows = []
+        for code in codes:
+            norm = code if "." in code else (f"{code}.SH" if code.startswith("6") else f"{code}.SZ")
+            info = GET_STOCK_INFO(norm)
+            name = info[0] if info else norm
+            market_value = 0.0
+            if info is not None and info[1] > 0:
+                closes = close_cache.get(norm)
+                if closes is None:
+                    closes = _stock_close_map(norm)
+                    close_cache[norm] = closes
+                close = closes.get(date)
+                if close is not None and close > 0:
+                    market_value = float(info[1]) * close
+            rows.append([norm, name, f"{market_value:.2f}"])
+        rows.sort(key=lambda r: float(r[2]), reverse=True)
+        out[date] = rows
+    return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
+
+
+def _load_top_first_vol_sun() -> dict[str, list[list[str]]]:
+    """读取首板涨停放量连阳股 {日期: [[code, name, market_value], ...]}（来自 AIData/TOP_FIRST_VOL_SUN）。
+
+    与 _load_top_first_vol 同口径（不做市值筛选，市值仅用于展示/排序），只是多了 T-1 收>开 + T-1 创新高
+    两个过滤条件。格式、排序与 _load_top_first_vol 完全一致。
+    """
+    base = PATH_AIDATA_TOP_FIRST_VOL_SUN()
+    if not os.path.isdir(base):
+        return {}
+    out: dict[str, list[list[str]]] = {}
+    close_cache: dict[str, dict[str, float]] = {}
+    for date in sorted(os.listdir(base)):
+        if not date.isdigit():
+            continue
+        path = os.path.join(base, date)
+        codes = [line.strip() for line in _read_text(path).splitlines() if line.strip()]
+        rows = []
+        for code in codes:
+            norm = code if "." in code else (f"{code}.SH" if code.startswith("6") else f"{code}.SZ")
+            info = GET_STOCK_INFO(norm)
+            name = info[0] if info else norm
+            market_value = 0.0
+            if info is not None and info[1] > 0:
+                closes = close_cache.get(norm)
+                if closes is None:
+                    closes = _stock_close_map(norm)
+                    close_cache[norm] = closes
+                close = closes.get(date)
+                if close is not None and close > 0:
+                    market_value = float(info[1]) * close
+            rows.append([norm, name, f"{market_value:.2f}"])
+        rows.sort(key=lambda r: float(r[2]), reverse=True)
+        out[date] = rows
+    return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
+
+
 def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: int | None = None) -> dict[str, dict[str, Any]]:
     """读取候选股的【全部历史】原始日线（1D_ORIGIN）。
 
@@ -421,8 +545,8 @@ def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: 
     return kline
 
 
-def _read_5m_window(code: str, anchor_date: str, days_before: int = 5, days_span: int = 20) -> list[list]:
-    """读取单只股票 5 分钟 K 线，截取其「重要日期(T)前 5 个交易日」起、最多 20 个交易日的窗口。
+def _read_5m_window(code: str, anchor_date: str, days_before: int = 5, days_span: int = 8) -> list[list]:
+    """读取单只股票 5 分钟 K 线，截取其「重要日期(T)前 5 个交易日」起、最多 8 个交易日的窗口。
 
     返回紧凑数组 [unix_seconds, open, high, low, close, volume]（unix 秒，前端直接作为 time 使用），
     避免把全部 5M 历史塞进 HTML。
@@ -472,38 +596,155 @@ def _read_5m_window(code: str, anchor_date: str, days_before: int = 5, days_span
     return bars
 
 
-def _build_five_min(strategies: list[str]) -> dict[str, list[list]]:
-    """为候选池 / 涨停股 / 策略选股详情中出现的个股，预生成窗口化（T-5 起约 20 日）的 5 分钟数据。
+def _read_5m_windows(code: str, anchors: list[str], days_before: int = 5, days_span: int = 8,
+                     days_after: int | None = None) -> dict[str, list]:
+    """一次读取某股 5M 文件，为多个锚定日期各切一个窗口，返回 {锚定日: bars}。
 
-    以每只个股在池中出现的【最晚日期】作为锚定日 T（默认选中即最新日），离线单文件模式下直接内嵌；
-    在线服务模式下，前端仍可按实际选中日期通过 /api/5m 精确取数。
+    默认窗口口径与 `_read_5m_window` 一致（锚定日前 5 个交易日起、最多 8 个交易日）。
+
+    days_after 给定时启用「居中」：让锚定日尽量落在窗口中间（前面 days_span-1-days_after 天、
+    后面 days_after 天）。若锚定日之后的数据不足（如最新日期没有未来数据），自动向前补足，
+    保证窗口总长度不变、仍能看满上下文。
+
+    只解析一次文件：涨停/首板要按出现日期批量生成窗口，若逐日调用原函数会产生上万次
+    重复读盘，明显拖慢一条龙更新。
     """
-    anchor: dict[str, str] = {}
-    for name in strategies:
-        for d, rows in _load_candidates(name).items():
-            for r in rows:
-                c = r[0]
-                if d > anchor.get(c, ""):
-                    anchor[c] = d
-    top = _load_top()
-    for d, rows in top.items():
-        for r in rows:
-            c = r[0]
-            if d > anchor.get(c, ""):
-                anchor[c] = d
+    path = os.path.join(PATH_AIDATA_5M(), code)
+    if not os.path.isfile(path):
+        return {}
+    raw: list[tuple] = []
+    for line in _read_text(path).splitlines():
+        p = line.split("|")
+        if len(p) < 6:
+            continue
+        ts = p[0].strip()
+        if not ts:
+            continue
+        try:
+            dt = _dt.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            vals = [float(p[1]), float(p[2]), float(p[3]), float(p[4]), float(p[5])]
+        except (ValueError, TypeError):
+            continue
+        raw.append((dt, vals))
+    if not raw:
+        return {}
+    by_day: dict = {}
+    for dt, vals in raw:
+        by_day.setdefault(dt.date(), []).append((dt, vals))
+    udays = sorted(by_day.keys())
+    out: dict[str, list] = {}
+    for anchor in anchors:
+        try:
+            if len(str(anchor or "")) == 8 and str(anchor).isdigit():
+                a = _dt.datetime.strptime(str(anchor), "%Y%m%d").date()
+            else:
+                a = _dt.datetime.strptime(str(anchor), "%Y-%m-%d").date()
+        except Exception:
+            continue
+        idx = None
+        for i, d in enumerate(udays):
+            if d >= a:
+                idx = i
+                break
+        if idx is None:
+            idx = len(udays) - 1
+        if days_after is not None:
+            # 居中：锚定日后保留 days_after 天；后面不够（如最新日期）就自动向前补足
+            after = max(0, min(days_after, len(udays) - 1 - idx))
+            before = max(0, days_span - 1 - after)
+        else:
+            before = days_before
+        start = max(0, idx - before)
+        end = min(len(udays), start + days_span)
+        bars: list[list] = []
+        for day in udays[start:end]:
+            for dt, vals in by_day.get(day, []):
+                bars.append([int(dt.timestamp()), round(vals[0], 2), round(vals[1], 2),
+                             round(vals[2], 2), round(vals[3], 2), round(vals[4], 0)])
+        if bars:
+            out[str(anchor)] = bars
+    return out
+
+
+def _build_five_min(strategies: list[str]) -> dict[str, dict]:
+    """离线内嵌用：为「策略选股详情」出现的个股生成【按日期精确命中】的 5 分钟窗口，控制 HTML 体积、加快加载。
+
+    返回 five_min[code] = { 窗口键: bars }：
+      - "YYYY-MM-DD"：该股票在策略选股中出现的具体日期(T-0)窗口，离线点击即精确命中、包含当天 5 分钟；
+      - "__default__"：该股出现的最晚日期窗口，作为兜底（部分同时出现在候选池/涨停股面板的回退）。
+    涨停股 / 首板面板此前不内嵌 5 分钟（离线右侧图显示提示）。现由 `_extend_five_min_top` 为其个股补 `__default__`
+    最新窗口，使其离线也能看 5 分钟图（无 5M 文件的个股仍走离线提示）。
+    窗口长度固定 T-3 起 8 个交易日（首日为 T-3 首板涨停日），与日线图对齐；在线模式经 /api/5m 取数不受此限。
+    """
+    detail_dates: dict[str, set[str]] = {}
     detail = _load_strategy_detail(strategies)
     for _d in detail.values():
         for _date_key, _rows in _d.items():
             for _it in _rows:
                 c = str(_it.get("code") or "")
-                if c and _date_key > anchor.get(c, ""):
-                    anchor[c] = _date_key
-    five_min: dict[str, list[list]] = {}
-    for code, d in anchor.items():
-        bars = _read_5m_window(code, d)
-        if bars:
-            five_min[code] = bars
+                if c:
+                    detail_dates.setdefault(c, set()).add(_date_key)
+    five_min: dict[str, dict] = {}
+    for code, dates in detail_dates.items():
+        out: dict[str, list] = {}
+        latest = max(dates)   # 兜底锚：该股最晚出现日
+        out["__default__"] = _read_5m_window(code, latest, days_before=3)
+        for dt in dates:
+            dash = f"{dt[:4]}-{dt[4:6]}-{dt[6:8]}"   # 与前端 ymdDash 一致，便于离线精确命中
+            out[dash] = _read_5m_window(code, dt, days_before=3)
+        out = {k: v for k, v in out.items() if v}
+        if out:
+            five_min[code] = out
     return five_min
+
+
+def _collect_code_dates(tab: dict) -> dict[str, set[str]]:
+    """把涨停/首板数据 {日期YYYYMMDD: [[code, name, market], ...]} 整理成 {股票代码: {日期集合}}，
+    用于按其各自出现的日期精确生成 5 分钟窗口。"""
+    m: dict[str, set[str]] = {}
+    for date_key, rows in (tab or {}).items():
+        for r in rows or []:
+            code = str(r[0]) if r else ""
+            if code:
+                m.setdefault(code, set()).add(str(date_key))
+    return m
+
+
+def _extend_five_min_top(code_dates: dict[str, set[str]], five_min: dict[str, dict]) -> None:
+    """为涨停股 / 首板个股生成【按出现日期精确命中】的 5 分钟窗口（与策略选股口径一致）。
+
+    为该股在涨停/首板中出现的每一个日期各切一个窗口（含当天的 5 分钟），因此点击历史某日
+    会命中当日的 5 分钟区间，范围正确。__default__ 仍保留最晚日期窗口作兜底。
+
+    注意：早期版本只补 __default__（最新窗口），导致点击历史日期时命不中、回退显示最新区间
+    ——这正是「涨停/首板 5 分钟显示范围错误」的原因；此处已修正为按日期精确生成。
+    """
+    for code, dates in sorted(code_dates.items()):
+        if not dates:
+            continue
+        anchors = sorted(dates)
+        # 居中窗口：涨停/首板当天尽量落在区间中间（后 4 个交易日、前 3 个交易日）；
+        # 当天之后数据不足时（如最新日期）自动向前补足，窗口长度仍为 8 个交易日。
+        windows = _read_5m_windows(code, anchors, days_span=8, days_after=4)
+        if not windows:
+            continue
+        out: dict[str, list] = {}
+        for dt in anchors:
+            dash = f"{dt[:4]}-{dt[4:6]}-{dt[6:8]}"   # 与前端 ymdDash 一致，便于离线精确命中
+            if windows.get(dt):
+                out[dash] = windows[dt]
+        if windows.get(anchors[-1]):
+            out.setdefault("__default__", windows[anchors[-1]])
+        if not out:
+            continue
+        existing = five_min.get(code)
+        if existing:
+            merged = dict(existing)
+            for k, v in out.items():
+                merged.setdefault(k, v)      # 策略选股已生成的窗口优先保留
+            five_min[code] = merged
+        else:
+            five_min[code] = out
 
 
 # 左侧快捷命令侧边栏：命令按钮依赖本地服务 / marcoai:// 自定义协议，
@@ -513,6 +754,8 @@ _SIDEBAR_HTML = """<!-- ============ 左侧快捷命令侧边栏 ============ --
   <div class="brand">MarcoAI 控制台<small>策略回测 &amp; 实盘看板</small></div>
   <div class="section">数据更新</div>
   <div class="cmds" id="cmd-list"></div>
+  <div class="section">单项数据更新</div>
+  <div class="cmds" id="cmd-steps"></div>
   <div class="cmd-output">
     <div class="label">命令输出</div>
     <pre id="cmd-output"></pre>
@@ -521,14 +764,116 @@ _SIDEBAR_HTML = """<!-- ============ 左侧快捷命令侧边栏 ============ --
 """
 
 
-def _render_html(data: dict[str, Any], show_sidebar: bool = True) -> str:
+def OFFLINE_DASHBOARD_PATH() -> str:
+    """离线看板 HTML 的绝对路径。"""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "UI", "StrategyDashboardOffline.html")
+
+
+def _source_data_mtime() -> float:
+    """扫描源数据目录(AIData)下所有文件的最新修改时间。
+
+    用于判断离线看板是否已过期：只有源数据真的变动过才需要重建。
+    （重建要扫描全部个股的 5M 数据并写出数百 MB，耗时数分钟，应避免不必要的触发。）
+    """
+    latest = 0.0
+    root = PATH_AIDATA()
+    if not os.path.isdir(root):
+        return latest
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for fn in filenames:
+            try:
+                m = os.path.getmtime(os.path.join(dirpath, fn))
+            except OSError:
+                continue
+            if m > latest:
+                latest = m
+    return latest
+
+
+def OFFLINE_DASHBOARD_STATUS() -> tuple[bool, str]:
+    """返回 (是否最新, 说明文字)。
+
+    菜单「离线看板」据此判断能否直接打开：看板已是最新时无需重建，打开即为秒开。
+    源数据在上次生成之后被修改过，则需要重新生成。
+    """
+    html = OFFLINE_DASHBOARD_PATH()
+    meta = html + ".meta.json"
+    if not os.path.isfile(html):
+        return False, "尚未生成离线看板"
+    if not os.path.isfile(meta):
+        return False, "看板元信息缺失（将重新生成）"
+    try:
+        with open(meta, "r", encoding="utf-8") as f:
+            saved = json.load(f)
+        saved_m = float(saved.get("src_mtime", 0))
+        gen = saved.get("generated", "未知时间")
+    except Exception:
+        return False, "看板元信息损坏（将重新生成）"
+    cur = _source_data_mtime()
+    if cur > saved_m + 1.0:
+        return False, f"源数据已更新，需重新生成（看板生成于 {gen}）"
+    return True, f"已是最新，直接打开（生成于 {gen}）"
+
+
+def _write_offline_data(here: str, data: dict) -> None:
+    """离线零内嵌：把看板数据写到 UI/data/ 伴随文件（HTML 不内嵌任何数据）。
+
+    - index.js：骨架（strategies/backtest/candidates/top/top_first/strategy_detail/sentiment）
+                + 空的 kline/fiveMin + 加载基路径 _stockBase；
+    - stock/<code>.js：每只股票的日线(kline) 与 5 分钟(fiveMin) 窗口。
+    HTML 经 <script src="data/index.js"> 同步加载骨架，点击个股时再按需注入 data/stock/<code>.js。
+    """
+    data_dir = os.path.join(here, "UI", "data")
+    stock_dir = os.path.join(data_dir, "stock")
+    os.makedirs(stock_dir, exist_ok=True)
+    # 不清空旧文件：存在的会被直接覆盖；个别已下线个股的残留文件也不会被 index.js 引用，
+    # 且避免每次构建都批量删除两千多个文件（触发批量删除保护、也拖慢一条龙）。
+    # 首屏（策略回测）只需的最小骨架；其余 TAB 的数据拆成独立文件，首次进入该 TAB 才加载，
+    # 避免开页时被这些看不见的面板拖慢（index.js 由 1.42MB 降到约 0.25MB）
+    index_data = {
+        "strategies": data.get("strategies", []),
+        "backtest": data.get("backtest", {}),
+        "sentiment": data.get("sentiment", {}),
+        "top": {}, "top_first": {}, "top_first_vol": {}, "top_first_vol_sun": {}, "candidates": {}, "strategy_detail": {},   # 占位，进对应 TAB 后填充
+        "kline": {},
+        "fiveMin": {},
+        "_stockBase": "data/stock/",
+    }
+    with open(os.path.join(data_dir, "index.js"), "w", encoding="utf-8") as f:
+        f.write("window.__IDX = " + json.dumps(index_data, ensure_ascii=False) + ";\n")
+
+    # 按 TAB 拆分的数据文件：加载后把占位填充进 window.__IDX
+    for fname, key in (("top.js", "top"), ("top_first.js", "top_first"),
+                       ("top_first_vol.js", "top_first_vol"),
+                       ("top_first_vol_sun.js", "top_first_vol_sun"),
+                       ("candidates.js", "candidates"), ("detail.js", "strategy_detail")):
+        with open(os.path.join(data_dir, fname), "w", encoding="utf-8") as f:
+            f.write("Object.assign(window.__IDX, "
+                    + json.dumps({key: data.get(key, {})}, ensure_ascii=False) + ");\n")
+    kline = data.get("kline", {}) or {}
+    five_min = data.get("fiveMin", {}) or {}
+    all_codes = set(kline.keys()) | set(five_min.keys())
+    for code in all_codes:
+        sf = os.path.join(stock_dir, str(code).replace("/", "_").replace("\\", "_") + ".js")
+        obj = {"kline": kline.get(code), "fiveMin": five_min.get(code, {})}
+        with open(sf, "w", encoding="utf-8") as f:
+            f.write("window.__STK = window.__STK || {};\n")
+            f.write("window.__STK[%s] = %s;\n" % (json.dumps(code), json.dumps(obj, ensure_ascii=False)))
+    print(f"STRATEGY_UI: 离线数据已写出 {len(all_codes)} 只个股到 {stock_dir}")
+
+
+def _render_html(data: dict[str, Any], show_sidebar: bool = True, external: bool = False) -> str:
     payload = json.dumps(data, ensure_ascii=False)
     strategies_json = json.dumps(data.get("strategies", []), ensure_ascii=False)
     sidebar_html = _SIDEBAR_HTML if show_sidebar else ""
-    return f"""<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="zh">
 <head>
+<script>window.__P={{t0:performance.now(),loads:[]}};</script>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>策略回测 & 实盘目标股看板</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='64' y2='64'%3E%3Cstop offset='0' stop-color='%232b6cb0'/%3E%3Cstop offset='1' stop-color='%231d4ed8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 44 L26 34 L34 40 L48 24' stroke='white' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M48 24 L42 24 M48 24 L48 30' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Crect x='30' y='28' width='5' height='12' rx='1.5' fill='%23f59e0b'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -701,33 +1046,33 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 @media (max-width: 1000px) {{ .cand-layout {{ grid-template-columns: 1fr; }} }}
 .date-list, .stock-list {{ max-height: 62vh; overflow-y: auto; }}
 /* 候选池 / 涨停股：三列等高，K 线填满右侧列，与左右列表顶端对齐（顶到最上面） */
-#panel-candidate.active, #panel-top.active {{ display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 0; overflow: hidden; }}
-#panel-candidate.active > .card, #panel-top.active > .card {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }}
-#panel-candidate.active .cand-layout, #panel-top.active .cand-layout {{ flex: 1 1 0; min-height: 0; align-items: stretch; }}
-#panel-candidate.active .cand-layout > div, #panel-top.active .cand-layout > div {{ display: flex; flex-direction: column; min-height: 0; }}
-#panel-candidate .date-list, #panel-candidate .stock-list, #panel-top .date-list, #panel-top .stock-list {{ flex: 1 1 0; min-height: 0; max-height: none; }}
+#panel-candidate.active, #panel-top.active, #panel-top_first.active, #panel-top_first_vol.active, #panel-top_first_vol_sun.active {{ display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 0; overflow: hidden; }}
+#panel-candidate.active > .card, #panel-top.active > .card, #panel-top_first.active > .card, #panel-top_first_vol.active > .card, #panel-top_first_vol_sun.active > .card {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }}
+#panel-candidate.active .cand-layout, #panel-top.active .cand-layout, #panel-top_first.active .cand-layout, #panel-top_first_vol.active .cand-layout, #panel-top_first_vol_sun.active .cand-layout {{ flex: 1 1 0; min-height: 0; align-items: stretch; }}
+#panel-candidate.active .cand-layout > div, #panel-top.active .cand-layout > div, #panel-top_first.active .cand-layout > div, #panel-top_first_vol.active .cand-layout > div, #panel-top_first_vol_sun.active .cand-layout > div {{ display: flex; flex-direction: column; min-height: 0; }}
+#panel-candidate .date-list, #panel-candidate .stock-list, #panel-top .date-list, #panel-top .stock-list, #panel-top_first .date-list, #panel-top_first .stock-list, #panel-top_first_vol .date-list, #panel-top_first_vol .stock-list, #panel-top_first_vol_sun .date-list, #panel-top_first_vol_sun .stock-list {{ flex: 1 1 0; min-height: 0; max-height: none; }}
 .date-item, .stock-item {{ padding: 7px 10px; cursor: pointer; border-radius: 6px; font-size: 13px; margin-bottom: 2px; }}
 .date-item:hover, .stock-item:hover {{ background: #1f2530; }}
 .date-item.active, .stock-item.active {{ background: #3a4150; color: #ffffff; }}
 .stock-count {{ color: #9aa0a6; font-size: 12px; margin-left: 6px; }}
 .stock-market {{ color: #6b7280; font-size: 11px; margin-left: 4px; }}
-#kline, #top-kline {{ width: auto; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
-/* 日线(左) 与 5 分钟(右) 左右并排：各占一半宽度、整列高度 */
+#kline, #top-kline, #top_first-kline, #top_first_vol-kline, #top_first_vol_sun-kline, #detail-kline {{ width: auto; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+/* 日线(左) 与 5 分钟(右) 左右并排：日线:5分钟 = 1:2（整列高度） */
 .kline-split {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: row; gap: 12px; }}
-.kline-5m-col {{ flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+.kline-5m-col {{ flex: 2 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #kline-main {{ flex: 3 1 0; min-height: 0; }}
 /* K线容器兜底纯黑，防止图表背景异常时透出底色 */
-#bt-kline-main, #kline-main, #detail-kline-main {{ background: #000000; }}
+#bt-kline-main, #kline-main, #top-kline-main, #top_first-kline-main, #top_first_vol-kline-main, #top_first_vol_sun-kline-main, #detail-kline-main {{ background: #000000; }}
 /* 策略选股右侧 K 线容器（与实盘候选池同规格，填满列高） */
 #detail-kline {{ width: auto; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
 #detail-kline-main {{ flex: 3 1 0; min-height: 0; }}
 #panel-detail.active .detail-layout > div {{ display: flex; flex-direction: column; min-height: 0; }}
 #panel-detail.active .detail-layout > div:first-child > .card {{ flex: 1 1 0; min-height: 0; }}
 /* 重要日期高亮框：覆盖层需父容器定位基准 */
-#kline-main, #top-kline-main, #detail-kline-main {{ position: relative; flex: 3 1 0; min-height: 0; }}
-/* 5 分钟 K 线容器：置于右侧栏，与日线左右并排，各占一半宽度 */
-#kline-5m, #top-kline-5m, #detail-kline-5m {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
-#kline-5m-main, #top-kline-5m-main, #detail-kline-5m-main {{ position: relative; flex: 3 1 0; min-height: 0; background: #000000; }}
+#kline-main, #top-kline-main, #top_first-kline-main, #top_first_vol-kline-main, #top_first_vol_sun-kline-main, #detail-kline-main {{ position: relative; flex: 3 1 0; min-height: 0; }}
+/* 5 分钟 K 线容器：置于右侧栏，占 2 份（日线占 1 份，故日线:5分钟 = 1:2） */
+#kline-5m, #top-kline-5m, #top_first-kline-5m, #top_first_vol-kline-5m, #top_first_vol_sun-kline-5m, #detail-kline-5m {{ width: 100%; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }}
+#kline-5m-main, #top-kline-5m-main, #top_first-kline-5m-main, #top_first_vol-kline-5m-main, #top_first_vol_sun-kline-5m-main, #detail-kline-5m-main {{ position: relative; flex: 3 1 0; min-height: 0; background: #000000; }}
 .kline-subhead {{ font-size: 13px; color: #9aa0a6; margin: 0 0 6px; }}
 .kline-hlbox {{ position: absolute; pointer-events: none; z-index: 5;
   border: 1px solid #ffffff; border-radius: 2px;
@@ -756,7 +1101,15 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 .kline-chk {{ display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #c9cdd4; cursor: pointer; }}
 .kline-chk input {{ accent-color: #cfd4dc; }}
 .kline-ma-config {{ display: none; padding: 8px; margin-bottom: 8px; }}
+/* MA 复选框行：默认显示（不隐藏），左对齐一排，勾选=显示对应均线 */
+.kline-ma-row {{ display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 5px 8px; margin-bottom: 8px; background: #11141a; border: 1px solid #20262f; border-radius: 6px; }}
+.kline-ma-row .ma-row-tip {{ color: #9aa0a6; font-size: 12px; font-weight: 600; margin-right: 2px; }}
+.ma-chk {{ display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #c8ccd4; cursor: pointer; user-select: none; white-space: nowrap; }}
+.ma-chk input {{ cursor: pointer; margin: 0; }}
 .ma-row {{ display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }}
+/* 选股条件说明块（首板/首板涨停放量/首板涨停放量连阳 三个 TAB 标题下展示） */
+.sel-cond {{ display: block; margin: 6px 0 12px; padding: 8px 10px; background: #11141a; border: 1px solid #20262f; border-left: 3px solid #38bdf8; border-radius: 4px; font-size: 12.5px; line-height: 1.6; color: #9aa0a6; }}
+.sel-cond b {{ color: #cfd4dc; font-weight: 600; }}
 .ma-row span {{ color: #9aa0a6; font-size: 12px; width: 24px; }}
 .ma-row input[type="number"] {{ width: 60px; background: #000000; color: #e4e6eb; border: 1px solid #2a3140; border-radius: 5px; padding: 4px 6px; font-size: 12px; }}
 .ma-row input[type="color"] {{ width: 32px; height: 24px; padding: 0; border: 1px solid #2a3140; border-radius: 5px; background: none; cursor: pointer; }}
@@ -776,15 +1129,41 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 </style>
 </head>
 <body>
+<div id="__errbox" onclick="this.style.display='none'" style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#854d0e;color:#fff;font:12px/1.5 Menlo,Consolas,monospace;padding:8px 12px;white-space:pre-wrap;border-top:2px solid #f59e0b;max-height:40vh;overflow:auto;cursor:pointer">⏳ 看板脚本已启动，正在加载数据…（若一直停在此行说明脚本中途出错；点击本行可关闭）</div>
+<script>
+(function(){{
+  function box(){{ return document.getElementById('__errbox'); }}
+  function raw(m){{ var d=box(); if(d) d.textContent += m + '\\n'; }}
+  function fail(m){{ var d=box(); if(!d) return; d.style.background='#7f1d1d'; d.style.borderTopColor='#ef4444'; d.textContent = m + '\\n' + d.textContent; }}
+  window.__errboxMark = function(t){{ raw('[trace] ' + t); }};
+  window.__errboxDone = function(){{
+    var d=box(); if(!d) return;
+    d.style.background='#14532d'; d.style.borderTopColor='#22c55e';
+    d.textContent = '✅ 看板脚本执行完成（点击可关闭）';
+    setTimeout(function(){{ if(d) d.style.display='none'; }}, 3500);
+  }};
+  window.addEventListener('error', function(e){{
+    var loc = (e.filename||'') + ':' + (e.lineno||0) + ':' + (e.colno||0);
+    var st = (e.error && e.error.stack) ? ('\\n' + e.error.stack) : '';
+    fail('==== JS ERROR ====\\n' + (e.message || e.error) + '\\n  @ ' + loc + st);
+  }}, true);
+  window.addEventListener('unhandledrejection', function(e){{
+    fail('==== JS REJECT ====\\n' + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason));
+  }});
+}})();
+</script>
 {sidebar_html}
 <!-- ============ 主内容区 ============ -->
 <div class="main">
 <h1>📊 策略回测 & 实盘目标股看板</h1>
 <div class="tabs">
-  <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">策略回测</div>
-  <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">实盘候选池</div>
-  <div class="tab" data-tab="detail" onclick="switchTab('detail')">策略选股</div>
-  <div class="tab" data-tab="top" onclick="switchTab('top')">涨停股</div>
+  <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">1 策略回测</div>
+  <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
+  <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
+  <div class="tab" data-tab="top" onclick="switchTab('top')">4 涨停股</div>
+  <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">5 首板涨停股</div>
+  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">6 首板涨停放量股</div>
+  <div class="tab" data-tab="top_first_vol_sun" onclick="switchTab('top_first_vol_sun')">7 首板涨停放量连阳股</div>
 </div>
 
 <div id="panel-backtest" class="tab-panel active">
@@ -812,6 +1191,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
     </div>
     <div class="kline-bars" id="bt-bars"></div>
     <div class="kline-ma-config" id="bt-ma-config"></div>
+    <div class="kline-ma-row" id="bt-kline-ma-row"></div>
     <div class="kline-color-config" id="bt-color-config"></div>
     <div id="bt-kline"><div id="bt-kline-main"><div class="empty-hint">暂无资金 K 线数据</div></div></div>
   </div>
@@ -890,6 +1270,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
         </div>
         <div class="kline-bars" id="kline-bars"></div>
         <div class="kline-ma-config" id="kline-ma-config"></div>
+        <div class="kline-ma-row" id="kline-ma-row"></div>
         <div class="kline-color-config" id="kline-color-config"></div>
         <div class="kline-split">
           <div id="kline">
@@ -936,6 +1317,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
       </div>
       <div class="kline-bars" id="detail-kline-bars"></div>
       <div class="kline-ma-config" id="detail-kline-ma-config"></div>
+      <div class="kline-ma-row" id="detail-kline-ma-row"></div>
       <div class="kline-color-config" id="detail-kline-color-config"></div>
       <div class="kline-split">
         <div id="detail-kline">
@@ -979,6 +1361,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
         </div>
         <div class="kline-bars" id="top-bars"></div>
         <div class="kline-ma-config" id="top-ma-config"></div>
+        <div class="kline-ma-row" id="top-kline-ma-row"></div>
         <div class="kline-color-config" id="top-color-config"></div>
         <div class="kline-split">
           <div id="top-kline">
@@ -994,17 +1377,274 @@ table.detail-table tbody tr {{ cursor: pointer; }}
   </div>
 </div>
 
+<div id="panel-top_first" class="tab-panel">
+  <div class="card">
+    <h2>首板涨停股列表（按流通市值倒序；日期倒序，默认最新）</h2>
+    <div class="sel-cond"><b>选股条件：</b>当日涨停，且前一日未涨停（剔除连板）；当日日线放量（is_volume_up=1）。口径与同花顺板块 ===TOP=== 一致。</div>
+    <div class="cand-layout">
+      <div style="padding:10px">
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">首板日期</div>
+        <div class="date-list" id="top_first-date-list"></div>
+      </div>
+      <div style="padding:10px">
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">首板涨停股票（市值倒序）</div>
+        <div class="stock-list" id="top_first-stock-list"></div>
+      </div>
+      <div style="padding:10px">
+        <div class="chart-title" id="top_first-kline-title"></div>
+        <div class="kline-info" id="top_first-kline-info"></div>
+        <div class="kline-toolbar">
+          <select id="top_first-kline-period" title="周期">
+            <option value="day">日线</option>
+            <option value="month">月线</option>
+          </select>
+          <button id="top_first-bar-btn" type="button">指标栏</button>
+          <label class="kline-chk"><input type="checkbox" id="top_first-boll"> BOLL</label>
+          <label class="kline-chk"><input type="checkbox" id="top_first-vwap"> VWAP</label>
+          <button id="top_first-ma-btn" type="button">MA 配置</button>
+          <button id="top_first-ma-add" type="button" style="display:none">+</button>
+          <button id="top_first-color-btn" type="button">涨跌颜色</button>
+        </div>
+        <div class="kline-bars" id="top_first-bars"></div>
+        <div class="kline-ma-config" id="top_first-ma-config"></div>
+        <div class="kline-ma-row" id="top_first-kline-ma-row"></div>
+        <div class="kline-color-config" id="top_first-color-config"></div>
+        <div class="kline-split">
+          <div id="top_first-kline">
+            <div id="top_first-kline-main"><div class="empty-hint">请选择首板日期与个股</div></div>
+          </div>
+          <div class="kline-5m-col">
+            <div class="kline-subhead">5 分钟 K 线（自 T-5 日起，约 20 个交易日）· 含 MA</div>
+            <div id="top_first-kline-5m"><div id="top_first-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-top_first_vol" class="tab-panel">
+  <div class="card">
+    <h2>首板涨停放量股列表（按流通市值倒序；日期倒序，默认最新）</h2>
+    <div class="sel-cond"><b>选股条件：</b>T-3（前一日）涨停 + 首板（lian_ban=1）+ 放量；T-2（当日）上涨（is_up=1）+ 放量 + 未涨停（is_top=0）。即「首板涨停后的次日放量上涨但未涨停」，不限市值。</div>
+    <div class="cand-layout">
+      <div style="padding:10px">
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">放量日（T-2）</div>
+        <div class="date-list" id="top_first_vol-date-list"></div>
+      </div>
+      <div style="padding:10px">
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">首板涨停放量股票（市值倒序）</div>
+        <div class="stock-list" id="top_first_vol-stock-list"></div>
+      </div>
+      <div style="padding:10px">
+        <div class="chart-title" id="top_first_vol-kline-title"></div>
+        <div class="kline-info" id="top_first_vol-kline-info"></div>
+        <div class="kline-toolbar">
+          <select id="top_first_vol-kline-period" title="周期">
+            <option value="day">日线</option>
+            <option value="month">月线</option>
+          </select>
+          <button id="top_first_vol-bar-btn" type="button">指标栏</button>
+          <label class="kline-chk"><input type="checkbox" id="top_first_vol-boll"> BOLL</label>
+          <label class="kline-chk"><input type="checkbox" id="top_first_vol-vwap"> VWAP</label>
+          <button id="top_first_vol-ma-btn" type="button">MA 配置</button>
+          <button id="top_first_vol-ma-add" type="button" style="display:none">+</button>
+          <button id="top_first_vol-color-btn" type="button">涨跌颜色</button>
+        </div>
+        <div class="kline-bars" id="top_first_vol-bars"></div>
+        <div class="kline-ma-config" id="top_first_vol-ma-config"></div>
+        <div class="kline-ma-row" id="top_first_vol-kline-ma-row"></div>
+        <div class="kline-color-config" id="top_first_vol-color-config"></div>
+        <div class="kline-split">
+          <div id="top_first_vol-kline">
+            <div id="top_first_vol-kline-main"><div class="empty-hint">请选择放量日期与个股</div></div>
+          </div>
+          <div class="kline-5m-col">
+            <div class="kline-subhead">5 分钟 K 线（放量日居中）· 含 MA</div>
+            <div id="top_first_vol-kline-5m"><div id="top_first_vol-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-top_first_vol_sun" class="tab-panel">
+  <div class="card">
+    <h2>首板涨停放量连阳股列表（按流通市值倒序；日期倒序，默认最新）</h2>
+    <div class="sel-cond"><b>选股条件：</b>在「首板涨停放量股」基础上，再加 T-1（次日）两条件：① 收&gt;开（阳线 is_red=1）；② 最高价创阶段新高（&gt; 之前 20 个交易日最高价）。</div>
+    <div class="cand-layout">
+      <div style="padding:10px">
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">放量日（T-2）</div>
+        <div class="date-list" id="top_first_vol_sun-date-list"></div>
+      </div>
+      <div style="padding:10px">
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">首板涨停放量连阳股票（市值倒序）</div>
+        <div class="stock-list" id="top_first_vol_sun-stock-list"></div>
+      </div>
+      <div style="padding:10px">
+        <div class="chart-title" id="top_first_vol_sun-kline-title"></div>
+        <div class="kline-info" id="top_first_vol_sun-kline-info"></div>
+        <div class="kline-toolbar">
+          <select id="top_first_vol_sun-kline-period" title="周期">
+            <option value="day">日线</option>
+            <option value="month">月线</option>
+          </select>
+          <button id="top_first_vol_sun-bar-btn" type="button">指标栏</button>
+          <label class="kline-chk"><input type="checkbox" id="top_first_vol_sun-boll"> BOLL</label>
+          <label class="kline-chk"><input type="checkbox" id="top_first_vol_sun-vwap"> VWAP</label>
+          <button id="top_first_vol_sun-ma-btn" type="button">MA 配置</button>
+          <button id="top_first_vol_sun-ma-add" type="button" style="display:none">+</button>
+          <button id="top_first_vol_sun-color-btn" type="button">涨跌颜色</button>
+        </div>
+        <div class="kline-bars" id="top_first_vol_sun-bars"></div>
+        <div class="kline-ma-config" id="top_first_vol_sun-ma-config"></div>
+        <div class="kline-ma-row" id="top_first_vol_sun-kline-ma-row"></div>
+        <div class="kline-color-config" id="top_first_vol_sun-color-config"></div>
+        <div class="kline-split">
+          <div id="top_first_vol_sun-kline">
+            <div id="top_first_vol_sun-kline-main"><div class="empty-hint">请选择放量日期与个股</div></div>
+          </div>
+          <div class="kline-5m-col">
+            <div class="kline-subhead">5 分钟 K 线（放量日居中）· 含 MA</div>
+            <div id="top_first_vol_sun-kline-5m"><div id="top_first_vol_sun-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+__EXTERNAL_DATA_SCRIPT__
 <script>
-const DATA = {payload};
+const DATA = __DATA_DECL__;
+if (window.__P) window.__P.tScript = performance.now();
+/* 访问方式判定：必须在脚本开头声明。加载器(ensureStock)与初始化流程（loadCandidates 等）
+   都早于该常量原本所在位置执行，若留在原处会因 const 的暂时性死区(TDZ)直接抛错并中断初始化。 */
+const IS_FILE_PROTOCOL = (location.protocol === 'file:');
 let current = {{ strategy: null, candStrategy: null, date: null, code: null, topDate: null, topCode: null,
+                topFirstDate: null, topFirstCode: null,
+                topFirstVolDate: null, topFirstVolCode: null,
+                topFirstVolSunDate: null, topFirstVolSunCode: null,
                 detailDate: null, detailCode: null, sellMode: "5m" }};
 
-function switchTab(name) {{
+/* 离线零内嵌：数据外置到 data/ 伴随文件（file:// 下仅 <script src> 兄弟文件可加载，fetch 被禁）
+   提速策略：面板渲染出股票列表时后台预取该列表数据，点击时命中缓存，消除逐次点击的 I/O 等待。 */
+function _stockFile(code) {{ return String(code).replace(/[\\/]/g, '_'); }}
+function _loadScript(src) {{
+  return new Promise(function (resolve, reject) {{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = function () {{ resolve(); }};
+    s.onerror = function () {{ reject(new Error('load fail: ' + src)); }};
+    document.head.appendChild(s);
+  }});
+}}
+async function _doLoadStock(code) {{
+  const base = (DATA && DATA._stockBase) || 'data/stock/';
+  const _t0 = performance.now();
+  try {{ await _loadScript(base + _stockFile(code) + '.js'); }} catch (e) {{ console.warn(e); }}
+  if (window.__P) window.__P.loads.push(+(performance.now() - _t0).toFixed(1));
+  const st = (window.__STK && window.__STK[code]);
+  if (st) {{
+    DATA.kline = DATA.kline || {{}};
+    DATA.fiveMin = DATA.fiveMin || {{}};
+    DATA.kline[code] = (st.kline != null) ? st.kline : null;
+    DATA.fiveMin[code] = st.fiveMin || {{}};
+  }}
+}}
+/* 用 Promise 缓存：预取与点击共用同一次加载，不会重复请求 */
+const _stockPromises = {{}};
+function ensureStock(code) {{
+  if (!code || !IS_FILE_PROTOCOL) return Promise.resolve();   // 在线模式数据已内嵌，无需本地按需加载
+  if (!_stockPromises[code]) _stockPromises[code] = _doLoadStock(code);
+  return _stockPromises[code];
+}}
+/* 后台预取列表：不阻塞渲染，用户点击时通常已命中缓存（限并发，避免瞬间大量请求反而卡顿） */
+const _prefetchQueue = [];
+let _prefetchActive = 0;
+const _PREFETCH_MAX = 6;
+function _pumpPrefetch() {{
+  while (_prefetchActive < _PREFETCH_MAX && _prefetchQueue.length) {{
+    const c = _prefetchQueue.shift();
+    if (_stockPromises[c]) continue;
+    _prefetchActive++;
+    ensureStock(c).catch(function () {{}}).then(function () {{
+      _prefetchActive--;
+      _pumpPrefetch();
+    }});
+  }}
+}}
+function prefetchStocks(codes, limit) {{
+  /* 批量预取已关闭：file:// 下并发加载数百个小文件会显著拖慢开页，并刷出大量加载失败日志。
+     当前策略 = 按需单次加载：点一只股票才读它那一个文件。
+     若日后要恢复批量预取，取消下面三行注释即可（面板级预取已限定只预取当前激活 TAB）。 */
+  return;
+  // if (!IS_FILE_PROTOCOL) return;
+  // (codes || []).slice(0, limit || 200).forEach(function (c) {{ if (c && !_stockPromises[c]) _prefetchQueue.push(c); }});
+  // _pumpPrefetch();
+}}
+/* 面板级预取：只预取「当前激活 TAB」的列表。
+   开页时四个面板都会渲染，若不限定，会瞬间发起 600+ 个文件请求把页面拖慢。 */
+function prefetchPanelCodes(panel, codes, limit) {{
+  if (!IS_FILE_PROTOCOL) return;
+  const el = document.getElementById('panel-' + panel);
+  if (el && !el.classList.contains('active')) return;
+  prefetchStocks(codes, limit);
+}}
+/* 切到某个 TAB 时，补预取该面板当前列表，保证后续点击命中缓存 */
+function prefetchActivePanel(name) {{
+  if (name === 'top') {{
+    prefetchPanelCodes('top', (DATA.top[current.topDate] || []).map(function (s) {{ return s[0]; }}));
+  }} else if (name === 'top_first') {{
+    prefetchPanelCodes('top_first', (DATA.top_first[current.topFirstDate] || []).map(function (s) {{ return s[0]; }}));
+  }} else if (name === 'top_first_vol') {{
+    prefetchPanelCodes('top_first_vol', (DATA.top_first_vol[current.topFirstVolDate] || []).map(function (s) {{ return s[0]; }}));
+  }} else if (name === 'candidate') {{
+    const cs = DATA.candidates[current.candStrategy] || {{}};
+    prefetchPanelCodes('candidate', (cs[current.date] || []).map(function (s) {{ return s[0]; }}));
+  }} else if (name === 'detail') {{
+    prefetchPanelCodes('detail', (window._detailRows || []).map(function (r) {{ return r.code; }}));
+  }}
+}}
+
+/* ---- 按 TAB 懒加载数据 + 懒初始化 ----
+   开页只加载 index.js 的骨架与首屏(策略回测)数据；候选池/涨停/首板/策略选股的数据各自独立成文件，
+   首次点击进入该 TAB 时才加载并初始化，避免开页时被这些看不见的面板拖慢。 */
+const _panelDataPromises = {{}};
+function ensurePanelData(tab) {{
+  if (!IS_FILE_PROTOCOL) return Promise.resolve();   // 在线模式数据已全量内嵌
+  if (_panelDataPromises[tab]) return _panelDataPromises[tab];
+  const map = {{ top: 'top.js', top_first: 'top_first.js', top_first_vol: 'top_first_vol.js',
+                top_first_vol_sun: 'top_first_vol_sun.js',
+                candidate: 'candidates.js', detail: 'detail.js' }};
+  const f = map[tab];
+  if (!f) return Promise.resolve();
+  _panelDataPromises[tab] = _loadScript('data/' + f).catch(function (e) {{ console.warn(e); }});
+  return _panelDataPromises[tab];
+}}
+const _tabInited = {{}};
+async function ensureTab(name) {{
+  if (_tabInited[name]) return;
+  _tabInited[name] = true;
+  if (name === 'top') {{ await ensurePanelData('top'); loadTop(); }}
+  else if (name === 'top_first') {{ await ensurePanelData('top_first'); loadTopFirst(); }}
+  else if (name === 'top_first_vol') {{ await ensurePanelData('top_first_vol'); loadTopFirstVol(); }}
+  else if (name === 'top_first_vol_sun') {{ await ensurePanelData('top_first_vol_sun'); loadTopFirstVolSun(); }}
+  else if (name === 'candidate') {{ await ensurePanelData('candidate'); loadCandidates(); }}
+  else if (name === 'detail') {{ await ensurePanelData('detail'); initDetailTab(); }}
+}}
+async function switchTab(name) {{
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.getElementById('panel-backtest').classList.toggle('active', name === 'backtest');
   document.getElementById('panel-candidate').classList.toggle('active', name === 'candidate');
   document.getElementById('panel-detail').classList.toggle('active', name === 'detail');
   document.getElementById('panel-top').classList.toggle('active', name === 'top');
+  document.getElementById('panel-top_first').classList.toggle('active', name === 'top_first');
+  document.getElementById('panel-top_first_vol').classList.toggle('active', name === 'top_first_vol');
+  document.getElementById('panel-top_first_vol_sun').classList.toggle('active', name === 'top_first_vol_sun');
+  // 首次进入该 TAB：先取数据并初始化（此时容器已可见，图表能按实际高度渲染）
+  await ensureTab(name);
   // TAB 激活时重绘 K 线（容器可见后再渲染）
   if (name === 'candidate') {{
     klineTarget = 'candidate';
@@ -1014,10 +1654,22 @@ function switchTab(name) {{
     klineTarget = 'top';
     if (current.topCode) requestAnimationFrame(() => selectTopStock(current.topCode));
   }}
+  if (name === 'top_first') {{
+    klineTarget = 'top_first';
+    if (current.topFirstCode) requestAnimationFrame(() => selectTopFirstStock(current.topFirstCode));
+  }}
+  if (name === 'top_first_vol') {{
+    klineTarget = 'top_first_vol';
+    if (current.topFirstVolCode) requestAnimationFrame(() => selectTopFirstVolStock(current.topFirstVolCode));
+  }} else if (name === 'top_first_vol_sun') {{
+    klineTarget = 'top_first_vol_sun';
+    if (current.topFirstVolSunCode) requestAnimationFrame(() => selectTopFirstVolSunStock(current.topFirstVolSunCode));
+  }}
   if (name === 'detail') {{
     klineTarget = 'detail';
     if (current.detailCode) requestAnimationFrame(() => selectDetailStock(current.detailCode));
   }}
+  prefetchActivePanel(name);   // 切到本 TAB 后补预取其列表，后续点击命中缓存
 }}
 
 // 策略下拉（回测）
@@ -1102,7 +1754,7 @@ function renderBacktestKline(st) {{
   candle.setData(data.map(d => ({{ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }})));
   // 主图：MA
   btKlineState.ma.forEach(ma => {{
-    if (ma.p <= 0) return;
+    if (ma.p <= 0 || ma.visible === false) return;
     chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(calcMA(data, ma.p));
   }});
   // 主图：BOLL
@@ -1123,6 +1775,7 @@ function renderBacktestKline(st) {{
   }});
   chart.timeScale().fitContent();
   window.btKlineChart = chart;
+  renderMaRow();  // 刷新 MA 复选框行（含资金 K 线面板）
 }}
 
 /* ---- 回测资金 K 线：指标栏/MA/颜色配置面板（独立 btKlineState） ---- */
@@ -1529,6 +2182,7 @@ function selectDate(date) {{
     el.onclick = () => {{ selectStock(s[0]); }};
     list.appendChild(el);
   }});
+  prefetchPanelCodes('candidate', stocks.map(function (s) {{ return s[0]; }}));
   selectStock(stocks[0][0]);
 }}
 
@@ -1565,6 +2219,7 @@ function selectTopDate(date) {{
     el.onclick = () => {{ selectTopStock(s[0]); }};
     list.appendChild(el);
   }});
+  prefetchPanelCodes('top', stocks.map(function (s) {{ return s[0]; }}));
   selectTopStock(stocks[0][0]);
 }}
 function selectTopStock(code) {{
@@ -1577,12 +2232,153 @@ function selectTopStock(code) {{
   selectStock(code);
 }}
 
+/* ------- 首板涨停股 ------- */
+function loadTopFirst() {{
+  const dates = Object.keys(DATA.top_first || {{}}).sort().reverse();
+  const list = document.getElementById('top_first-date-list');
+  list.innerHTML = '';
+  if (dates.length === 0) {{ list.innerHTML = '<div class="empty-hint">无首板数据</div>'; return; }}
+  dates.forEach(d => {{
+    const n = (DATA.top_first[d] || []).length;
+    const el = document.createElement('div');
+    el.className = 'date-item';
+    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
+    el.onclick = () => {{ selectTopFirstDate(d); }};
+    list.appendChild(el);
+  }});
+  selectTopFirstDate(dates[0]);  // 默认最新
+}}
+function selectTopFirstDate(date) {{
+  current.topFirstDate = date;
+  klineHighlight.top_first = ymdDash(date);   // 首板日在 K 线上高亮
+  document.querySelectorAll('#top_first-date-list .date-item').forEach(el => {{
+    el.classList.toggle('active', el.textContent.startsWith(date));
+  }});
+  const stocks = DATA.top_first[date] || [];
+  const list = document.getElementById('top_first-stock-list');
+  list.innerHTML = '';
+  if (stocks.length === 0) {{ list.innerHTML = '<div class="empty-hint">该日无首板涨停股</div>'; return; }}
+  stocks.forEach(s => {{
+    const el = document.createElement('div');
+    el.className = 'stock-item';
+    el.innerHTML = s[0] + ' ' + s[1] + (s[2] ? '<span class="stock-market">' + fmtYi(s[2]) + '</span>' : '');
+    el.onclick = () => {{ selectTopFirstStock(s[0]); }};
+    list.appendChild(el);
+  }});
+  prefetchPanelCodes('top_first', stocks.map(function (s) {{ return s[0]; }}));
+  selectTopFirstStock(stocks[0][0]);
+}}
+function selectTopFirstStock(code) {{
+  klineTarget = 'top_first';
+  current.topFirstCode = code;
+  current.code = code;
+  document.querySelectorAll('#top_first-stock-list .stock-item').forEach(el => {{
+    el.classList.toggle('active', el.textContent.startsWith(code));
+  }});
+  selectStock(code);
+}}
+
+/* ------- 首板涨停放量股（T-3 首板涨停放量 + T-2 上涨放量未涨停，不限市值）------- */
+function loadTopFirstVol() {{
+  const dates = Object.keys(DATA.top_first_vol || {{}}).sort().reverse();
+  const list = document.getElementById('top_first_vol-date-list');
+  list.innerHTML = '';
+  if (dates.length === 0) {{ list.innerHTML = '<div class="empty-hint">无首板涨停放量数据</div>'; return; }}
+  dates.forEach(d => {{
+    const n = (DATA.top_first_vol[d] || []).length;
+    const el = document.createElement('div');
+    el.className = 'date-item';
+    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
+    el.onclick = () => {{ selectTopFirstVolDate(d); }};
+    list.appendChild(el);
+  }});
+  selectTopFirstVolDate(dates[0]);  // 默认最新
+}}
+function selectTopFirstVolDate(date) {{
+  current.topFirstVolDate = date;
+  klineHighlight.top_first_vol = ymdDash(date);   // 放量日(T-2)在 K 线上高亮
+  document.querySelectorAll('#top_first_vol-date-list .date-item').forEach(el => {{
+    el.classList.toggle('active', el.textContent.startsWith(date));
+  }});
+  const stocks = DATA.top_first_vol[date] || [];
+  const list = document.getElementById('top_first_vol-stock-list');
+  list.innerHTML = '';
+  if (stocks.length === 0) {{ list.innerHTML = '<div class="empty-hint">该日无首板涨停放量股</div>'; return; }}
+  stocks.forEach(s => {{
+    const el = document.createElement('div');
+    el.className = 'stock-item';
+    el.innerHTML = s[0] + ' ' + s[1] + (s[2] ? '<span class="stock-market">' + fmtYi(s[2]) + '</span>' : '');
+    el.onclick = () => {{ selectTopFirstVolStock(s[0]); }};
+    list.appendChild(el);
+  }});
+  prefetchPanelCodes('top_first_vol', stocks.map(function (s) {{ return s[0]; }}));
+  selectTopFirstVolStock(stocks[0][0]);
+}}
+function selectTopFirstVolStock(code) {{
+  klineTarget = 'top_first_vol';
+  current.topFirstVolCode = code;
+  current.code = code;
+  document.querySelectorAll('#top_first_vol-stock-list .stock-item').forEach(el => {{
+    el.classList.toggle('active', el.textContent.startsWith(code));
+  }});
+  selectStock(code);
+}}
+
+/* ------- 首板涨停放量连阳股（TOP_FIRST_VOL + T-1 收>开 + T-1 创新高）------- */
+function loadTopFirstVolSun() {{
+  const dates = Object.keys(DATA.top_first_vol_sun || {{}}).sort().reverse();
+  const list = document.getElementById('top_first_vol_sun-date-list');
+  list.innerHTML = '';
+  if (dates.length === 0) {{ list.innerHTML = '<div class="empty-hint">无首板涨停放量连阳数据</div>'; return; }}
+  dates.forEach(d => {{
+    const n = (DATA.top_first_vol_sun[d] || []).length;
+    const el = document.createElement('div');
+    el.className = 'date-item';
+    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
+    el.onclick = () => {{ selectTopFirstVolSunDate(d); }};
+    list.appendChild(el);
+  }});
+  selectTopFirstVolSunDate(dates[0]);  // 默认最新
+}}
+function selectTopFirstVolSunDate(date) {{
+  current.topFirstVolSunDate = date;
+  klineHighlight.top_first_vol_sun = ymdDash(date);   // 放量日(T-2)在 K 线上高亮
+  document.querySelectorAll('#top_first_vol_sun-date-list .date-item').forEach(el => {{
+    el.classList.toggle('active', el.textContent.startsWith(date));
+  }});
+  const stocks = DATA.top_first_vol_sun[date] || [];
+  const list = document.getElementById('top_first_vol_sun-stock-list');
+  list.innerHTML = '';
+  if (stocks.length === 0) {{ list.innerHTML = '<div class="empty-hint">该日无首板涨停放量连阳股</div>'; return; }}
+  stocks.forEach(s => {{
+    const el = document.createElement('div');
+    el.className = 'stock-item';
+    el.innerHTML = s[0] + ' ' + s[1] + (s[2] ? '<span class="stock-market">' + fmtYi(s[2]) + '</span>' : '');
+    el.onclick = () => {{ selectTopFirstVolSunStock(s[0]); }};
+    list.appendChild(el);
+  }});
+  prefetchPanelCodes('top_first_vol_sun', stocks.map(function (s) {{ return s[0]; }}));
+  selectTopFirstVolSunStock(stocks[0][0]);
+}}
+function selectTopFirstVolSunStock(code) {{
+  klineTarget = 'top_first_vol_sun';
+  current.topFirstVolSunCode = code;
+  current.code = code;
+  document.querySelectorAll('#top_first_vol_sun-stock-list .stock-item').forEach(el => {{
+    el.classList.toggle('active', el.textContent.startsWith(code));
+  }});
+  selectStock(code);
+}}
+
 /* ==================== K 线增强（分栏指标/MA配置/BOLL/VWAP/月线） ==================== */
 /* klineState：周期(day/month)、副图指标(volume/macd/kdj)、MA列表、BOLL/VWAP开关 */
 const klineState = {{
   period: 'day',
   bars: [{{ type: 'volume', volMA: [5, 10] }}],   // 指标栏列表，最多 MAX_BARS 个
-  ma: [{{ p: 5, c: '#cfd4dc' }}, {{ p: 10, c: '#e8eaed' }}, {{ p: 20, c: '#8a93a8' }}, {{ p: 60, c: '#9aa0a6' }}],
+  // 默认 MA：5/10/20/30/60/120，全部默认显示（visible）。visible=false 时不在图上绘制。
+  ma: [{{ p: 5, c: '#f5c518', visible: true }}, {{ p: 10, c: '#4ade80', visible: true }},
+       {{ p: 20, c: '#38bdf8', visible: true }}, {{ p: 30, c: '#fb923c', visible: true }},
+       {{ p: 60, c: '#c084fc', visible: true }}, {{ p: 120, c: '#f472b6', visible: true }}],
   showBOLL: false,
   showVWAP: false,
   colors: {{ up: '#d62828', down: '#0077b6', limitUp: '#f5c518' }},  // 涨/跌/涨停颜色（涨深红、跌深蓝，涨停保留金）
@@ -1592,7 +2388,7 @@ const MAX_BARS = 3;
 /* 资金 K 线独立状态：默认不显示成交量指标栏；颜色与候选池共享 */
 const btKlineState = {{
   bars: [],                                   // 资金曲线默认无成交量/指标栏
-  ma: klineState.ma.slice(),
+  ma: klineState.ma.map(m => ({{ p: m.p, c: m.c, visible: m.visible !== false }})),  // 独立副本，避免与主图共享对象
   showBOLL: false,
   showVWAP: false,
   colors: klineState.colors,                  // 共享涨跌颜色
@@ -1781,7 +2577,9 @@ function calcMA5m(bars, period) {{
 /* 获取某股的 5 分钟窗口数据：file:// 离线模式用内嵌的 DATA.fiveMin；http 服务模式向 /api/5m 按实际锚定日精确取数 */
 function get5m(code, anchor, cb) {{
   if (IS_FILE_PROTOCOL) {{
-    cb(DATA.fiveMin && DATA.fiveMin[code] ? DATA.fiveMin[code] : null);
+    const fm = DATA.fiveMin && DATA.fiveMin[code];
+    if (!fm) {{ cb(null); return; }}
+    cb(fm[anchor] || fm.__default__ || null);   // 离线按选中日精确取；无命中则回退最晚日窗口
     return;
   }}
   fetch('/api/5m?code=' + encodeURIComponent(code) + '&anchor=' + encodeURIComponent(anchor || ''))
@@ -1820,7 +2618,7 @@ function renderKline5m(code, anchor) {{
     }});
     candle.setData(bars.map(b => ({{ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }})));
     klineState.ma.forEach(ma => {{
-      if (ma.p <= 0) return;
+      if (ma.p <= 0 || ma.visible === false) return;
       chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }})
         .setData(calcMA5m(bars, ma.p));
     }});
@@ -1835,11 +2633,11 @@ let _chart = null;
 /* K 线渲染目标：'candidate'（实盘候选池）、'top'（涨停股）、'detail'（策略选股）。
    共用一套渲染函数，按目标给 DOM id 加不同前缀，从而访问各自面板的元素。 */
 let klineTarget = 'candidate';
-const KLINE_PREFIX = {{ candidate: '', top: 'top-', detail: 'detail-' }};
+const KLINE_PREFIX = {{ candidate: '', top: 'top-', detail: 'detail-', top_first: 'top_first-', top_first_vol: 'top_first_vol-', top_first_vol_sun: 'top_first_vol_sun-' }};
 /* 各面板的「重要日期」（YYYY-MM-DD），在 K 线上用标记高亮：
      candidate = 候选池日期（T-2 选股日）；top = 涨停日；detail = 该行卖出日（T-0） */
-const KLINE_HL_LABEL = {{ candidate: '选股日', top: '涨停日', detail: '卖出日' }};
-const klineHighlight = {{ candidate: '', top: '', detail: '' }};
+const KLINE_HL_LABEL = {{ candidate: '选股日', top: '涨停日', detail: '卖出日', top_first: '首板日', top_first_vol: '放量日', top_first_vol_sun: '放量日' }};
+const klineHighlight = {{ candidate: '', top: '', detail: '', top_first: '', top_first_vol: '', top_first_vol_sun: '' }};
 function klineEl(id) {{
   const p = KLINE_PREFIX[klineTarget] || '';
   return (p && id.indexOf(p) !== 0) ? p + id : id;
@@ -1978,7 +2776,7 @@ function renderKline(k) {{
   try {{ applyKlineHighlight(candle, data); }} catch (e) {{}}
   // 主图：MA（可配置周期与颜色）
   klineState.ma.forEach(ma => {{
-    if (ma.p <= 0) return;
+    if (ma.p <= 0 || ma.visible === false) return;
     _chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(calcMA(data, ma.p));
   }});
   // 主图：BOLL
@@ -2002,6 +2800,7 @@ function renderKline(k) {{
   _chart.timeScale().fitContent();
   setDefaultRange(_chart, data);
   showDayInfo(_chart, candle, data, limitMap);
+  renderMaRow();  // 刷新当前面板（及所有面板）的 MA 复选框行
 }}
 
 /* 标题栏 HTML：涨跌幅放最前（大字号红绿色），后跟名称/代码/周期 */
@@ -2020,7 +2819,8 @@ function klineTitleHtml(k, code) {{
   const n = k ? k.ohlcv.length : 0;
   return '<span style="font-size:14px;font-weight:600;color:#e4e6eb">' + name + code + '  ' + per + '（共 ' + n + ' 根）</span> ' + chg;
 }}
-function selectStock(code) {{
+async function selectStock(code) {{
+  await ensureStock(code);
   current.code = code;
   document.querySelectorAll('.stock-item').forEach(el => {{
     el.classList.toggle('active', el.textContent.startsWith(code));
@@ -2042,6 +2842,40 @@ function selectStock(code) {{
   requestAnimationFrame(() => {{ renderKline(k); renderKline5m(code, klineHighlight[klineTarget]); }});
 }}
 
+/* ---- MA 复选框行（默认显示，左对齐一排，勾选=显示对应均线）---- */
+/* 主图面板（candidate/top/top_first/top_first_vol/top_first_vol_sun/detail）共享 klineState.ma；
+   资金 K 线面板（bt）使用独立 btKlineState.ma。两者均默认显示 MA5/10/20/30/60/120。 */
+const _MA_ROW_PREFIXES = ['', 'top-', 'top_first-', 'top_first_vol-', 'top_first_vol_sun-', 'detail-'];
+function renderMaRow() {{
+  _MA_ROW_PREFIXES.forEach(prefix => {{
+    _fillMaRow(prefix + 'kline-ma-row', klineState.ma, rerenderKline);
+  }});
+  _fillMaRow('bt-kline-ma-row', btKlineState.ma, rerenderBtKline);
+}}
+function _fillMaRow(id, maList, rerender) {{
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.innerHTML = '';
+  const tip = document.createElement('span');
+  tip.className = 'ma-row-tip';
+  tip.textContent = 'MA';
+  box.appendChild(tip);
+  maList.forEach((ma, i) => {{
+    const lab = document.createElement('label');
+    lab.className = 'ma-chk';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = ma.visible !== false;
+    cb.style.accentColor = ma.c;
+    cb.onchange = () => {{ ma.visible = cb.checked; rerender(); }};
+    lab.appendChild(cb);
+    const txt = document.createElement('span');
+    txt.textContent = ma.p;
+    txt.style.color = ma.c;
+    lab.appendChild(txt);
+    box.appendChild(lab);
+  }});
+}}
 /* ---- MA 配置面板 ---- */
 function renderMaConfig() {{
   const cfg = document.getElementById(klineEl('kline-ma-config'));
@@ -2061,7 +2895,9 @@ function renderMaConfig() {{
 }}
 function rerenderKline() {{
   if (current.code && DATA.kline[current.code]) {{
-    requestAnimationFrame(() => renderKline(DATA.kline[current.code]));
+    const code = current.code;
+    const anchor = klineHighlight[klineTarget];
+    requestAnimationFrame(() => {{ renderKline(DATA.kline[code]); renderKline5m(code, anchor); }});
   }}
 }}
 /* ---- 指标栏管理面板 ---- */
@@ -2148,7 +2984,7 @@ function initKlineControls() {{
   }};
   const addBtn = document.getElementById('kline-ma-add');
   addBtn.onclick = () => {{
-    klineState.ma.push({{ p: 5, c: '#aab0bc' }});
+    klineState.ma.push({{ p: 5, c: '#aab0bc', visible: true }});
     renderMaConfig(); rerenderKline();
   }};
   addBtn.style.display = 'inline-block';
@@ -2181,7 +3017,7 @@ function initBtKlineControls() {{
   }};
   const addBtn = document.getElementById('bt-ma-add');
   addBtn.onclick = () => {{
-    btKlineState.ma.push({{ p: 5, c: '#aab0bc' }});
+    btKlineState.ma.push({{ p: 5, c: '#aab0bc', visible: true }});
     renderBtMaConfig(); rerenderBtKline();
   }};
   addBtn.style.display = 'inline-block';
@@ -2212,7 +3048,7 @@ function initTopKlineControls() {{
     if (show) renderMaConfig();
   }};
   document.getElementById('top-ma-add').onclick = () => {{
-    klineState.ma.push({{ p: 5, c: '#aab0bc' }});
+    klineState.ma.push({{ p: 5, c: '#aab0bc', visible: true }});
     renderMaConfig(); rerenderKline();
   }};
   document.getElementById('top-ma-add').style.display = 'inline-block';
@@ -2229,12 +3065,142 @@ function initTopKlineControls() {{
     if (show) renderColorConfig();
   }};
 }}
+/* 首板涨停 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first- 前缀 */
+function initTopFirstKlineControls() {{
+  document.getElementById('top_first-kline-period').onchange = e => {{
+    klineState.period = e.target.value;
+    if (current.topFirstCode && DATA.kline[current.topFirstCode]) {{
+      document.getElementById(klineEl('kline-title')).innerHTML = klineTitleHtml(DATA.kline[current.topFirstCode], current.topFirstCode);
+      rerenderKline();
+    }}
+  }};
+  document.getElementById('top_first-boll').onchange = e => {{ klineState.showBOLL = e.target.checked; rerenderKline(); }};
+  document.getElementById('top_first-vwap').onchange = e => {{ klineState.showVWAP = e.target.checked; rerenderKline(); }};
+  document.getElementById('top_first-ma-btn').onclick = () => {{
+    const cfg = document.getElementById('top_first-ma-config');
+    const show = (cfg.style.display === 'none' || cfg.style.display === '');
+    cfg.style.display = show ? 'block' : 'none';
+    renderMaConfig(); rerenderKline();
+  }};
+  document.getElementById('top_first-ma-add').style.display = 'inline-block';
+  document.getElementById('top_first-bar-btn').onclick = () => {{
+    const barsPanel = document.getElementById('top_first-bars');
+    const show = (barsPanel.style.display === 'none' || barsPanel.style.display === '');
+    barsPanel.style.display = show ? 'block' : 'none';
+    if (show) renderBarConfig();
+  }};
+  document.getElementById('top_first-color-btn').onclick = () => {{
+    const cfg = document.getElementById('top_first-color-config');
+    const show = (cfg.style.display === 'none' || cfg.style.display === '');
+    cfg.style.display = show ? 'block' : 'none';
+    if (show) renderColorConfig();
+  }}
+}}
+/* 首板涨停放量股 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first_vol- 前缀 */
+function initTopFirstVolKlineControls() {{
+  document.getElementById('top_first_vol-kline-period').onchange = e => {{
+    klineState.period = e.target.value;
+    if (current.topFirstVolCode && DATA.kline[current.topFirstVolCode]) {{
+      document.getElementById(klineEl('kline-title')).innerHTML = klineTitleHtml(DATA.kline[current.topFirstVolCode], current.topFirstVolCode);
+      rerenderKline();
+    }}
+  }};
+  document.getElementById('top_first_vol-boll').onchange = e => {{ klineState.showBOLL = e.target.checked; rerenderKline(); }};
+  document.getElementById('top_first_vol-vwap').onchange = e => {{ klineState.showVWAP = e.target.checked; rerenderKline(); }};
+  document.getElementById('top_first_vol-ma-btn').onclick = () => {{
+    const cfg = document.getElementById('top_first_vol-ma-config');
+    const show = (cfg.style.display === 'none' || cfg.style.display === '');
+    cfg.style.display = show ? 'block' : 'none';
+    renderMaConfig(); rerenderKline();
+  }};
+  document.getElementById('top_first_vol-ma-add').style.display = 'inline-block';
+  document.getElementById('top_first_vol-bar-btn').onclick = () => {{
+    const barsPanel = document.getElementById('top_first_vol-bars');
+    const show = (barsPanel.style.display === 'none' || barsPanel.style.display === '');
+    barsPanel.style.display = show ? 'block' : 'none';
+    if (show) renderBarConfig();
+  }};
+  document.getElementById('top_first_vol-color-btn').onclick = () => {{
+    const cfg = document.getElementById('top_first_vol-color-config');
+    const show = (cfg.style.display === 'none' || cfg.style.display === '');
+    cfg.style.display = show ? 'block' : 'none';
+    if (show) renderColorConfig();
+  }}
+}}
+/* 首板涨停放量连阳股 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first_vol_sun- 前缀 */
+function initTopFirstVolSunKlineControls() {{
+  document.getElementById('top_first_vol_sun-kline-period').onchange = e => {{
+    klineState.period = e.target.value;
+    if (current.topFirstVolSunCode && DATA.kline[current.topFirstVolSunCode]) {{
+      document.getElementById(klineEl('kline-title')).innerHTML = klineTitleHtml(DATA.kline[current.topFirstVolSunCode], current.topFirstVolSunCode);
+      rerenderKline();
+    }}
+  }};
+  document.getElementById('top_first_vol_sun-boll').onchange = e => {{ klineState.showBOLL = e.target.checked; rerenderKline(); }};
+  document.getElementById('top_first_vol_sun-vwap').onchange = e => {{ klineState.showVWAP = e.target.checked; rerenderKline(); }};
+  document.getElementById('top_first_vol_sun-ma-btn').onclick = () => {{
+    const cfg = document.getElementById('top_first_vol_sun-ma-config');
+    const show = (cfg.style.display === 'none' || cfg.style.display === '');
+    cfg.style.display = show ? 'block' : 'none';
+    renderMaConfig(); rerenderKline();
+  }};
+  document.getElementById('top_first_vol_sun-ma-add').style.display = 'inline-block';
+  document.getElementById('top_first_vol_sun-bar-btn').onclick = () => {{
+    const barsPanel = document.getElementById('top_first_vol_sun-bars');
+    const show = (barsPanel.style.display === 'none' || barsPanel.style.display === '');
+    barsPanel.style.display = show ? 'block' : 'none';
+    if (show) renderBarConfig();
+  }};
+  document.getElementById('top_first_vol_sun-color-btn').onclick = () => {{
+    const cfg = document.getElementById('top_first_vol_sun-color-config');
+    const show = (cfg.style.display === 'none' || cfg.style.display === '');
+    cfg.style.display = show ? 'block' : 'none';
+    if (show) renderColorConfig();
+  }}
+}}
+window.__errboxMark && window.__errboxMark('init: kline controls');
 initKlineControls();
 initBtKlineControls();
 initTopKlineControls();
+initTopFirstKlineControls();
+initTopFirstVolKlineControls();
+initTopFirstVolSunKlineControls();
+renderMaRow();  // 初始渲染所有面板的 MA 复选框行（默认 5/10/20/30/60/120 全勾选）
+window.__errboxMark && window.__errboxMark('init: loadStrategy');
+if (window.__P) window.__P.tPre = performance.now();
 loadStrategy();    // klineState 就绪后再加载回测（避免 TDZ），渲染资金 K 线
-loadCandidates();  // 所有函数与 klineState 声明就绪后再加载候选池，避免 TDZ 报错
-loadTop();         // 加载涨停股列表
+if (window.__P) window.__P.tPost = performance.now();
+/* 候选池 / 涨停股 / 首板 / 策略选股 不再在开页时初始化：
+   它们的数据已按 TAB 拆到独立文件，首次点击进入该 TAB 时才加载并渲染（见 switchTab → ensureTab），
+   这样开页只处理首屏回测，避免被隐藏面板拖慢。 */
+window.__errboxMark && window.__errboxMark('init: DONE');
+window.__errboxDone && window.__errboxDone();
+if (window.__P) window.__P.tDone = performance.now();
+/* 耗时埋点面板：仅在地址栏带 ?perf 时显示（如 file:///.../StrategyDashboardOffline.html?perf=1），
+   用于定位「到底是解析/渲染慢，还是读 data/ 下的个股文件慢」。平时完全不显示、不影响使用。 */
+function _perfBadge() {{
+  const P = window.__P; if (!P) return;
+  let el = document.getElementById('__perfBadge');
+  if (!el) {{
+    el = document.createElement('div'); el.id = '__perfBadge';
+    el.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:99999;background:rgba(17,24,39,.94);'
+      + 'color:#e5e7eb;font:12px/1.6 Consolas,monospace;padding:8px 10px;border:1px solid #374151;'
+      + 'border-radius:6px;max-width:380px;white-space:pre-wrap';
+    document.body.appendChild(el);
+  }}
+  const d = (a, b) => (a != null && b != null) ? (b - a).toFixed(1) + 'ms' : '-';
+  const L = P.loads || [];
+  const avg = L.length ? (L.reduce((s, x) => s + x, 0) / L.length).toFixed(1) : '-';
+  el.textContent =
+    '⏱ 开页: HTML+库+index ' + d(P.t0, P.tScript)
+    + ' | 控件 ' + d(P.tScript, P.tPre)
+    + ' | 首屏回测 ' + d(P.tPre, P.tPost)
+    + ' | 收尾 ' + d(P.tPost, P.tDone)
+    + ' | 总计 ' + d(P.t0, P.tDone)
+    + '\\n个股文件加载: 次数 ' + L.length + ' 均值 ' + avg + 'ms'
+    + (L.length ? ' 最近[' + L.slice(-6).join(', ') + ']ms' : '');
+}}
+if (location.search.indexOf('perf') >= 0) {{ _perfBadge(); setInterval(_perfBadge, 1000); }}
 
 /* ------- 策略选股详情 TAB ------- */
 function fmtNum(v) {{
@@ -2293,6 +3259,8 @@ function loadDetail() {{
     table.appendChild(tbody);
     box.appendChild(table);
   }});
+  window._detailRows = allRows;
+  prefetchPanelCodes('detail', allRows.map(function (r) {{ return r.code; }}));
   document.getElementById('detail-count').textContent = m.slice(0, 4) + '年' + m.slice(4, 6) + '月 共选股 ' + total + ' 只（' + dates.length + ' 个交易日）';
   // 默认选中：保留已在看的个股；换月后原个股不在本月则回落到本月第一只
   if (allRows.length) {{
@@ -2351,7 +3319,7 @@ function initDetailKlineControls() {{
   if (addBtn) {{
     addBtn.onclick = () => {{
       klineTarget = 'detail';
-      klineState.ma.push({{ p: 5, c: '#aab0bc' }});
+      klineState.ma.push({{ p: 5, c: '#aab0bc', visible: true }});
       renderMaConfig(); rerenderKline();
     }};
     addBtn.style.display = 'inline-block';
@@ -2393,7 +3361,8 @@ function fillDetailDates() {{
   if (months.length) ds.value = months[0];
   loadDetail();
 }}
-initDetailTab();
+/* initDetailTab() 不再在开页调用：策略选股面板改为首次点进该 TAB 时才初始化（见 ensureTab），
+   减轻开页负担。此处只绑定 K 线控件的事件（不依赖数据）。 */
 initDetailKlineControls();
 
 strategySelect.addEventListener('change', loadStrategy);
@@ -2409,15 +3378,17 @@ document.getElementById('bt-year-select').addEventListener('change', e => {{
 // 命令按钮的 appendChild / logCmd 都是脚本加载期执行的，取不到真实节点会抛错并中断整页脚本
 const cmdList = document.getElementById('cmd-list') || document.createElement('div');
 const cmdOutput = document.getElementById('cmd-output') || document.createElement('pre');
-const STRATEGIES = {strategies_json};
+const STRATEGIES = DATA.strategies || [];
 
 function logCmd(msg) {{
   cmdOutput.textContent = (cmdOutput.textContent ? cmdOutput.textContent + '\\n' : '') + '[' + new Date().toLocaleTimeString() + '] ' + msg;
   cmdOutput.scrollTop = cmdOutput.scrollHeight;
 }}
 
-/* 访问方式：file://（双击打开）用 marcoai:// 协议触发命令；http 服务用 fetch */
-const IS_FILE_PROTOCOL = (location.protocol === 'file:');
+/* 访问方式：file://（双击打开）用 marcoai:// 协议触发命令；http 服务用 fetch
+   注意：IS_FILE_PROTOCOL 的 const 声明已上移到脚本开头——加载器(ensureStock)与初始化流程
+   会先于本处执行，留在原地会因 const 的 TDZ 触发 "Cannot access ... before initialization"
+   并中断整个初始化（页面卡在"正在加载数据"）。 */
 
 /* 通过 marcoai:// 自定义协议触发本地 Python 命令（无需服务，双击即用） */
 function runViaProtocol(cmd, payload, btn) {{
@@ -2426,6 +3397,7 @@ function runViaProtocol(cmd, payload, btn) {{
   logCmd('执行: ' + cmd + '（通过 marcoai:// 协议）');
   let url = 'marcoai://run?cmd=' + encodeURIComponent(cmd);
   if (payload && payload.strategy) url += '&strategy=' + encodeURIComponent(payload.strategy);
+  if (payload && payload.step) url += '&step=' + encodeURIComponent(payload.step);
   try {{
     location.href = url;
     logCmd('已发起，结果将弹窗显示');
@@ -2487,13 +3459,16 @@ async function runCommand(cmd, payload, btn) {{
       // 数据更新改为异步：轮询 /api/update_log 实时显示各步骤日志，完成后刷新
       if (cmd === 'UPDATE_DATA') {{
         pollUpdateLog();
+      }} else if (cmd === 'RUN_STEP') {{
+        logCmd('完成，1 秒后刷新页面以载入新数据...');
+        setTimeout(function () {{ location.reload(); }}, 1200);
       }}
     }} else {{
       logCmd('失败: ' + (data.error || '未知错误'));
     }}
     return data;
   }} catch (err) {{
-    logCmd('请求失败: ' + err + '（请确认已启动本地服务，命令：python AICode/MarcoAPI/StrategyService.py）');
+    logCmd('请求失败: ' + err + '（离线看板无需本地服务；如需在线取数请检查网络/服务）');
     return null;
   }} finally {{
     btn.classList.remove('running');
@@ -2533,17 +3508,18 @@ const btnData = {{
   danger: true,
   onClick: onClickUpdateData,
 }};
-function addCmdBtn(label, desc, danger, onClick) {{
+function addCmdBtn(label, desc, danger, onClick, container) {{
+  const host = container || cmdList;
   const btn = document.createElement('button');
   btn.className = 'cmd' + (danger ? ' danger' : '');
   btn.innerHTML = '<span class="spinner"></span><span class="dot"></span><span>' + label + '</span>';
   btn.onclick = () => onClick(btn);
-  cmdList.appendChild(btn);
+  host.appendChild(btn);
   if (desc) {{
     const tip = document.createElement('div');
     tip.style.cssText = 'font-size:11px;color:#6b7280;margin:-4px 2px 8px;line-height:1.4;';
     tip.textContent = desc;
-    cmdList.appendChild(tip);
+    host.appendChild(tip);
   }}
 }}
 addCmdBtn('数据更新', '更新通达信日线数据与 SZ100.xlsx 股票池', true, onClickUpdateData);
@@ -2565,11 +3541,59 @@ addCmdBtn('更新同花顺板块', '按策略把最新/前一日股票写入 blo
 
 /* git 同步按钮 */
 addCmdBtn('git 同步', 'git add . && commit && push 推送到远程仓库', false, onClickGitSync);
+
+/* ---- 单项数据更新：每个步骤单独触发（RUN_STEP） ---- */
+const UPDATE_STEPS = [
+  {{ step: 'UPDATE_TRADING_DATES', label: '① 交易日历', desc: '更新交易日历' }},
+  {{ step: 'UPDATE_STOCK_CODES', label: '② 股票池', desc: 'SZ100.xlsx -> 股票列表(全市场)' }},
+  {{ step: 'UPDATE_1D_ORIGIN', label: '③ 日线原始', desc: '通达信前复权日线(全市场,较慢)' }},
+  {{ step: 'UPDATE_5M_ORIGIN', label: '④ 5分钟原始', desc: '通达信前复权5分钟线(全市场,很慢)' }},
+  {{ step: 'UPDATE_TOP', label: '⑤ 涨停列表', desc: '生成每日涨停股 TOP' }},
+  {{ step: 'UPDATE_1D', label: '⑥ 加工日线', desc: 'MA/连板/is_top 加工' }},
+  {{ step: 'UPDATE_TOP_FIRST', label: '⑦ 首板涨停', desc: '生成首板涨停 TOP_FIRST' }},
+  {{ step: 'UPDATE_STRATEGY_TPO_3', label: '⑧ TPO_3 回测', desc: '策略回测数据' }},
+  {{ step: 'UPDATE_STRATEGY_TPO_TOP', label: '⑧ TPO_TOP 回测', desc: '策略回测数据' }},
+  {{ step: 'UPDATE_STRATEGY_TPO_M5', label: '⑧ TPO_M5 回测', desc: '策略回测数据(200~1300亿)' }},
+  {{ step: 'UPDATE_STRATEGY_TPO_M5_MID', label: '⑧ TPO_M5_MID 回测', desc: '策略回测数据(100~200亿)' }},
+  {{ step: 'UPDATE_STRATEGY_TPO_M5_SMALL', label: '⑧ TPO_M5_SMALL 回测', desc: '策略回测数据(<100亿)' }},
+  {{ step: 'UPDATE_TARGET_TPO_3', label: '⑨ TPO_3 候选', desc: '实盘候选池' }},
+  {{ step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' }},
+  {{ step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' }},
+  {{ step: 'UPDATE_TARGET_TPO_M5_MID', label: '⑨ TPO_M5_MID 候选', desc: '实盘候选池(100~200亿)' }},
+  {{ step: 'UPDATE_TARGET_TPO_M5_SMALL', label: '⑨ TPO_M5_SMALL 候选', desc: '实盘候选池(<100亿)' }},
+  {{ step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' }},
+  {{ step: 'UPDATE_TPO_M5_HL', label: '⑩ TPO_M5 高低点', desc: '5M 高低点解析' }},
+];
+function onClickRunStep(step, btn) {{
+  if (step.indexOf('ORIGIN') >= 0) {{
+    const ok = confirm('[' + step + '] 将拉取全市场股票原始行情，可能较慢并依赖通达信联网。\\n确定开始吗？');
+    if (!ok) {{ logCmd('已取消 ' + step); return; }}
+  }}
+  runCommand('RUN_STEP', {{ step }}, btn);
+}}
+const cmdSteps = document.getElementById('cmd-steps') || document.createElement('div');
+UPDATE_STEPS.forEach(function (s) {{
+  addCmdBtn(s.label, s.desc, false, function (btn) {{ onClickRunStep(s.step, btn); }}, cmdSteps);
+}});
 </script>
 </div><!-- /.main -->
 </body>
 </html>
 """
+
+    if external:
+        html = html.replace('__EXTERNAL_DATA_SCRIPT__', '<script src="data/index.js"></script>')
+        # 兜底：若 HTML 被单独移走导致 data/index.js 加载失败，页面仍能渲染（空数据）而非白屏崩溃
+        html = html.replace(
+            'const DATA = __DATA_DECL__;',
+            'const DATA = window.__IDX || {"strategies":[],"backtest":{},"candidates":{},"top":{},'
+            '"top_first":{},"strategy_detail":{},"sentiment":{},"kline":{},"fiveMin":{},'
+            '"_stockBase":"data/stock/"};'
+        )
+    else:
+        html = html.replace('__EXTERNAL_DATA_SCRIPT__', '')
+        html = html.replace('const DATA = __DATA_DECL__;', 'const DATA = ' + payload + ';')
+    return html
 
 
 def _list_strategy_files(strategy_name: str) -> list[str]:
@@ -2596,64 +3620,6 @@ def _read_strategy_stocks(strategy_name: str, date: str) -> list[str]:
     return codes
 
 
-def _list_top_dates() -> list[str]:
-    """涨停数据（AIData/TOP）下全部日期文件名，升序。"""
-    base = PATH_AIDATA_TOP()
-    if not os.path.isdir(base):
-        return []
-    return sorted(d for d in os.listdir(base) if d.isdigit())
-
-
-def _norm_code(code: str) -> str:
-    """代码补市场后缀：无后缀时 6 开头 -> .SH，其余 -> .SZ（与 _load_top 归一化口径一致）"""
-    c = code.strip()
-    return c if "." in c else (f"{c}.SH" if c.startswith("6") else f"{c}.SZ")
-
-
-def _top_code_set(date: str | None) -> set[str]:
-    """某日期涨停代码集合（带后缀）；无该日数据或无日期返回空集合。"""
-    if not date:
-        return set()
-    path = os.path.join(PATH_AIDATA_TOP(), date)
-    if not os.path.isfile(path):
-        return set()
-    return {_norm_code(x) for x in _read_text(path).splitlines() if x.strip()}
-
-
-def _read_first_plate_stocks(date: str) -> list[str]:
-    """读取某日期的【首板涨停】股票代码列表，口径与 UI「涨停股」列表完全一致。
-
-    条件（与 TPO_M5 的 T-3 日条件完全一致）：
-      · 涨停    —— 在当日 TOP 名单中（隐含 is_top==1）
-      · 首板    —— lian_ban==1，用 TOP 集合差判定（当天涨停 − 前一交易日涨停）
-      · 放量    —— 当日日线 is_volume_up==1
-    做法：复用 _load_top() 取候选（已含「流通股本有效 + 当日收盘价存在」过滤，且按
-    流通市值倒序），再依次叠加首板与放量过滤，保证 UI 涨停股列表与写入 ===TOP===
-    的内容同源、同过滤、同排序（不会出现两边不一致）。
-    """
-    rows = _load_top().get(date) or []       # 已过滤 + 按流通市值倒序
-    if not rows:
-        return []
-    dates = _list_top_dates()
-    idx = dates.index(date) if date in dates else -1
-    prev_date = dates[idx - 1] if idx >= 1 else None
-    yday = _top_code_set(prev_date)          # 前一交易日涨停集合
-    out = []
-    for r in rows:
-        code = r[0]
-        if code in yday:                     # 昨日也涨停 → 连板，非首板
-            continue
-        # 放量：与 TPO_M5 的 T-3 一致，要求当日 is_volume_up==1
-        try:
-            rec = GET_SZ200_1D_PREVIOUS(code, date, 0)
-        except OSError:
-            continue                         # 无加工日线文件 → 无法判定放量，跳过
-        if rec is None or rec.is_volume_up != 1:
-            continue
-        out.append(code)
-    return out
-
-
 def _code_to_ths_security(code: str) -> str:
     """把带后缀代码转成同花顺板块 security 行，如 603087.SH -> <security market="USHA" code="603087" />"""
     c = code.strip()
@@ -2676,12 +3642,56 @@ def CMD_UPDATE_DATA() -> str:
         return (buf.getvalue().strip() + f"\n数据更新失败: {exc}").strip()
 
 
+# 单项更新步骤映射（供 UI 侧边栏「单项数据更新」单独触发，等价于 UPDATE_ALL 的单个步骤）
+_UPDATE_STEPS = {
+    "UPDATE_TRADING_DATES": UPDATE_TRADING_DATES,
+    "UPDATE_STOCK_CODES": UPDATE_STOCK_CODES,
+    "UPDATE_1D_ORIGIN": UPDATE_1D_ORIGIN,
+    "UPDATE_5M_ORIGIN": UPDATE_5M_ORIGIN,
+    "UPDATE_TOP": UPDATE_TOP,
+    "UPDATE_1D": UPDATE_1D,
+    "UPDATE_TOP_FIRST": UPDATE_TOP_FIRST,
+    "UPDATE_TOP_FIRST_VOL": UPDATE_TOP_FIRST_VOL,
+    "UPDATE_TOP_FIRST_VOL_SUN": UPDATE_TOP_FIRST_VOL_SUN,
+    "UPDATE_STRATEGY_TPO_3": UPDATE_STRATEGY_TPO_3,
+    "UPDATE_STRATEGY_TPO_TOP": UPDATE_STRATEGY_TPO_TOP,
+    "UPDATE_STRATEGY_TPO_M5": UPDATE_STRATEGY_TPO_M5,
+    "UPDATE_STRATEGY_TPO_M5_MID": UPDATE_STRATEGY_TPO_M5_MID,
+    "UPDATE_STRATEGY_TPO_M5_SMALL": UPDATE_STRATEGY_TPO_M5_SMALL,
+    "UPDATE_TARGET_TPO_3": UPDATE_TARGET_TPO_3,
+    "UPDATE_TARGET_TPO_TOP": UPDATE_TARGET_TPO_TOP,
+    "UPDATE_TARGET_TPO_M5": UPDATE_TARGET_TPO_M5,
+    "UPDATE_TARGET_TPO_M5_MID": UPDATE_TARGET_TPO_M5_MID,
+    "UPDATE_TARGET_TPO_M5_SMALL": UPDATE_TARGET_TPO_M5_SMALL,
+    "UPDATE_TPO_M5_HL": UPDATE_TPO_M5_HL,
+}
+
+
+def CMD_RUN_STEP(step: str) -> str:
+    """【快捷命令】单独运行某一步数据更新（与服务端 RUN_STEP / marcoai://run?cmd=RUN_STEP&step=xxx 对应）"""
+    fn = _UPDATE_STEPS.get(step)
+    if fn is None:
+        return f"未知更新步骤: {step}（可用：{', '.join(_UPDATE_STEPS)}）"
+    import contextlib
+    import io
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            summary = fn()
+        logs = buf.getvalue().strip()
+        return (f"[{step}] 完成: {summary}\n{logs}".strip() if logs
+                else f"[{step}] 完成: {summary}")
+    except Exception as exc:
+        return f"[{step}] 失败: {type(exc).__name__}: {exc}"
+
+
 def CMD_UPDATE_THS(strategy_name: str) -> str:
     """【快捷命令】把指定策略的最新日期股票写入同花顺板块 XML 并拷贝到实盘机目录。
 
     - 最新日期股票 -> 替换模板 ===TPO3===
     - 最新日前一日期股票 -> 替换模板 ===TPO31===（该日为空则替换为空值，板块留空）
     - 当天（TOP 最新交易日）首板涨停股（lian_ban==1）-> 替换模板 ===TOP===
+    - 首板涨停放量连阳股（TAB7）最新 20 个交易日去重全部股票 -> 替换模板 ===HISTORY===
     - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件，然后删除本地拷贝。
     """
     if not strategy_name:
@@ -2698,20 +3708,34 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     tpo3 = _read_strategy_stocks(strategy_name, latest)
     tpo31 = _read_strategy_stocks(strategy_name, prev) if prev else []
 
-    # 首板涨停股：取 TOP 最新交易日（即"当天"）中 lian_ban==1 的票
-    top_dates = _list_top_dates()
-    top_date = top_dates[-1] if top_dates else None
-    tops = _read_first_plate_stocks(top_date) if top_date else []
+    # 首板涨停股：直接读一条龙更新落盘的 TOP_FIRST 文件（单一数据源，与 UI「首板涨停股」TAB 一致）
+    top_first_dir = PATH_AIDATA_TOP_FIRST()
+    top_first_dates = sorted(d for d in os.listdir(top_first_dir) if d.isdigit()) if os.path.isdir(top_first_dir) else []
+    top_date = top_first_dates[-1] if top_first_dates else None
+    tops = [c.strip() for c in _read_text(os.path.join(top_first_dir, top_date)).splitlines() if c.strip()] if top_date else []
 
     tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
     tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
     top_block = "\n".join(_code_to_ths_security(c) for c in tops)
 
+    # 首板涨停放量连阳股（TAB7）：取最新 20 个交易日，汇总去重全部股票 -> ===HISTORY===
+    sun = _load_top_first_vol_sun()
+    sun_codes: list[str] = []
+    _seen: set[str] = set()
+    for d in list(sun.keys())[:20]:          # sun 的键已按日期倒序
+        for row in sun[d]:
+            c = row[0]
+            if c not in _seen:
+                _seen.add(c)
+                sun_codes.append(c)
+    history_block = "\n".join(_code_to_ths_security(c) for c in sun_codes)
+
     # 读取模板并替换占位符：有股票则填入 securities（首尾不加换行），为空则整行清理（不留占位符/空行，兼容 CRLF/LF）
     raw = _read_text(THS_TEMPLATE_FILE)
     for ph, block in ((PLACEHOLDER_TPO3, tpo3_block),
                       (PLACEHOLDER_TPO31, tpo31_block),
-                      (PLACEHOLDER_TOP, top_block)):
+                      (PLACEHOLDER_TOP, top_block),
+                      (PLACEHOLDER_HISTORY, history_block)):
         if block:
             raw = raw.replace(ph, block)
         else:
@@ -2728,10 +3752,21 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     detail = (
         f"策略 {strategy_name}: {latest} 共 {len(tpo3)} 只(TPO3), "
         f"{prev or '无'} 共 {len(tpo31)} 只(TPO31), "
-        f"首板涨停 {top_date or '无'} 共 {len(tops)} 只(TOP)"
+        f"首板涨停 {top_date or '无'} 共 {len(tops)} 只(TOP), "
+        f"连阳(TAB7) 最新20日共 {len(sun_codes)} 只(HISTORY)"
     )
     print(f"CMD_UPDATE_THS: 已写入 {target_file}\n{detail}")
     return f"同花顺板块已更新:\n{detail}\n已覆盖: {target_file}"
+
+
+def _inject_gen_time(html: str) -> str:
+    """在看板标题下插入可见的生成时间戳，便于一眼确认是否看到最新文件（避免 file:// 缓存误判）。"""
+    from datetime import datetime
+    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    badge = ('<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">'
+             '看板生成时间：' + t + '（数据更新后请重新生成并刷新本页）</div>')
+    marker = '<h1>📊 策略回测 & 实盘目标股看板</h1>'
+    return html.replace(marker, marker + '\n' + badge, 1)
 
 
 def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = True) -> str:
@@ -2785,6 +3820,45 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
     for code, val in top_kline.items():
         kline.setdefault(code, val)     # 已有完整历史的候选股不覆盖
 
+    # 首板涨停股 K 线并入（与涨停股同逻辑）
+    top_first = _load_top_first()
+    top_first_codes: set[str] = set()
+    top_first_names: dict[str, str] = {}
+    for rows in top_first.values():
+        for r in rows:
+            top_first_codes.add(r[0])
+            if r[0] not in top_first_names:
+                top_first_names[r[0]] = r[1]
+    top_first_kline = _load_kline(top_first_codes, top_first_names)
+    for code, val in top_first_kline.items():
+        kline.setdefault(code, val)
+
+    # 首板涨停放量股 K 线并入（同逻辑；本 TAB 不限市值，个股可能不在涨停/首板列表中）
+    top_first_vol = _load_top_first_vol()
+    top_first_vol_codes: set[str] = set()
+    top_first_vol_names: dict[str, str] = {}
+    for rows in top_first_vol.values():
+        for r in rows:
+            top_first_vol_codes.add(r[0])
+            if r[0] not in top_first_vol_names:
+                top_first_vol_names[r[0]] = r[1]
+    top_first_vol_kline = _load_kline(top_first_vol_codes, top_first_vol_names)
+    for code, val in top_first_vol_kline.items():
+        kline.setdefault(code, val)
+
+    # 首板涨停放量连阳股 K 线并入（同逻辑；在首板涨停放量股基础上再筛 T-1 阳线/创新高）
+    top_first_vol_sun = _load_top_first_vol_sun()
+    top_first_vol_sun_codes: set[str] = set()
+    top_first_vol_sun_names: dict[str, str] = {}
+    for rows in top_first_vol_sun.values():
+        for r in rows:
+            top_first_vol_sun_codes.add(r[0])
+            if r[0] not in top_first_vol_sun_names:
+                top_first_vol_sun_names[r[0]] = r[1]
+    top_first_vol_sun_kline = _load_kline(top_first_vol_sun_codes, top_first_vol_sun_names)
+    for code, val in top_first_vol_sun_kline.items():
+        kline.setdefault(code, val)
+
     # 策略选股详情（第三个 TAB）
     strategy_detail = _load_strategy_detail(strategies)
 
@@ -2808,11 +3882,24 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
 
     # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
     five_min = _build_five_min(strategies)
+    # 涨停股 / 首板的 5 分钟窗口：按各自出现的日期精确生成（与策略选股同口径），
+    # 避免点击历史日期时回退到「最新窗口」导致显示范围错误
+    _cd = _collect_code_dates(top)
+    for _c, _ds in _collect_code_dates(top_first).items():
+        _cd.setdefault(_c, set()).update(_ds)
+    for _c, _ds in _collect_code_dates(top_first_vol).items():
+        _cd.setdefault(_c, set()).update(_ds)
+    for _c, _ds in _collect_code_dates(top_first_vol_sun).items():
+        _cd.setdefault(_c, set()).update(_ds)
+    _extend_five_min_top(_cd, five_min)
     data = {
         "strategies": strategies,
         "backtest": backtest,
         "candidates": candidates,
         "top": top,
+        "top_first": top_first,
+        "top_first_vol": top_first_vol,
+        "top_first_vol_sun": top_first_vol_sun,
         "kline": kline,
         "strategy_detail": strategy_detail,
         "fiveMin": five_min,
@@ -2820,13 +3907,14 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
     }
 
     html = _render_html(data)
+    html = _inject_gen_time(html)
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "UI", "StrategyDashboard.html")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"STRATEGY_UI: 综合看板已生成 {out_path}")
 
     if open_browser:
-        webbrowser.open("file:///" + out_path.replace("\\", "/"))
+        webbrowser.open("file:///" + out_path.replace("\\", "/") + "?v=" + str(int(os.path.getmtime(out_path))))
     return out_path
 
 
@@ -2839,6 +3927,9 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
 
     返回生成的文件路径；无策略时返回空串。
     """
+    # 记录本次构建所基于的源数据时间戳（构建前取样），供「看板是否过期」判断使用
+    src_mtime = _source_data_mtime()
+
     if strategy_name:
         strategies = [strategy_name]
     else:
@@ -2883,6 +3974,45 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
     for code, val in top_kline.items():
         kline.setdefault(code, val)     # 已有完整历史的候选股不覆盖
 
+    # 首板涨停股 K 线并入（与涨停股同逻辑）
+    top_first = _load_top_first()
+    top_first_codes: set[str] = set()
+    top_first_names: dict[str, str] = {}
+    for rows in top_first.values():
+        for r in rows:
+            top_first_codes.add(r[0])
+            if r[0] not in top_first_names:
+                top_first_names[r[0]] = r[1]
+    top_first_kline = _load_kline(top_first_codes, top_first_names)
+    for code, val in top_first_kline.items():
+        kline.setdefault(code, val)
+
+    # 首板涨停放量股 K 线并入（同逻辑；本 TAB 不限市值，个股可能不在涨停/首板列表中）
+    top_first_vol = _load_top_first_vol()
+    top_first_vol_codes: set[str] = set()
+    top_first_vol_names: dict[str, str] = {}
+    for rows in top_first_vol.values():
+        for r in rows:
+            top_first_vol_codes.add(r[0])
+            if r[0] not in top_first_vol_names:
+                top_first_vol_names[r[0]] = r[1]
+    top_first_vol_kline = _load_kline(top_first_vol_codes, top_first_vol_names)
+    for code, val in top_first_vol_kline.items():
+        kline.setdefault(code, val)
+
+    # 首板涨停放量连阳股 K 线并入（同逻辑；在首板涨停放量股基础上再筛 T-1 阳线/创新高）
+    top_first_vol_sun = _load_top_first_vol_sun()
+    top_first_vol_sun_codes: set[str] = set()
+    top_first_vol_sun_names: dict[str, str] = {}
+    for rows in top_first_vol_sun.values():
+        for r in rows:
+            top_first_vol_sun_codes.add(r[0])
+            if r[0] not in top_first_vol_sun_names:
+                top_first_vol_sun_names[r[0]] = r[1]
+    top_first_vol_sun_kline = _load_kline(top_first_vol_sun_codes, top_first_vol_sun_names)
+    for code, val in top_first_vol_sun_kline.items():
+        kline.setdefault(code, val)
+
     # 策略选股详情
     strategy_detail = _load_strategy_detail(strategies)
 
@@ -2906,11 +4036,24 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
 
     # 情绪曲线与具体策略无关，放顶层只算一次（避免每个策略重复计算 4 条线）
     five_min = _build_five_min(strategies)
+    # 涨停股 / 首板的 5 分钟窗口：按各自出现的日期精确生成（与策略选股同口径），
+    # 避免点击历史日期时回退到「最新窗口」导致显示范围错误
+    _cd = _collect_code_dates(top)
+    for _c, _ds in _collect_code_dates(top_first).items():
+        _cd.setdefault(_c, set()).update(_ds)
+    for _c, _ds in _collect_code_dates(top_first_vol).items():
+        _cd.setdefault(_c, set()).update(_ds)
+    for _c, _ds in _collect_code_dates(top_first_vol_sun).items():
+        _cd.setdefault(_c, set()).update(_ds)
+    _extend_five_min_top(_cd, five_min)
     data = {
         "strategies": strategies,
         "backtest": backtest,
         "candidates": candidates,
         "top": top,
+        "top_first": top_first,
+        "top_first_vol": top_first_vol,
+        "top_first_vol_sun": top_first_vol_sun,
         "kline": kline,
         "strategy_detail": strategy_detail,
         "fiveMin": five_min,
@@ -2918,10 +4061,14 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
     }
 
     # 不输出左侧命令侧边栏：离线单文件拷到别处后命令按钮（依赖本地服务/自定义协议）无意义
-    html = _render_html(data, show_sidebar=False)
+    # 离线零内嵌：先把数据写到 data/ 伴随文件（HTML 不内嵌任何数据），再生成仅引用数据的 HTML
+    here = os.path.dirname(os.path.abspath(__file__))
+    _write_offline_data(here, data)
+    html = _render_html({}, show_sidebar=False, external=True)
+    html = _inject_gen_time(html)
 
     # 把 CDN <script src> 替换为本地内联库，使 HTML 彻底离线、可独立分发
-    here = os.path.dirname(os.path.abspath(__file__))
+    vendor = os.path.join(here, "UI", "vendor")
     vendor = os.path.join(here, "UI", "vendor")
     lib_map = {
         "https://cdn.jsdelivr.net/npm/chart.js":
@@ -2944,10 +4091,18 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
     out_path = os.path.join(here, "UI", "StrategyDashboardOffline.html")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
+    # 落盘元信息：本次构建对应的源数据时间戳，供下次判断是否需要重建
+    try:
+        from datetime import datetime as _dt2
+        with open(out_path + ".meta.json", "w", encoding="utf-8") as f:
+            json.dump({"src_mtime": src_mtime,
+                       "generated": _dt2.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
+    except Exception as exc:
+        print(f"STRATEGY_UI: 元信息写入失败（不影响看板）：{exc}")
     print(f"STRATEGY_UI: 离线看板已生成 {out_path}")
 
     if open_browser:
-        webbrowser.open("file:///" + out_path.replace("\\", "/"))
+        webbrowser.open("file:///" + out_path.replace("\\", "/") + "?v=" + str(int(os.path.getmtime(out_path))))
     return out_path
 
 

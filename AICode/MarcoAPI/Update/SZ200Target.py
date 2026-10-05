@@ -48,14 +48,32 @@ def UPDATE_TARGET_TPO_M5():
     _UPDATE_TARGET_CANDIDATE("TPO_M5", market_index=2, sort_by_market=True, market_max=1.3e11)
 
 
-def _UPDATE_TARGET_CANDIDATE(strategy_name: str, market_index: int, sort_by_market: bool = False, require_first_plate: bool = True, market_max: float = float("inf")):
+def UPDATE_TARGET_TPO_M5_MID():
+    """实盘候选池 TPO_M5_MID：条件同 TPO_M5，市值区间 100 亿(含) ~ 200 亿(不含)。
+
+    与 TPO_M5、TPO_M5_SMALL 构成互不重叠的三档：恰好 200 亿归 TPO_M5，故上界取「不含」。
+    """
+    _UPDATE_TARGET_CANDIDATE("TPO_M5_MID", market_index=2, sort_by_market=True,
+                             market_min=1e10, market_max=2e10, market_max_inclusive=False)
+
+
+def UPDATE_TARGET_TPO_M5_SMALL():
+    """实盘候选池 TPO_M5_SMALL：条件同 TPO_M5，市值 < 100 亿（不含 100 亿）。
+
+    100 亿归 TPO_M5_MID，故上界取「不含」。
+    """
+    _UPDATE_TARGET_CANDIDATE("TPO_M5_SMALL", market_index=2, sort_by_market=True,
+                             market_min=0.0, market_max=1e10, market_max_inclusive=False)
+
+
+def _UPDATE_TARGET_CANDIDATE(strategy_name: str, market_index: int, sort_by_market: bool = False, require_first_plate: bool = True, market_min: float = 2e10, market_max: float = float("inf"), market_max_inclusive: bool = True):
     """生成 T-2 日候选股票池到 TARGET/{strategy_name}/（多进程）"""
     target_dir = PATH_AIDATA_TARGET(strategy_name)
     _rotate_dir(target_dir)
     stock_codes = STOCK_CODES_ALL()
     trading_dates = TRADING_DATES()
     with ProcessPoolExecutor(max_workers=32) as pool:
-        fn = partial(GENERATE_TARGET_CANDIDATE, stock_codes, target_dir, market_index, sort_by_market, require_first_plate, market_max)
+        fn = partial(GENERATE_TARGET_CANDIDATE, stock_codes, target_dir, market_index, sort_by_market, require_first_plate, market_min, market_max, market_max_inclusive)
         future_to_date = {pool.submit(fn, d): d for d in trading_dates}
         with tqdm(total=len(future_to_date), desc=f"TARGET {strategy_name}", ncols=90, disable=False) as bar:
             for fut in as_completed(future_to_date):
@@ -65,7 +83,7 @@ def _UPDATE_TARGET_CANDIDATE(strategy_name: str, market_index: int, sort_by_mark
     return f"TARGET {strategy_name}: 完成 {len(trading_dates)} 个交易日"
 
 
-def GENERATE_TARGET_CANDIDATE(stock_codes: list[str], target_dir: str, market_index: int, sort_by_market: bool, require_first_plate: bool, market_max: float, trading_date: str):
+def GENERATE_TARGET_CANDIDATE(stock_codes: list[str], target_dir: str, market_index: int, sort_by_market: bool, require_first_plate: bool, market_min: float, market_max: float, market_max_inclusive: bool, trading_date: str):
     """worker: 以 trading_date 为 T-2（选股池产生日），生成 T-2 候选股票池。
 
     候选池条件:
@@ -107,10 +125,15 @@ def GENERATE_TARGET_CANDIDATE(stock_codes: list[str], target_dir: str, market_in
         if info is None or info[1] <= 0:
             continue
         market_value = float(info[1]) * record_0.close
-        if market_value < 2e10:              # 市值 >= 200 亿才保留
+        if market_value < market_min:        # 市值下限（默认 200 亿；分档策略可下调）
             continue
-        if market_value > market_max:        # TPO_M5：市值上限 1300 亿
-            continue
+        if market_max_inclusive:
+            if market_value > market_max:    # 上界含等号（TPO_M5 上限 1300 亿）
+                continue
+        else:
+            # 上界「不含」：相邻市值分档互不重叠（MID 上界 200 亿归 TPO_M5；SMALL 上界 100 亿归 MID）
+            if market_value >= market_max:
+                continue
         rows.append((f"{code}|{name}|{market_value:.2f}", market_value))
 
     # TPO_TOP：按流通市值倒序排列，市值最大的排第一（TPO_3 保持股票代码顺序）

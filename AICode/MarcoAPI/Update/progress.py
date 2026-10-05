@@ -3,7 +3,7 @@
 背景：数据更新在网页端通过子进程把 stdout/stderr 重定向到日志文件（非 TTY），
 tqdm 在非 TTY 下不会用 \\r 原地刷新，而是每步写一行，导致网页日志里进度条逐行累积
 （即"每更新一行"）。本实现始终写 `\\r` + 定宽行 + flush，使日志文件中的进度序列
-可被 StrategyService._strip_carriage 压缩为单行进度。命令行 TTY 下同样单行刷新。
+可在网页日志中被压缩为单行进度（\r 原地刷新语义）。命令行 TTY 下同样单行刷新。
 
 接口对齐 tqdm：支持 total/desc/ncols/disable 构造参数，以及 set_postfix/update/close，
 因此调用处只需把 `from tqdm import tqdm` 换成 `from .progress import ProgressBar as tqdm`。

@@ -10,6 +10,7 @@ Run.py —— 主交互菜单
     2. 更新5M数据 —— 下载 5 分钟级原始行情（2026 起，需通达信联网）
     3. 更新同花顺 —— 选策略后写入同花顺板块（自动关闭/重启同花顺生效）
     4. 离线看板   —— 生成内联图表库的单文件看板，无外网也能打开（统一用此项查看看板）
+    5. 单项更新   —— 列出一条龙各步骤，单独运行任意一项（如只刷涨停/只跑某策略回测）
     6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
     77. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
@@ -44,7 +45,8 @@ except Exception:
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
 from AICode.MarcoAPI.Update.Path import PATH_AIDATA
-from AICode.MarcoAPI.StrategyUI import GENERATE_STRATEGY_UI_OFFLINE, CMD_UPDATE_THS, _list_strategies
+from AICode.MarcoAPI.StrategyUI import (GENERATE_STRATEGY_UI_OFFLINE, CMD_UPDATE_THS, CMD_RUN_STEP,
+                                         _list_strategies, OFFLINE_DASHBOARD_STATUS, OFFLINE_DASHBOARD_PATH)
 from AICode.AITrading.Structure.callbacks import watch as qmt_watch
 from AICode.AITrading import commands as CMD
 
@@ -121,7 +123,22 @@ def _do_update_5m():
 
 
 def _do_ui_offline():
-    """菜单 8：生成离线看板（内联图表库，单文件可拷到任意无外网环境打开）。"""
+    """菜单 4：打开离线看板。
+
+    看板已是最新（源数据自上次生成后未变更）时直接打开，避免每次启动都全量重建
+    —— 重建需扫描全部个股的 5M 数据并写出数百 MB，耗时数分钟，而日常只是想看盘。
+    源数据确有更新时自动重建；也可输入 r 强制重建。
+    """
+    fresh, msg = OFFLINE_DASHBOARD_STATUS()
+    print(f"\n  {C}离线看板：{msg}{R}")
+    if fresh:
+        ans = input(f"  {Y}回车=直接打开，输入 r 回车=强制重新生成：{R}").strip().lower()
+        if ans != "r":
+            import webbrowser
+            p = OFFLINE_DASHBOARD_PATH()
+            webbrowser.open("file:///" + p.replace("\\", "/") + "?v=" + str(int(os.path.getmtime(p))))
+            print(f"  {G}[OK] 已打开离线看板{R}")
+            return
     GENERATE_STRATEGY_UI_OFFLINE()
 
 
@@ -286,7 +303,64 @@ def _do_pipeline():
         _do_ths()
     except BaseException as exc:
         print(f"  {Y}!!!!! ③ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
+    # ④ 数据更新完毕后刷新离线看板（HTML + data/ 伴随文件），保证离线数据与源数据同步
+    print(f"\n  {C}{B}── ④ 刷新离线看板（HTML + data/）──{R}")
+    try:
+        GENERATE_STRATEGY_UI_OFFLINE(open_browser=False)
+        print(f"  {G}[OK] 离线看板与 data/ 已刷新{R}")
+    except BaseException as exc:
+        print(f"  {Y}!!!!! ④ 离线看板生成失败：{type(exc).__name__}: {exc}{R}")
     print(f"\n  {G}{B}── 一条龙更新结束 ──{R}")
+
+
+# 单项更新步骤（与一条龙依赖顺序一致）：编号 -> (显示名, UPDATE_* 标识)
+_UPDATE_STEP_ITEMS = (
+    ("1",  "交易日历",     "UPDATE_TRADING_DATES"),
+    ("2",  "股票池",       "UPDATE_STOCK_CODES"),
+    ("3",  "日线原始",     "UPDATE_1D_ORIGIN"),
+    ("4",  "5分钟原始",    "UPDATE_5M_ORIGIN"),
+    ("5",  "涨停列表",     "UPDATE_TOP"),
+    ("6",  "加工日线",     "UPDATE_1D"),
+    ("7",  "首板涨停",     "UPDATE_TOP_FIRST"),
+    ("8",  "TPO_3 回测",   "UPDATE_STRATEGY_TPO_3"),
+    ("9",  "TPO_TOP 回测", "UPDATE_STRATEGY_TPO_TOP"),
+    ("10", "TPO_M5 回测",       "UPDATE_STRATEGY_TPO_M5"),
+    ("10.1", "TPO_M5_MID 回测", "UPDATE_STRATEGY_TPO_M5_MID"),
+    ("10.2", "TPO_M5_SMALL 回测", "UPDATE_STRATEGY_TPO_M5_SMALL"),
+    ("11", "TPO_3 候选",       "UPDATE_TARGET_TPO_3"),
+    ("12", "TPO_TOP 候选",     "UPDATE_TARGET_TPO_TOP"),
+    ("13", "TPO_M5 候选",      "UPDATE_TARGET_TPO_M5"),
+    ("13.1", "TPO_M5_MID 候选", "UPDATE_TARGET_TPO_M5_MID"),
+    ("13.2", "TPO_M5_SMALL 候选", "UPDATE_TARGET_TPO_M5_SMALL"),
+    ("14", "TPO_M5 高低点",    "UPDATE_TPO_M5_HL"),
+)
+
+
+def _do_single_update():
+    """菜单 5：单项数据更新 —— 列出一条龙各步骤，单独运行任意一项（复用 CMD_RUN_STEP）。"""
+    print(f"\n  {C}{B}── 单项数据更新（按依赖顺序）──{R}")
+    print(f"  {Y}依赖：⑥加工日线依赖⑤涨停列表；⑦首板涨停依赖⑥的 is_volume_up{R}")
+    for num, name, step in _UPDATE_STEP_ITEMS:
+        print(f"  {G}{num:>2}{R}  {B}{name}{R}  {Y}({step}){R}")
+    print(f"  {Y}0{R}  {B}返回主菜单{R}")
+    while True:
+        sel = input(f"  {C}请选择要运行的步骤 → {R}").strip()
+        if sel == "0":
+            return
+        hit = next((it for it in _UPDATE_STEP_ITEMS if it[0] == sel), None)
+        if not hit:
+            print(f"  {Y}无效选择，请输入 1 ~ {len(_UPDATE_STEP_ITEMS)} 或 0。{R}")
+            continue
+        _, name, step = hit
+        print(f"  {C}运行：{name}（{step}）...{R}")
+        try:
+            result = CMD_RUN_STEP(step)
+        except BaseException as exc:
+            print(f"  {Y}!!!!! {name} 失败：{type(exc).__name__}: {exc}{R}")
+            result = None
+        if result:
+            print(f"  {result}")
+        print(f"  {G}── {name} 完成，可继续选择或输入 0 返回 ──{R}")
 
 
 # 菜单结构：(编号, 名称, 说明)。每个元组为一组，组之间会画一条分隔线。
@@ -294,7 +368,8 @@ _MENU_GROUPS = (
     (("1", "更新数据", "同步交易日历 / 日线 / 涨停 / 策略 / 目标池"),
      ("2", "更新5M数据", "下载 5 分钟级原始行情（2026 起）"),
      ("3", "更新同花顺", "按策略写入同花顺板块（自动关闭/重启生效）"),
-     ("4", "离线看板", "生成内联库单文件看板，无外网也能打开")),
+     ("4", "离线看板", "打开离线看板（已是最新则秒开，数据有更新才重建）"),
+     ("5", "单项更新", "列出一条龙各步骤，单独运行任意一项")),
     (("6", "上传 Gitee", "提交改动并推送到 Gitee 仓库"),
      ("7", "上传 GitHub", "提交改动并推送到 GitHub 仓库")),
     (("77", "QMT 自动交易", "买入 / 卖出监控 / 常驻 watch"),
@@ -363,6 +438,8 @@ def _menu_loop():
             _do_update_5m()
         elif choice == "4":
             _do_ui_offline()
+        elif choice == "5":
+            _do_single_update()
         elif choice == "77":
             _do_qmt()
         elif choice == "6":
@@ -379,7 +456,7 @@ def _menu_loop():
             print(f"\n  {Y}已退出。{R}\n")
             break
         else:
-            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 6 / 7 / 77 / 88 / 0。{R}")
+            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 4 / 5 / 6 / 7 / 77 / 88 / 0。{R}")
 
 
 def main():
