@@ -1083,6 +1083,9 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 .kline-info .up {{ color: #d62828; }}
 .kline-info .down {{ color: #0077b6; }}
 .kline-info .limit-up {{ color: #f5c518; }}
+/* K 线左上角 MA 数值浮层 */
+.ma-overlay {{ position: absolute; top: 6px; left: 10px; z-index: 20; font: 12px/1.7 Consolas, monospace; background: rgba(0,0,0,0.55); padding: 3px 9px; border-radius: 4px; pointer-events: none; white-space: nowrap; }}
+.ma-overlay b {{ font-weight: 700; }}
 .chg-big {{ font-size: 20px; font-weight: 700; margin-right: 10px; }}
 .chg-big.up {{ color: #d62828; }}
 .chg-big.down {{ color: #0077b6; }}
@@ -1757,6 +1760,7 @@ function renderBacktestKline(st) {{
     if (ma.p <= 0 || ma.visible === false) return;
     chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(calcMA(data, ma.p));
   }});
+  injectMaOverlay(mainEl, btKlineState.ma, data, d => d.close);
   // 主图：BOLL
   if (btKlineState.showBOLL) {{
     const boll = calcBOLL(data);
@@ -2434,6 +2438,26 @@ function calcMA(data, period) {{
   }}
   return out;
 }}
+/* 在 K 线容器左上角叠加全部 MA 数值浮层（取最新一根的均线值）。
+   maList: [{p, c, visible}], getClose: 从数据项取收盘价。 */
+function injectMaOverlay(mainEl, maList, data, getClose) {{
+  if (!mainEl || !data || data.length === 0) return;
+  mainEl.style.position = 'relative';
+  let html = '';
+  maList.forEach(ma => {{
+    const p = ma.p;
+    if (p <= 0 || ma.visible === false || data.length < p) return;
+    let sum = 0;
+    for (let i = data.length - p; i < data.length; i++) sum += getClose(data[i]);
+    const v = sum / p;
+    html += '<span style="color:' + ma.c + ';margin-right:12px;">MA' + p + ' <b>' + v.toFixed(2) + '</b></span>';
+  }});
+  if (!html) return;
+  const div = document.createElement('div');
+  div.className = 'ma-overlay';
+  div.innerHTML = html;
+  mainEl.appendChild(div);
+}}
 function emaArr(values, period) {{
   const k = 2 / (period + 1);
   const out = [];
@@ -2622,6 +2646,7 @@ function renderKline5m(code, anchor) {{
       chart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }})
         .setData(calcMA5m(bars, ma.p));
     }});
+    injectMaOverlay(mainEl, klineState.ma, bars, b => b[4]);
     const pane = chart.addPane();
     const vol = pane.addSeries(LightweightCharts.HistogramSeries, {{ priceFormat: {{ type: 'volume' }} }});
     vol.setData(bars.map(b => ({{ time: b[0], value: b[5], color: b[4] >= b[1] ? c.up + '66' : c.down + '66' }})));
@@ -2790,6 +2815,8 @@ function renderKline(k) {{
   if (klineState.showVWAP) {{
     _chart.addSeries(LightweightCharts.LineSeries, {{ color: '#c0c4cc', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }}).setData(calcVWAP(data));
   }}
+  // 左上角 MA 数值浮层（最新一根）
+  injectMaOverlay(mainEl, klineState.ma, data, d => d.close);
 
   // 各指标栏：v5 原生分栏（addPane），价格刻度/时间轴/十字线自动对齐
   klineState.bars.forEach(bar => {{
@@ -3685,13 +3712,30 @@ def CMD_RUN_STEP(step: str) -> str:
         return f"[{step}] 失败: {type(exc).__name__}: {exc}"
 
 
+def _sort_by_cap_desc(codes: list[str], trading_date: str) -> list[str]:
+    """按流通市值(流通股本 × 收盘价)倒序排序代码列表；无法取值的排末尾。"""
+    scored: list[tuple[float, str]] = []
+    for c in codes:
+        cap = 0.0
+        try:
+            info = GET_STOCK_INFO(c)
+            rec = GET_SZ200_1D_PREVIOUS(c, trading_date, 0)
+            if info is not None and len(info) > 1 and info[1] > 0 and rec is not None and rec.close > 0:
+                cap = float(info[1]) * rec.close
+        except Exception:
+            cap = 0.0
+        scored.append((cap, c))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [c for _, c in scored]
+
+
 def CMD_UPDATE_THS(strategy_name: str) -> str:
     """【快捷命令】把指定策略的最新日期股票写入同花顺板块 XML 并拷贝到实盘机目录。
 
     - 最新日期股票 -> 替换模板 ===TPO3===
     - 最新日前一日期股票 -> 替换模板 ===TPO31===（该日为空则替换为空值，板块留空）
     - 当天（TOP 最新交易日）首板涨停股（lian_ban==1）-> 替换模板 ===TOP===
-    - 首板涨停放量连阳股（TAB7）最新 20 个交易日去重全部股票 -> 替换模板 ===HISTORY===
+    - 首板涨停放量连阳股（TAB7）最新 17 个交易日去重全部股票 -> 替换模板 ===HISTORY===
     - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件，然后删除本地拷贝。
     """
     if not strategy_name:
@@ -3713,16 +3757,20 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     top_first_dates = sorted(d for d in os.listdir(top_first_dir) if d.isdigit()) if os.path.isdir(top_first_dir) else []
     top_date = top_first_dates[-1] if top_first_dates else None
     tops = [c.strip() for c in _read_text(os.path.join(top_first_dir, top_date)).splitlines() if c.strip()] if top_date else []
+    # ===TOP=== 按流通市值倒序排序（大市值在前）
+    tops = _sort_by_cap_desc(tops, top_date) if top_date else []
 
+    tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
+    tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
     tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
     tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
     top_block = "\n".join(_code_to_ths_security(c) for c in tops)
 
-    # 首板涨停放量连阳股（TAB7）：取最新 20 个交易日，汇总去重全部股票 -> ===HISTORY===
+    # 首板涨停放量连阳股（TAB7）：取最新 17 个交易日，汇总去重全部股票 -> ===HISTORY===
     sun = _load_top_first_vol_sun()
     sun_codes: list[str] = []
     _seen: set[str] = set()
-    for d in list(sun.keys())[:20]:          # sun 的键已按日期倒序
+    for d in list(sun.keys())[:17]:          # sun 的键已按日期倒序
         for row in sun[d]:
             c = row[0]
             if c not in _seen:
@@ -3753,7 +3801,7 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
         f"策略 {strategy_name}: {latest} 共 {len(tpo3)} 只(TPO3), "
         f"{prev or '无'} 共 {len(tpo31)} 只(TPO31), "
         f"首板涨停 {top_date or '无'} 共 {len(tops)} 只(TOP), "
-        f"连阳(TAB7) 最新20日共 {len(sun_codes)} 只(HISTORY)"
+        f"连阳(TAB7) 最新17日共 {len(sun_codes)} 只(HISTORY)"
     )
     print(f"CMD_UPDATE_THS: 已写入 {target_file}\n{detail}")
     return f"同花顺板块已更新:\n{detail}\n已覆盖: {target_file}"
