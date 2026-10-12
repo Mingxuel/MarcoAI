@@ -315,8 +315,11 @@ def _list_strategies() -> list[str]:
     # 排除 RESULT 与 _rotate_dir 产生的 .old_ 备份目录（否则会被当成策略列进下拉框）
     names = [d for d in os.listdir(base)
              if os.path.isdir(os.path.join(base, d)) and d != "RESULT" and ".old_" not in d]
-    # TPO_M5 系列（大/中/小市值三档）优先排前，其余按字母序
-    _m5 = ("TPO_M5", "TPO_M5_MID", "TPO_M5_SMALL")
+    # 已下线的策略目录不再出现在看板（数据/管线保留，便于回滚）：TPO_M5_MID、TPO_M5_SMALL
+    _excluded = ("TPO_M5_MID", "TPO_M5_SMALL")
+    names = [n for n in names if n not in _excluded]
+    # TPO_M5 系列（大市值档）优先排前，其余按字母序
+    _m5 = ("TPO_M5",)
     ordered = [n for n in _m5 if n in names]
     rest = sorted(n for n in names if n not in _m5)
     return ordered + rest
@@ -838,6 +841,7 @@ def _write_offline_data(here: str, data: dict) -> None:
         "kline": {},
         "fiveMin": {},
         "_stockBase": "data/stock/",
+        "_stockChunks": 64,
     }
     with open(os.path.join(data_dir, "index.js"), "w", encoding="utf-8") as f:
         f.write("window.__IDX = " + json.dumps(index_data, ensure_ascii=False) + ";\n")
@@ -852,14 +856,34 @@ def _write_offline_data(here: str, data: dict) -> None:
                     + json.dumps({key: data.get(key, {})}, ensure_ascii=False) + ");\n")
     kline = data.get("kline", {}) or {}
     five_min = data.get("fiveMin", {}) or {}
-    all_codes = set(kline.keys()) | set(five_min.keys())
+    all_codes = sorted(set(kline.keys()) | set(five_min.keys()))
+    # 个股数据分块落盘：按 code 稳定哈希分成 _stockChunks 块（每块约 36 只、~6MB）。
+    # 避免 Windows 下逐个创建 2300+ 小文件的巨大开销（生成快 ~36 倍），同时保留点击按需加载：
+    # 点一只股票只加载其所在块，同块后续点击直接命中内存、零请求。
+    STOCK_CHUNKS = 64
+    # 清理上一代「每只一个文件」的残留（仅过渡期一次；之后目录里只有 chunk_*.js，本步为空操作）
+    for fn in os.listdir(stock_dir):
+        if not fn.startswith("chunk_"):
+            try:
+                os.remove(os.path.join(stock_dir, fn))
+            except OSError:
+                pass
+    chunks = {i: [] for i in range(STOCK_CHUNKS)}
     for code in all_codes:
-        sf = os.path.join(stock_dir, str(code).replace("/", "_").replace("\\", "_") + ".js")
-        obj = {"kline": kline.get(code), "fiveMin": five_min.get(code, {})}
+        h = 0
+        for ch in code:
+            h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+        chunks[h % STOCK_CHUNKS].append(code)
+    for ci, codes in chunks.items():
+        if not codes:
+            continue
+        sf = os.path.join(stock_dir, "chunk_%d.js" % ci)
         with open(sf, "w", encoding="utf-8") as f:
             f.write("window.__STK = window.__STK || {};\n")
-            f.write("window.__STK[%s] = %s;\n" % (json.dumps(code), json.dumps(obj, ensure_ascii=False)))
-    print(f"STRATEGY_UI: 离线数据已写出 {len(all_codes)} 只个股到 {stock_dir}")
+            for code in codes:
+                obj = {"kline": kline.get(code), "fiveMin": five_min.get(code, {})}
+                f.write("window.__STK[%s] = %s;\n" % (json.dumps(code), json.dumps(obj, ensure_ascii=False)))
+    print(f"STRATEGY_UI: 离线数据已写出 {len(all_codes)} 只个股(分 {STOCK_CHUNKS} 块)到 {stock_dir}")
 
 
 def _render_html(data: dict[str, Any], show_sidebar: bool = True, external: bool = False) -> str:
@@ -1163,10 +1187,8 @@ table.detail-table tbody tr {{ cursor: pointer; }}
   <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">1 策略回测</div>
   <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
   <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
-  <div class="tab" data-tab="top" onclick="switchTab('top')">4 涨停股</div>
-  <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">5 首板涨停股</div>
-  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">6 首板涨停放量股</div>
-  <div class="tab" data-tab="top_first_vol_sun" onclick="switchTab('top_first_vol_sun')">7 首板涨停放量连阳股</div>
+  <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">4 首板涨停股</div>
+  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">5 首板涨停放量股</div>
 </div>
 
 <div id="panel-backtest" class="tab-panel active">
@@ -1533,7 +1555,14 @@ let current = {{ strategy: null, candStrategy: null, date: null, code: null, top
 
 /* 离线零内嵌：数据外置到 data/ 伴随文件（file:// 下仅 <script src> 兄弟文件可加载，fetch 被禁）
    提速策略：面板渲染出股票列表时后台预取该列表数据，点击时命中缓存，消除逐次点击的 I/O 等待。 */
-function _stockFile(code) {{ return String(code).replace(/[\\/]/g, '_'); }}
+/* 个股数据已分块落盘（chunk_{i}.js），按 code 稳定哈希定位所在块；同块只加载一次 */
+function _stockChunkOf(code) {{
+  const N = (DATA && DATA._stockChunks) || 64;
+  let h = 0;
+  for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
+  return h % N;
+}}
+const _loadedChunks = {{}};
 function _loadScript(src) {{
   return new Promise(function (resolve, reject) {{
     const s = document.createElement('script');
@@ -1545,8 +1574,12 @@ function _loadScript(src) {{
 }}
 async function _doLoadStock(code) {{
   const base = (DATA && DATA._stockBase) || 'data/stock/';
+  const chunk = _stockChunkOf(code);
   const _t0 = performance.now();
-  try {{ await _loadScript(base + _stockFile(code) + '.js'); }} catch (e) {{ console.warn(e); }}
+  if (!_loadedChunks[chunk]) {{
+    try {{ await _loadScript(base + 'chunk_' + chunk + '.js'); }} catch (e) {{ console.warn(e); }}
+    _loadedChunks[chunk] = true;
+  }}
   if (window.__P) window.__P.loads.push(+(performance.now() - _t0).toFixed(1));
   const st = (window.__STK && window.__STK[code]);
   if (st) {{
@@ -2439,7 +2472,7 @@ function calcMA(data, period) {{
   return out;
 }}
 /* 在 K 线容器左上角叠加全部 MA 数值浮层（取最新一根的均线值）。
-   maList: [{p, c, visible}], getClose: 从数据项取收盘价。 */
+   maList: [{{p, c, visible}}], getClose: 从数据项取收盘价。 */
 function injectMaOverlay(mainEl, maList, data, getClose) {{
   if (!mainEl || !data || data.length === 0) return;
   mainEl.style.position = 'relative';
@@ -3581,13 +3614,9 @@ const UPDATE_STEPS = [
   {{ step: 'UPDATE_STRATEGY_TPO_3', label: '⑧ TPO_3 回测', desc: '策略回测数据' }},
   {{ step: 'UPDATE_STRATEGY_TPO_TOP', label: '⑧ TPO_TOP 回测', desc: '策略回测数据' }},
   {{ step: 'UPDATE_STRATEGY_TPO_M5', label: '⑧ TPO_M5 回测', desc: '策略回测数据(200~1300亿)' }},
-  {{ step: 'UPDATE_STRATEGY_TPO_M5_MID', label: '⑧ TPO_M5_MID 回测', desc: '策略回测数据(100~200亿)' }},
-  {{ step: 'UPDATE_STRATEGY_TPO_M5_SMALL', label: '⑧ TPO_M5_SMALL 回测', desc: '策略回测数据(<100亿)' }},
   {{ step: 'UPDATE_TARGET_TPO_3', label: '⑨ TPO_3 候选', desc: '实盘候选池' }},
   {{ step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' }},
   {{ step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' }},
-  {{ step: 'UPDATE_TARGET_TPO_M5_MID', label: '⑨ TPO_M5_MID 候选', desc: '实盘候选池(100~200亿)' }},
-  {{ step: 'UPDATE_TARGET_TPO_M5_SMALL', label: '⑨ TPO_M5_SMALL 候选', desc: '实盘候选池(<100亿)' }},
   {{ step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' }},
   {{ step: 'UPDATE_TPO_M5_HL', label: '⑩ TPO_M5 高低点', desc: '5M 高低点解析' }},
 ];

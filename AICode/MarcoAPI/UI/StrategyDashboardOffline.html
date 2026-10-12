@@ -318,10 +318,8 @@ table.detail-table tbody tr { cursor: pointer; }
   <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">1 策略回测</div>
   <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
   <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
-  <div class="tab" data-tab="top" onclick="switchTab('top')">4 涨停股</div>
-  <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">5 首板涨停股</div>
-  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">6 首板涨停放量股</div>
-  <div class="tab" data-tab="top_first_vol_sun" onclick="switchTab('top_first_vol_sun')">7 首板涨停放量连阳股</div>
+  <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">4 首板涨停股</div>
+  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">5 首板涨停放量股</div>
 </div>
 
 <div id="panel-backtest" class="tab-panel active">
@@ -2712,13 +2710,9 @@ const UPDATE_STEPS = [
   { step: 'UPDATE_STRATEGY_TPO_3', label: '⑧ TPO_3 回测', desc: '策略回测数据' },
   { step: 'UPDATE_STRATEGY_TPO_TOP', label: '⑧ TPO_TOP 回测', desc: '策略回测数据' },
   { step: 'UPDATE_STRATEGY_TPO_M5', label: '⑧ TPO_M5 回测', desc: '策略回测数据(200~1300亿)' },
-  { step: 'UPDATE_STRATEGY_TPO_M5_MID', label: '⑧ TPO_M5_MID 回测', desc: '策略回测数据(100~200亿)' },
-  { step: 'UPDATE_STRATEGY_TPO_M5_SMALL', label: '⑧ TPO_M5_SMALL 回测', desc: '策略回测数据(<100亿)' },
   { step: 'UPDATE_TARGET_TPO_3', label: '⑨ TPO_3 候选', desc: '实盘候选池' },
   { step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' },
   { step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' },
-  { step: 'UPDATE_TARGET_TPO_M5_MID', label: '⑨ TPO_M5_MID 候选', desc: '实盘候选池(100~200亿)' },
-  { step: 'UPDATE_TARGET_TPO_M5_SMALL', label: '⑨ TPO_M5_SMALL 候选', desc: '实盘候选池(<100亿)' },
   { step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' },
   { step: 'UPDATE_TPO_M5_HL', label: '⑩ TPO_M5 高低点', desc: '5M 高低点解析' },
 ];

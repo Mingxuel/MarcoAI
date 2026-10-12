@@ -125,17 +125,17 @@ def _do_update_5m():
 def _do_ui_offline():
     """菜单 4：打开离线看板。
 
-    看板已是最新（源数据自上次生成后未变更）时直接打开，避免每次启动都全量重建
-    —— 重建需扫描全部个股的 5M 数据并写出数百 MB，耗时数分钟，而日常只是想看盘。
-    源数据确有更新时自动重建；也可输入 r 强制重建。
+    看板文件已存在时默认【直接打开（秒开）】，日常只是想看盘无需等待；
+    源数据自上次生成后有更新时会在提示里说明，输入 r 才重新生成。
+    重建需扫描全部个股的 5M 数据并写出数百 MB，耗时数分钟，故默认不自动重建。
     """
     fresh, msg = OFFLINE_DASHBOARD_STATUS()
     print(f"\n  {C}离线看板：{msg}{R}")
-    if fresh:
-        ans = input(f"  {Y}回车=直接打开，输入 r 回车=强制重新生成：{R}").strip().lower()
+    p = OFFLINE_DASHBOARD_PATH()
+    if os.path.isfile(p):
+        ans = input(f"  {Y}回车=直接打开现有看板(秒开)，输入 r 回车=重新生成：{R}").strip().lower()
         if ans != "r":
             import webbrowser
-            p = OFFLINE_DASHBOARD_PATH()
             webbrowser.open("file:///" + p.replace("\\", "/") + "?v=" + str(int(os.path.getmtime(p))))
             print(f"  {G}[OK] 已打开离线看板{R}")
             return
