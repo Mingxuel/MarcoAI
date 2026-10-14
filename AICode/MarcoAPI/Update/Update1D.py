@@ -8,13 +8,14 @@
     1. UPDATE_TRADING_DATES    更新交易日历
     2. UPDATE_STOCK_CODES      更新股票池（SZ100.xlsx -> STOCK_CODES_ALL）
     3. UPDATE_1D_ORIGIN        拉取原始前复权日线（需通达信联网）
-    3.5 UPDATE_5M_ORIGIN       拉取原始前复权 5 分钟线（需通达信联网）
-    4. UPDATE_1D               加工日线（1D_ORIGIN -> 1D，含 is_top/is_bottom/MA/连板等）
-    5. UPDATE_TOP              生成每日涨停股列表（TOP_ORIGIN -> TOP）
-    6. UPDATE_1D               加工日线（依赖涨停列表生成 is_top/lian_ban）
+    3.5 UPDATE_5M_ORIGIN       拉取原始前复权 5 分钟线（需通达信联网，一条龙内仅此一次）
+    4. UPDATE_TOP              生成每日涨停股列表（TOP_ORIGIN -> TOP）
+    5. UPDATE_1D               加工日线（1D_ORIGIN -> 1D，含 is_top/is_bottom/MA/连板；
+                                 is_top/lian_ban 依赖上一步 UPDATE_TOP 的涨停列表，单次加工即可，并非跑两遍）
+    6. UPDATE_INDEX_1D         加工指数日线（INDEX_ORIGIN -> INDEX，无涨停/连板列）
     7. UPDATE_STRATEGY_TPO_3/TPO_TOP/TPO_M5  策略选股（Strategy/ 回测数据）
     8. UPDATE_TARGET_TPO_3/TPO_TOP/TPO_M5    策略实盘候选池（TARGET/ 候选股）
-    9. UPDATE_TPO_M5_HL        5M 高低点解析（T-4..T-0 首高/末低位置 -> TARGET_5M/TPO_M5，供同花顺板块与威科夫分析）
+    （已移除 UPDATE_STRATEGY_TPO_M5_MID/SMALL、UPDATE_TARGET_TPO_M5_MID/SMALL、UPDATE_TPO_M5_HL）
 """
 
 import os
@@ -27,21 +28,20 @@ if _root not in sys.path:
 from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES
 from AICode.MarcoAPI.Update.StockCodes import UPDATE_STOCK_CODES
 from AICode.MarcoAPI.Update.SZ2001D import UPDATE_1D_ORIGIN, UPDATE_1D
+from AICode.MarcoAPI.Update.SZ200Index import (
+    UPDATE_INDEX_CODES, UPDATE_INDEX_1D_ORIGIN, UPDATE_INDEX_1D,
+)
 from AICode.MarcoAPI.Update.Path import PATH_AIDATA
 from AICode.MarcoAPI.Update.SZ200Top import UPDATE_TOP, UPDATE_TOP_FIRST, UPDATE_TOP_FIRST_VOL, UPDATE_TOP_FIRST_VOL_SUN
 from AICode.MarcoAPI.Update.SZ200Strategy import (
     UPDATE_STRATEGY_TPO_3,
     UPDATE_STRATEGY_TPO_TOP,
     UPDATE_STRATEGY_TPO_M5,
-    UPDATE_STRATEGY_TPO_M5_MID,
-    UPDATE_STRATEGY_TPO_M5_SMALL,
 )
 from AICode.MarcoAPI.Update.SZ200Target import (
     UPDATE_TARGET_TPO_3, UPDATE_TARGET_TPO_TOP, UPDATE_TARGET_TPO_M5,
-    UPDATE_TARGET_TPO_M5_MID, UPDATE_TARGET_TPO_M5_SMALL,
 )
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
-from AICode.MarcoAPI.Update.SZ200TPO_M5_HL import UPDATE_TPO_M5_HL
 
 
 def _remove_dir_safe(path: str):
@@ -105,22 +105,20 @@ def UPDATE_ALL():
         ("UPDATE_STOCK_CODES", _step_stock_codes),
         ("UPDATE_1D_ORIGIN", UPDATE_1D_ORIGIN),
         ("UPDATE_5M_ORIGIN", UPDATE_5M_ORIGIN),
+        ("UPDATE_INDEX_CODES", UPDATE_INDEX_CODES),
+        ("UPDATE_INDEX_1D_ORIGIN", UPDATE_INDEX_1D_ORIGIN),
         ("UPDATE_TOP", UPDATE_TOP),
         ("UPDATE_1D", UPDATE_1D),
+        ("UPDATE_INDEX_1D", UPDATE_INDEX_1D),
         ("UPDATE_TOP_FIRST", UPDATE_TOP_FIRST),
         ("UPDATE_TOP_FIRST_VOL", UPDATE_TOP_FIRST_VOL),
         ("UPDATE_TOP_FIRST_VOL_SUN", UPDATE_TOP_FIRST_VOL_SUN),
         ("UPDATE_STRATEGY_TPO_3", UPDATE_STRATEGY_TPO_3),
         ("UPDATE_STRATEGY_TPO_TOP", UPDATE_STRATEGY_TPO_TOP),
         ("UPDATE_STRATEGY_TPO_M5", UPDATE_STRATEGY_TPO_M5),
-        ("UPDATE_STRATEGY_TPO_M5_MID", UPDATE_STRATEGY_TPO_M5_MID),
-        ("UPDATE_STRATEGY_TPO_M5_SMALL", UPDATE_STRATEGY_TPO_M5_SMALL),
         ("UPDATE_TARGET_TPO_3", UPDATE_TARGET_TPO_3),
         ("UPDATE_TARGET_TPO_TOP", UPDATE_TARGET_TPO_TOP),
         ("UPDATE_TARGET_TPO_M5", UPDATE_TARGET_TPO_M5),
-        ("UPDATE_TARGET_TPO_M5_MID", UPDATE_TARGET_TPO_M5_MID),
-        ("UPDATE_TARGET_TPO_M5_SMALL", UPDATE_TARGET_TPO_M5_SMALL),
-        ("UPDATE_TPO_M5_HL", UPDATE_TPO_M5_HL),
     ]
     for name, fn in steps:
         try:

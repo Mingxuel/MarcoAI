@@ -35,24 +35,23 @@ from AICode.MarcoAPI.Backtest import (
 )
 from AICode.MarcoAPI.Update.Path import (
     PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP,
-    PATH_AIDATA_TOP_FIRST, PATH_AIDATA_TOP_FIRST_VOL, PATH_AIDATA_TOP_FIRST_VOL_SUN, PATH_AIDATA_5M
+    PATH_AIDATA_TOP_FIRST, PATH_AIDATA_TOP_FIRST_VOL, PATH_AIDATA_TOP_FIRST_VOL_SUN, PATH_AIDATA_5M,
+    PATH_AIDATA_INDEX_ORIGIN,
 )
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS, UPDATE_1D_ORIGIN, UPDATE_1D
+from AICode.MarcoAPI.Update.SZ200Index import UPDATE_INDEX_CODES, UPDATE_INDEX_1D_ORIGIN, UPDATE_INDEX_1D, INDEX_CODES, GET_INDEX_NAME
 from AICode.MarcoAPI.Update.SZ200Strategy import BUILD_SENTIMENT_KLINE
 from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO, UPDATE_STOCK_CODES
 from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES
 from AICode.MarcoAPI.Update.SZ200Top import UPDATE_TOP, UPDATE_TOP_FIRST, UPDATE_TOP_FIRST_VOL, UPDATE_TOP_FIRST_VOL_SUN
 from AICode.MarcoAPI.Update.SZ200Strategy import (
     UPDATE_STRATEGY_TPO_3, UPDATE_STRATEGY_TPO_TOP, UPDATE_STRATEGY_TPO_M5,
-    UPDATE_STRATEGY_TPO_M5_MID, UPDATE_STRATEGY_TPO_M5_SMALL,
 )
 from AICode.MarcoAPI.Update.SZ200Target import (
     UPDATE_TARGET_TPO_3, UPDATE_TARGET_TPO_TOP, UPDATE_TARGET_TPO_M5,
-    UPDATE_TARGET_TPO_M5_MID, UPDATE_TARGET_TPO_M5_SMALL,
 )
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
-from AICode.MarcoAPI.Update.SZ200TPO_M5_HL import UPDATE_TPO_M5_HL
 
 # K 线内嵌【全部历史】日线（1D_ORIGIN 有多少就嵌多少，不再截断到 120 根）
 
@@ -66,7 +65,7 @@ THS_BLOCK_NAME = "blockstockV3.xml"
 PLACEHOLDER_TPO3  = "===TPO3==="
 PLACEHOLDER_TPO31 = "===TPO31==="
 PLACEHOLDER_TOP   = "===TOP==="   # 当天（最新交易日）涨停股
-PLACEHOLDER_HISTORY = "===HISTORY==="   # 首板涨停放量连阳股（TAB7）最新 20 日去重全部股票
+PLACEHOLDER_HIS    = "===HIS==="   # 最近 5 日首板涨停放量股（TAB: 首板涨停放量股），剔除首板日后其它日又涨停的股
 
 
 def _read_text(path):
@@ -513,19 +512,22 @@ def _load_top_first_vol_sun() -> dict[str, list[list[str]]]:
     return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
 
 
-def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: int | None = None) -> dict[str, dict[str, Any]]:
-    """读取候选股的【全部历史】原始日线（1D_ORIGIN）。
+def _load_kline(codes: set[str], names: dict[str, str] | None = None, max_days: int | None = None,
+                origin_dir: str | None = None) -> dict[str, dict[str, Any]]:
+    """读取候选股的【全部历史】原始日线（默认 1D_ORIGIN；指数传 INDEX_ORIGIN）。
 
     仅传原始 OHLCV，所有指标（MA/MACD/KDJ/BOLL/VWAP）与月线聚合
     均由前端 JS 动态计算，便于配置切换。names 提供 code->股票名称。
     max_days>0 时仅保留最近 N 条（用于涨停股等数据量大、且只需近期走势的场景，减小 payload）。
+    origin_dir 指定原始日线目录（默认 PATH_AIDATA_1D_ORIGIN；指数传 PATH_AIDATA_INDEX_ORIGIN）。
     """
     names = names or {}
     kline = {}
+    origin_dir = origin_dir or PATH_AIDATA_1D_ORIGIN()
     # 按代码排序遍历：codes 是 set，直接遍历顺序不稳定，会导致两次生成的
     # payload（在线/离线）字节不一致（内容相同但键顺序不同），排序保证可复现
     for code in sorted(codes):
-        path = os.path.join(PATH_AIDATA_1D_ORIGIN(), code)
+        path = os.path.join(origin_dir, code)
         if not os.path.exists(path):
             continue
         lines = _read_text(path).splitlines()
@@ -840,6 +842,7 @@ def _write_offline_data(here: str, data: dict) -> None:
         "top": {}, "top_first": {}, "top_first_vol": {}, "top_first_vol_sun": {}, "candidates": {}, "strategy_detail": {},   # 占位，进对应 TAB 后填充
         "kline": {},
         "fiveMin": {},
+        "index_kline": data.get("index_kline", {}),
         "_stockBase": "data/stock/",
         "_stockChunks": 64,
     }
@@ -1189,6 +1192,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
   <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
   <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">4 首板涨停股</div>
   <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">5 首板涨停放量股</div>
+  <div class="tab" data-tab="index" onclick="switchTab('index')">6 指数K线</div>
 </div>
 
 <div id="panel-backtest" class="tab-panel active">
@@ -1540,9 +1544,23 @@ table.detail-table tbody tr {{ cursor: pointer; }}
   </div>
 </div>
 
+<div id="panel-index" class="tab-panel">
+  <div class="card">
+    <h2>指数 1D K 线（数据起始与 1D 一致）</h2>
+    <div class="toolbar">
+      <div><label>指数：</label><select id="index-select" onchange="onIndexSelect()"></select></div>
+      <div id="index-kline-ma-row" class="ma-row"></div>
+    </div>
+    <div class="chart-title" id="index-kline-title"></div>
+    <div id="index-kline-main" style="height:600px"><div class="empty-hint">请选择指数</div></div>
+  </div>
+</div>
+
 __EXTERNAL_DATA_SCRIPT__
 <script>
 const DATA = __DATA_DECL__;
+/* 指数 K 线数据：离线由骨架 index.js 内嵌（DATA.index_kline）；在线由本 payload 内嵌 */
+window.__INDEX_KLINE = window.__INDEX_KLINE || (typeof DATA !== 'undefined' && DATA.index_kline) || {{}};
 if (window.__P) window.__P.tScript = performance.now();
 /* 访问方式判定：必须在脚本开头声明。加载器(ensureStock)与初始化流程（loadCandidates 等）
    都早于该常量原本所在位置执行，若留在原处会因 const 的暂时性死区(TDZ)直接抛错并中断初始化。 */
@@ -1555,7 +1573,7 @@ let current = {{ strategy: null, candStrategy: null, date: null, code: null, top
 
 /* 离线零内嵌：数据外置到 data/ 伴随文件（file:// 下仅 <script src> 兄弟文件可加载，fetch 被禁）
    提速策略：面板渲染出股票列表时后台预取该列表数据，点击时命中缓存，消除逐次点击的 I/O 等待。 */
-/* 个股数据已分块落盘（chunk_{i}.js），按 code 稳定哈希定位所在块；同块只加载一次 */
+/* 个股数据已分块落盘（chunk_{{i}}.js），按 code 稳定哈希定位所在块；同块只加载一次 */
 function _stockChunkOf(code) {{
   const N = (DATA && DATA._stockChunks) || 64;
   let h = 0;
@@ -1669,6 +1687,96 @@ async function ensureTab(name) {{
   else if (name === 'top_first_vol_sun') {{ await ensurePanelData('top_first_vol_sun'); loadTopFirstVolSun(); }}
   else if (name === 'candidate') {{ await ensurePanelData('candidate'); loadCandidates(); }}
   else if (name === 'detail') {{ await ensurePanelData('detail'); initDetailTab(); }}
+  else if (name === 'index') {{ initIndexTab(); }}
+}}
+/* ---- 指数 K 线 TAB（独立渲染，不依赖个股 K 线状态）---- */
+const _indexMa = [
+  {{p:5,c:'#e6e9f0'}},{{p:10,c:'#4dd0e1'}},{{p:20,c:'#ffb74d'}},
+  {{p:30,c:'#ba68c8'}},{{p:60,c:'#81c784'}},{{p:120,c:'#ff8a65'}},
+];
+let _indexChart = null;
+function _destroyIndexChart() {{
+  if (_indexChart) {{ try {{ _indexChart.remove(); }} catch(e) {{}} _indexChart = null; }}
+}}
+function initIndexTab() {{
+  const sel = document.getElementById('index-select');
+  if (!sel) return;
+  if (sel.options.length === 0) {{
+    const ik = window.__INDEX_KLINE || {{}};
+    Object.keys(ik).forEach(code => {{
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = ((ik[code] && ik[code].name) ? ik[code].name + '  ' : '') + code;
+      sel.appendChild(opt);
+    }});
+    _fillIndexMaRow();
+  }}
+  onIndexSelect();
+}}
+function onIndexSelect() {{
+  const sel = document.getElementById('index-select');
+  if (!sel || !sel.value) return;
+  renderIndexKline(sel.value);
+}}
+function _fillIndexMaRow() {{
+  const box = document.getElementById('index-kline-ma-row');
+  if (!box) return;
+  box.innerHTML = '';
+  const tip = document.createElement('span');
+  tip.className = 'ma-row-tip'; tip.textContent = 'MA';
+  box.appendChild(tip);
+  _indexMa.forEach(ma => {{
+    const lab = document.createElement('label');
+    lab.className = 'ma-chk';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = (ma.visible !== false); cb.style.accentColor = ma.c;
+    cb.onchange = () => {{ ma.visible = cb.checked; const s = document.getElementById('index-select'); if (s && s.value) renderIndexKline(s.value); }};
+    lab.appendChild(cb);
+    const txt = document.createElement('span');
+    txt.textContent = ma.p; txt.style.color = ma.c;
+    lab.appendChild(txt);
+    box.appendChild(lab);
+  }});
+}}
+function renderIndexKline(code) {{
+  const ik = window.__INDEX_KLINE || {{}};
+  const k = ik[code];
+  const box = document.getElementById('index-kline-main');
+  if (!box) return;
+  if (!k || !k.ohlcv || k.ohlcv.length === 0) {{
+    _destroyIndexChart();
+    box.innerHTML = '<div class="empty-hint">暂无指数 K 线数据（请先运行指数数据更新）</div>';
+    return;
+  }}
+  box.innerHTML = '<div id="index-kline-main-inner" style="height:600px"></div>';
+  const mainEl = document.getElementById('index-kline-main-inner');
+  _destroyIndexChart();
+  _indexChart = LightweightCharts.createChart(mainEl, {{
+    layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
+    grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
+    rightPriceScale: {{ borderColor: '#2b2b43' }},
+    timeScale: {{ borderColor: '#2b2b43' }},
+    crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
+    height: mainEl.offsetHeight || 600,
+  }});
+  const data = k.ohlcv.map(d => ({{ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }}));
+  const candle = _indexChart.addSeries(LightweightCharts.CandlestickSeries, {{
+    upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
+    wickUpColor: '#d62828', wickDownColor: '#0077b6',
+  }});
+  candle.setData(data);
+  _indexMa.forEach(ma => {{
+    if (ma.p <= 0 || ma.visible === false) return;
+    _indexChart.addSeries(LightweightCharts.LineSeries, {{ color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }}).setData(calcMA(data, ma.p));
+  }});
+  const title = document.getElementById('index-kline-title');
+  if (title) {{
+    const last = k.ohlcv[k.ohlcv.length - 1];
+    const prev = last.pre_close || last.open;
+    const pct = prev > 0 ? (last.close - prev) / prev * 100 : 0;
+    title.innerHTML = '<span style="font-size:14px;font-weight:600;color:#e4e6eb">' + ((k.name ? k.name + '  ' : '') + code) + '  日线（共 ' + k.ohlcv.length + ' 根）</span> <span class="chg-big ' + (pct >= 0 ? 'up' : 'down') + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</span>';
+  }}
+  _indexChart.timeScale().fitContent();
 }}
 async function switchTab(name) {{
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -1679,6 +1787,7 @@ async function switchTab(name) {{
   document.getElementById('panel-top_first').classList.toggle('active', name === 'top_first');
   document.getElementById('panel-top_first_vol').classList.toggle('active', name === 'top_first_vol');
   document.getElementById('panel-top_first_vol_sun').classList.toggle('active', name === 'top_first_vol_sun');
+  document.getElementById('panel-index').classList.toggle('active', name === 'index');
   // 首次进入该 TAB：先取数据并初始化（此时容器已可见，图表能按实际高度渲染）
   await ensureTab(name);
   // TAB 激活时重绘 K 线（容器可见后再渲染）
@@ -3618,7 +3727,6 @@ const UPDATE_STEPS = [
   {{ step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' }},
   {{ step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' }},
   {{ step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' }},
-  {{ step: 'UPDATE_TPO_M5_HL', label: '⑩ TPO_M5 高低点', desc: '5M 高低点解析' }},
 ];
 function onClickRunStep(step, btn) {{
   if (step.indexOf('ORIGIN') >= 0) {{
@@ -3712,14 +3820,12 @@ _UPDATE_STEPS = {
     "UPDATE_STRATEGY_TPO_3": UPDATE_STRATEGY_TPO_3,
     "UPDATE_STRATEGY_TPO_TOP": UPDATE_STRATEGY_TPO_TOP,
     "UPDATE_STRATEGY_TPO_M5": UPDATE_STRATEGY_TPO_M5,
-    "UPDATE_STRATEGY_TPO_M5_MID": UPDATE_STRATEGY_TPO_M5_MID,
-    "UPDATE_STRATEGY_TPO_M5_SMALL": UPDATE_STRATEGY_TPO_M5_SMALL,
     "UPDATE_TARGET_TPO_3": UPDATE_TARGET_TPO_3,
     "UPDATE_TARGET_TPO_TOP": UPDATE_TARGET_TPO_TOP,
     "UPDATE_TARGET_TPO_M5": UPDATE_TARGET_TPO_M5,
-    "UPDATE_TARGET_TPO_M5_MID": UPDATE_TARGET_TPO_M5_MID,
-    "UPDATE_TARGET_TPO_M5_SMALL": UPDATE_TARGET_TPO_M5_SMALL,
-    "UPDATE_TPO_M5_HL": UPDATE_TPO_M5_HL,
+    "UPDATE_INDEX_CODES": UPDATE_INDEX_CODES,
+    "UPDATE_INDEX_1D_ORIGIN": UPDATE_INDEX_1D_ORIGIN,
+    "UPDATE_INDEX_1D": UPDATE_INDEX_1D,
 }
 
 
@@ -3758,28 +3864,74 @@ def _sort_by_cap_desc(codes: list[str], trading_date: str) -> list[str]:
     return [c for _, c in scored]
 
 
-def CMD_UPDATE_THS(strategy_name: str) -> str:
-    """【快捷命令】把指定策略的最新日期股票写入同花顺板块 XML 并拷贝到实盘机目录。
+def _load_his_codes() -> list[str]:
+    """HIS 板块选股：UI「首板涨停放量股」TAB 最近 5 个交易日（以今日为例 08/09/12/13/14）的全部个股，
+    剔除「首板涨停日之后其它日也出现涨停」的个股（如 10/12 首板、10/13 再涨停则剔除）。
 
-    - 最新日期股票 -> 替换模板 ===TPO3===
-    - 最新日前一日期股票 -> 替换模板 ===TPO31===（该日为空则替换为空值，板块留空）
-    - 当天（TOP_FIRST 最新交易日）放量首板涨停股（连板剔除、is_volume_up==1）-> 替换模板 ===TOP===（单一数据源，与 UI「首板涨停股」TAB 一致）
-    - 首板涨停放量连阳股（TAB7）最新 17 个交易日去重全部股票 -> 替换模板 ===HISTORY===
-    - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件，然后删除本地拷贝。
+    口径：
+      - 取 TOP_FIRST_VOL 最近 5 个交易日日期，合并其全部个股为候选池（即该 TAB 最近 5 日所有股）；
+      - 每只个股以其窗口内最早「首板日」（出现在 TOP_FIRST_VOL 的日期）为参照；
+      - 若个股在「参照首板日之后」的任一日（窗口内）出现在权威涨停列表 TOP 中（含连板 / 再涨停 /
+        反复涨停），则剔除；
+      - 仅保留首板日之后窗口内再无涨停的个股。
+    返回股票代码列表。
+    """
+    tfv = _load_top_first_vol()
+    dates = sorted(tfv.keys(), reverse=True)   # 日期倒序
+    if len(dates) < 5:
+        return []
+    window = dates[:5]        # 最近 5 个交易日（倒序）[T0..T4]
+    # 候选池：最近 5 日首板涨停放量股并集（code -> 最早首板日）
+    first_days: dict[str, str] = {}
+    for d in window:
+        for row in tfv.get(d, []):
+            if row[0] not in first_days or d < first_days[row[0]]:
+                first_days[row[0]] = d
+    if not first_days:
+        return []
+    # 预构建窗口内每日涨停 code 集合（TOP 为权威涨停列表，含连板）
+    top = _load_top()
+    top_sets = {d: {r[0] for r in top.get(d, [])} for d in window}
+    out: list[str] = []
+    for code, ref_day in first_days.items():
+        # 参照首板日之后的窗口日期
+        later = [d for d in window if d > ref_day]
+        if any(code in top_sets[d] for d in later):
+            continue  # 首板日之后仍有涨停 → 剔除
+        out.append(code)
+    return out
+
+
+def CMD_UPDATE_THS(strategy_name: str) -> str:
+    """【快捷命令】生成同花顺板块 XML 并拷贝到实盘机目录。
+
+    板块口径（单一数据源均为一条龙落盘文件，与 UI 各 TAB 一致）：
+    - ===TPO3===  : 最近 1 日首板涨停放量股（TOP_FIRST_VOL 最新交易日）
+    - ===TPO31=== : 前 1 日首板涨停放量股（TOP_FIRST_VOL 次新交易日，为空则板块留空）
+    - ===TOP===   : 当天涨停股（TOP_FIRST 最新交易日，与 UI「首板涨停股」TAB 一致）
+    - ===HIS===   : 最近 5 日首板涨停放量股（TOP_FIRST_VOL），剔除首板日后其它日又涨停的个股
+    - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件。
+
+    注：strategy_name 仅保留以兼容既有调用入口，TPO3/TPO31 已不再依赖策略候选池。
     """
     if not strategy_name:
         return "未选择策略"
     if not os.path.isfile(THS_TEMPLATE_FILE):
         return f"同花顺模板不存在: {THS_TEMPLATE_FILE}"
 
-    dates = _list_strategy_files(strategy_name)
-    if not dates:
-        return f"策略 {strategy_name} 无数据"
-    latest = dates[-1]
-    prev = dates[-2] if len(dates) >= 2 else None
+    # TPO3 / TPO31：最近 1 日 / 前 1 日首板涨停放量股（UI「首板涨停放量股」TAB，TOP_FIRST_VOL）
+    tfv = _load_top_first_vol()
+    tfv_dates = sorted(tfv.keys(), reverse=True)
+    latest_tfv = tfv_dates[0] if tfv_dates else None
+    prev_tfv = tfv_dates[1] if len(tfv_dates) >= 2 else None
 
-    tpo3 = _read_strategy_stocks(strategy_name, latest)
-    tpo31 = _read_strategy_stocks(strategy_name, prev) if prev else []
+    def _tfv_codes(date):
+        # 按流通市值(行内第 3 列)倒序，与 TOP 排序口径一致
+        return [r[0] for r in sorted(tfv.get(date, []),
+                                     key=lambda r: float(r[2]), reverse=True)] if date else []
+
+    tpo3 = _tfv_codes(latest_tfv)
+    tpo31 = _tfv_codes(prev_tfv)
 
     # 首板涨停股：直接读一条龙更新落盘的 TOP_FIRST 文件（单一数据源，与 UI「首板涨停股」TAB 一致）
     top_first_dir = PATH_AIDATA_TOP_FIRST()
@@ -3791,28 +3943,19 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
 
     tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
     tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
-    tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
-    tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
     top_block = "\n".join(_code_to_ths_security(c) for c in tops)
 
-    # 首板涨停放量连阳股（TAB7）：取最新 17 个交易日，汇总去重全部股票 -> ===HISTORY===
-    sun = _load_top_first_vol_sun()
-    sun_codes: list[str] = []
-    _seen: set[str] = set()
-    for d in list(sun.keys())[:17]:          # sun 的键已按日期倒序
-        for row in sun[d]:
-            c = row[0]
-            if c not in _seen:
-                _seen.add(c)
-                sun_codes.append(c)
-    history_block = "\n".join(_code_to_ths_security(c) for c in sun_codes)
+    # HIS 板块：最近 5 日首板涨停放量股（TOP_FIRST_VOL，UI「首板涨停放量股」TAB），
+    # 剔除首板日之后其它日又涨停的个股 -> ===HIS===
+    his_codes = _load_his_codes()
+    history_block = "\n".join(_code_to_ths_security(c) for c in his_codes)
 
     # 读取模板并替换占位符：有股票则填入 securities（首尾不加换行），为空则整行清理（不留占位符/空行，兼容 CRLF/LF）
     raw = _read_text(THS_TEMPLATE_FILE)
     for ph, block in ((PLACEHOLDER_TPO3, tpo3_block),
                       (PLACEHOLDER_TPO31, tpo31_block),
                       (PLACEHOLDER_TOP, top_block),
-                      (PLACEHOLDER_HISTORY, history_block)):
+                      (PLACEHOLDER_HIS, history_block)):
         if block:
             raw = raw.replace(ph, block)
         else:
@@ -3827,10 +3970,10 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
         f.write(raw)
 
     detail = (
-        f"策略 {strategy_name}: {latest} 共 {len(tpo3)} 只(TPO3), "
-        f"{prev or '无'} 共 {len(tpo31)} 只(TPO31), "
-        f"首板涨停 {top_date or '无'} 共 {len(tops)} 只(TOP), "
-        f"连阳(TAB7) 最新17日共 {len(sun_codes)} 只(HISTORY)"
+        f"首板放量(TPO3) {latest_tfv or '无'} 共 {len(tpo3)} 只, "
+        f"前日(TPO31) {prev_tfv or '无'} 共 {len(tpo31)} 只, "
+        f"涨停(TOP) {top_date or '无'} 共 {len(tops)} 只, "
+        f"首板放量(HIS) 近5日 共 {len(his_codes)} 只"
     )
     print(f"CMD_UPDATE_THS: 已写入 {target_file}\n{detail}")
     return f"同花顺板块已更新:\n{detail}\n已覆盖: {target_file}"
@@ -3982,6 +4125,12 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
         "fiveMin": five_min,
         "sentiment": BUILD_SENTIMENT_KLINE(),
     }
+
+    # 指数 1D K 线（数据源 INDEX_ORIGIN，起始日期与 1D 一致；无需 5M）
+    index_codes = set(INDEX_CODES())
+    index_names = {c: (GET_INDEX_NAME(c) or c) for c in index_codes}
+    index_kline = _load_kline(index_codes, index_names, origin_dir=PATH_AIDATA_INDEX_ORIGIN())
+    data["index_kline"] = index_kline
 
     html = _render_html(data)
     html = _inject_gen_time(html)
@@ -4136,6 +4285,12 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
         "fiveMin": five_min,
         "sentiment": BUILD_SENTIMENT_KLINE(),
     }
+
+    # 指数 1D K 线（数据源 INDEX_ORIGIN，起始日期与 1D 一致；无需 5M）
+    index_codes = set(INDEX_CODES())
+    index_names = {c: (GET_INDEX_NAME(c) or c) for c in index_codes}
+    index_kline = _load_kline(index_codes, index_names, origin_dir=PATH_AIDATA_INDEX_ORIGIN())
+    data["index_kline"] = index_kline
 
     # 不输出左侧命令侧边栏：离线单文件拷到别处后命令按钮（依赖本地服务/自定义协议）无意义
     # 离线零内嵌：先把数据写到 data/ 伴随文件（HTML 不内嵌任何数据），再生成仅引用数据的 HTML

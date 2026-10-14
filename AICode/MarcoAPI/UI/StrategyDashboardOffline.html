@@ -240,6 +240,9 @@ table.detail-table tbody tr { cursor: pointer; }
 .kline-info .up { color: #d62828; }
 .kline-info .down { color: #0077b6; }
 .kline-info .limit-up { color: #f5c518; }
+/* K 线左上角 MA 数值浮层 */
+.ma-overlay { position: absolute; top: 6px; left: 10px; z-index: 20; font: 12px/1.7 Consolas, monospace; background: rgba(0,0,0,0.55); padding: 3px 9px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.ma-overlay b { font-weight: 700; }
 .chg-big { font-size: 20px; font-weight: 700; margin-right: 10px; }
 .chg-big.up { color: #d62828; }
 .chg-big.down { color: #0077b6; }
@@ -313,13 +316,14 @@ table.detail-table tbody tr { cursor: pointer; }
 <!-- ============ 主内容区 ============ -->
 <div class="main">
 <h1>📊 策略回测 & 实盘目标股看板</h1>
-<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">看板生成时间：2026-10-05 00:42:34（数据更新后请重新生成并刷新本页）</div>
+<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">看板生成时间：2026-10-14 22:16:38（数据更新后请重新生成并刷新本页）</div>
 <div class="tabs">
   <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">1 策略回测</div>
   <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
   <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
   <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">4 首板涨停股</div>
   <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">5 首板涨停放量股</div>
+  <div class="tab" data-tab="index" onclick="switchTab('index')">6 指数K线</div>
 </div>
 
 <div id="panel-backtest" class="tab-panel active">
@@ -671,9 +675,23 @@ table.detail-table tbody tr { cursor: pointer; }
   </div>
 </div>
 
+<div id="panel-index" class="tab-panel">
+  <div class="card">
+    <h2>指数 1D K 线（数据起始与 1D 一致）</h2>
+    <div class="toolbar">
+      <div><label>指数：</label><select id="index-select" onchange="onIndexSelect()"></select></div>
+      <div id="index-kline-ma-row" class="ma-row"></div>
+    </div>
+    <div class="chart-title" id="index-kline-title"></div>
+    <div id="index-kline-main" style="height:600px"><div class="empty-hint">请选择指数</div></div>
+  </div>
+</div>
+
 <script src="data/index.js"></script>
 <script>
 const DATA = window.__IDX || {"strategies":[],"backtest":{},"candidates":{},"top":{},"top_first":{},"strategy_detail":{},"sentiment":{},"kline":{},"fiveMin":{},"_stockBase":"data/stock/"};
+/* 指数 K 线数据：离线由骨架 index.js 内嵌（DATA.index_kline）；在线由本 payload 内嵌 */
+window.__INDEX_KLINE = window.__INDEX_KLINE || (typeof DATA !== 'undefined' && DATA.index_kline) || {};
 if (window.__P) window.__P.tScript = performance.now();
 /* 访问方式判定：必须在脚本开头声明。加载器(ensureStock)与初始化流程（loadCandidates 等）
    都早于该常量原本所在位置执行，若留在原处会因 const 的暂时性死区(TDZ)直接抛错并中断初始化。 */
@@ -686,7 +704,14 @@ let current = { strategy: null, candStrategy: null, date: null, code: null, topD
 
 /* 离线零内嵌：数据外置到 data/ 伴随文件（file:// 下仅 <script src> 兄弟文件可加载，fetch 被禁）
    提速策略：面板渲染出股票列表时后台预取该列表数据，点击时命中缓存，消除逐次点击的 I/O 等待。 */
-function _stockFile(code) { return String(code).replace(/[\/]/g, '_'); }
+/* 个股数据已分块落盘（chunk_{i}.js），按 code 稳定哈希定位所在块；同块只加载一次 */
+function _stockChunkOf(code) {
+  const N = (DATA && DATA._stockChunks) || 64;
+  let h = 0;
+  for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
+  return h % N;
+}
+const _loadedChunks = {};
 function _loadScript(src) {
   return new Promise(function (resolve, reject) {
     const s = document.createElement('script');
@@ -698,8 +723,12 @@ function _loadScript(src) {
 }
 async function _doLoadStock(code) {
   const base = (DATA && DATA._stockBase) || 'data/stock/';
+  const chunk = _stockChunkOf(code);
   const _t0 = performance.now();
-  try { await _loadScript(base + _stockFile(code) + '.js'); } catch (e) { console.warn(e); }
+  if (!_loadedChunks[chunk]) {
+    try { await _loadScript(base + 'chunk_' + chunk + '.js'); } catch (e) { console.warn(e); }
+    _loadedChunks[chunk] = true;
+  }
   if (window.__P) window.__P.loads.push(+(performance.now() - _t0).toFixed(1));
   const st = (window.__STK && window.__STK[code]);
   if (st) {
@@ -789,6 +818,96 @@ async function ensureTab(name) {
   else if (name === 'top_first_vol_sun') { await ensurePanelData('top_first_vol_sun'); loadTopFirstVolSun(); }
   else if (name === 'candidate') { await ensurePanelData('candidate'); loadCandidates(); }
   else if (name === 'detail') { await ensurePanelData('detail'); initDetailTab(); }
+  else if (name === 'index') { initIndexTab(); }
+}
+/* ---- 指数 K 线 TAB（独立渲染，不依赖个股 K 线状态）---- */
+const _indexMa = [
+  {p:5,c:'#e6e9f0'},{p:10,c:'#4dd0e1'},{p:20,c:'#ffb74d'},
+  {p:30,c:'#ba68c8'},{p:60,c:'#81c784'},{p:120,c:'#ff8a65'},
+];
+let _indexChart = null;
+function _destroyIndexChart() {
+  if (_indexChart) { try { _indexChart.remove(); } catch(e) {} _indexChart = null; }
+}
+function initIndexTab() {
+  const sel = document.getElementById('index-select');
+  if (!sel) return;
+  if (sel.options.length === 0) {
+    const ik = window.__INDEX_KLINE || {};
+    Object.keys(ik).forEach(code => {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = ((ik[code] && ik[code].name) ? ik[code].name + '  ' : '') + code;
+      sel.appendChild(opt);
+    });
+    _fillIndexMaRow();
+  }
+  onIndexSelect();
+}
+function onIndexSelect() {
+  const sel = document.getElementById('index-select');
+  if (!sel || !sel.value) return;
+  renderIndexKline(sel.value);
+}
+function _fillIndexMaRow() {
+  const box = document.getElementById('index-kline-ma-row');
+  if (!box) return;
+  box.innerHTML = '';
+  const tip = document.createElement('span');
+  tip.className = 'ma-row-tip'; tip.textContent = 'MA';
+  box.appendChild(tip);
+  _indexMa.forEach(ma => {
+    const lab = document.createElement('label');
+    lab.className = 'ma-chk';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = (ma.visible !== false); cb.style.accentColor = ma.c;
+    cb.onchange = () => { ma.visible = cb.checked; const s = document.getElementById('index-select'); if (s && s.value) renderIndexKline(s.value); };
+    lab.appendChild(cb);
+    const txt = document.createElement('span');
+    txt.textContent = ma.p; txt.style.color = ma.c;
+    lab.appendChild(txt);
+    box.appendChild(lab);
+  });
+}
+function renderIndexKline(code) {
+  const ik = window.__INDEX_KLINE || {};
+  const k = ik[code];
+  const box = document.getElementById('index-kline-main');
+  if (!box) return;
+  if (!k || !k.ohlcv || k.ohlcv.length === 0) {
+    _destroyIndexChart();
+    box.innerHTML = '<div class="empty-hint">暂无指数 K 线数据（请先运行指数数据更新）</div>';
+    return;
+  }
+  box.innerHTML = '<div id="index-kline-main-inner" style="height:600px"></div>';
+  const mainEl = document.getElementById('index-kline-main-inner');
+  _destroyIndexChart();
+  _indexChart = LightweightCharts.createChart(mainEl, {
+    layout: { background: { type: LightweightCharts.ColorType.Solid, color: '#000000' }, textColor: '#d1d4dc' },
+    grid: { vertLines: { color: '#161616' }, horzLines: { color: '#161616' } },
+    rightPriceScale: { borderColor: '#2b2b43' },
+    timeScale: { borderColor: '#2b2b43' },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    height: mainEl.offsetHeight || 600,
+  });
+  const data = k.ohlcv.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }));
+  const candle = _indexChart.addSeries(LightweightCharts.CandlestickSeries, {
+    upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
+    wickUpColor: '#d62828', wickDownColor: '#0077b6',
+  });
+  candle.setData(data);
+  _indexMa.forEach(ma => {
+    if (ma.p <= 0 || ma.visible === false) return;
+    _indexChart.addSeries(LightweightCharts.LineSeries, { color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(calcMA(data, ma.p));
+  });
+  const title = document.getElementById('index-kline-title');
+  if (title) {
+    const last = k.ohlcv[k.ohlcv.length - 1];
+    const prev = last.pre_close || last.open;
+    const pct = prev > 0 ? (last.close - prev) / prev * 100 : 0;
+    title.innerHTML = '<span style="font-size:14px;font-weight:600;color:#e4e6eb">' + ((k.name ? k.name + '  ' : '') + code) + '  日线（共 ' + k.ohlcv.length + ' 根）</span> <span class="chg-big ' + (pct >= 0 ? 'up' : 'down') + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</span>';
+  }
+  _indexChart.timeScale().fitContent();
 }
 async function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -799,6 +918,7 @@ async function switchTab(name) {
   document.getElementById('panel-top_first').classList.toggle('active', name === 'top_first');
   document.getElementById('panel-top_first_vol').classList.toggle('active', name === 'top_first_vol');
   document.getElementById('panel-top_first_vol_sun').classList.toggle('active', name === 'top_first_vol_sun');
+  document.getElementById('panel-index').classList.toggle('active', name === 'index');
   // 首次进入该 TAB：先取数据并初始化（此时容器已可见，图表能按实际高度渲染）
   await ensureTab(name);
   // TAB 激活时重绘 K 线（容器可见后再渲染）
@@ -913,6 +1033,7 @@ function renderBacktestKline(st) {
     if (ma.p <= 0 || ma.visible === false) return;
     chart.addSeries(LightweightCharts.LineSeries, { color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(calcMA(data, ma.p));
   });
+  injectMaOverlay(mainEl, btKlineState.ma, data, d => d.close);
   // 主图：BOLL
   if (btKlineState.showBOLL) {
     const boll = calcBOLL(data);
@@ -1590,6 +1711,26 @@ function calcMA(data, period) {
   }
   return out;
 }
+/* 在 K 线容器左上角叠加全部 MA 数值浮层（取最新一根的均线值）。
+   maList: [{p, c, visible}], getClose: 从数据项取收盘价。 */
+function injectMaOverlay(mainEl, maList, data, getClose) {
+  if (!mainEl || !data || data.length === 0) return;
+  mainEl.style.position = 'relative';
+  let html = '';
+  maList.forEach(ma => {
+    const p = ma.p;
+    if (p <= 0 || ma.visible === false || data.length < p) return;
+    let sum = 0;
+    for (let i = data.length - p; i < data.length; i++) sum += getClose(data[i]);
+    const v = sum / p;
+    html += '<span style="color:' + ma.c + ';margin-right:12px;">MA' + p + ' <b>' + v.toFixed(2) + '</b></span>';
+  });
+  if (!html) return;
+  const div = document.createElement('div');
+  div.className = 'ma-overlay';
+  div.innerHTML = html;
+  mainEl.appendChild(div);
+}
 function emaArr(values, period) {
   const k = 2 / (period + 1);
   const out = [];
@@ -1778,6 +1919,7 @@ function renderKline5m(code, anchor) {
       chart.addSeries(LightweightCharts.LineSeries, { color: ma.c, lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
         .setData(calcMA5m(bars, ma.p));
     });
+    injectMaOverlay(mainEl, klineState.ma, bars, b => b[4]);
     const pane = chart.addPane();
     const vol = pane.addSeries(LightweightCharts.HistogramSeries, { priceFormat: { type: 'volume' } });
     vol.setData(bars.map(b => ({ time: b[0], value: b[5], color: b[4] >= b[1] ? c.up + '66' : c.down + '66' })));
@@ -1946,6 +2088,8 @@ function renderKline(k) {
   if (klineState.showVWAP) {
     _chart.addSeries(LightweightCharts.LineSeries, { color: '#c0c4cc', lineWidth: 2, priceLineVisible: true, lastValueVisible: true }).setData(calcVWAP(data));
   }
+  // 左上角 MA 数值浮层（最新一根）
+  injectMaOverlay(mainEl, klineState.ma, data, d => d.close);
 
   // 各指标栏：v5 原生分栏（addPane），价格刻度/时间轴/十字线自动对齐
   klineState.bars.forEach(bar => {
@@ -2714,7 +2858,6 @@ const UPDATE_STEPS = [
   { step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' },
   { step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' },
   { step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' },
-  { step: 'UPDATE_TPO_M5_HL', label: '⑩ TPO_M5 高低点', desc: '5M 高低点解析' },
 ];
 function onClickRunStep(step, btn) {
   if (step.indexOf('ORIGIN') >= 0) {

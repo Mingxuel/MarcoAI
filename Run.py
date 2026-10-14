@@ -14,7 +14,7 @@ Run.py —— 主交互菜单
     6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
     77. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
-    88. 一条龙更新 —— 依次：更新数据 → 更新 5M 数据 → 更新同花顺板块
+    88. 一条龙更新 —— 依次：更新数据(含5M) → 刷新离线看板 → 更新同花顺板块
     0. 退出
 执行完任一项后自动回到主菜单。
 """
@@ -284,32 +284,28 @@ def _do_ths():
 
 
 def _do_pipeline():
-    """菜单 88：一条龙数据更新 —— 依次执行 更新数据(1D) → 更新 5M → 更新同花顺板块。
+    """菜单 88：一条龙数据更新 —— 依次执行 更新数据(含 5M) → 刷新离线看板 → 更新同花顺板块。
 
-    三步串行：先刷新日线/策略/目标池，再下载 5 分钟行情，最后把最新策略股票
-    写入同花顺板块（自动关闭/重启同花顺生效）。各步骤错误互不影响，最终汇总结果。
+    更新数据（UPDATE_ALL）已内含 5M 原始行情拉取，故此处不再单独调用 _do_update_5m()，
+    避免 5M 被重复下载。各步骤错误互不影响，最终汇总结果。
     """
-    print(f"\n  {C}{B}═══ 一条龙更新：① 更新数据 → ② 更新 5M → ③ 更新同花顺 ═══{R}")
+    print(f"\n  {C}{B}═══ 一条龙更新：① 更新数据(含5M) → ② 刷新离线看板 → ③ 更新同花顺 ═══{R}")
     try:
         _do_update()
     except BaseException as exc:
         print(f"  {Y}!!!!! ① 更新数据失败：{type(exc).__name__}: {exc}{R}")
+    # ② 数据更新完毕后刷新离线看板（HTML + data/ 伴随文件），保证离线数据与源数据同步
+    print(f"\n  {C}{B}── ② 刷新离线看板（HTML + data/）──{R}")
     try:
-        _do_update_5m()
+        GENERATE_STRATEGY_UI_OFFLINE(open_browser=False)
+        print(f"  {G}[OK] 离线看板与 data/ 已刷新{R}")
     except BaseException as exc:
-        print(f"  {Y}!!!!! ② 更新 5M 数据失败：{type(exc).__name__}: {exc}{R}")
+        print(f"  {Y}!!!!! ② 离线看板生成失败：{type(exc).__name__}: {exc}{R}")
     print(f"\n  {C}{B}── ③ 更新同花顺板块 ──{R}")
     try:
         _do_ths()
     except BaseException as exc:
         print(f"  {Y}!!!!! ③ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
-    # ④ 数据更新完毕后刷新离线看板（HTML + data/ 伴随文件），保证离线数据与源数据同步
-    print(f"\n  {C}{B}── ④ 刷新离线看板（HTML + data/）──{R}")
-    try:
-        GENERATE_STRATEGY_UI_OFFLINE(open_browser=False)
-        print(f"  {G}[OK] 离线看板与 data/ 已刷新{R}")
-    except BaseException as exc:
-        print(f"  {Y}!!!!! ④ 离线看板生成失败：{type(exc).__name__}: {exc}{R}")
     print(f"\n  {G}{B}── 一条龙更新结束 ──{R}")
 
 
@@ -325,14 +321,12 @@ _UPDATE_STEP_ITEMS = (
     ("8",  "TPO_3 回测",   "UPDATE_STRATEGY_TPO_3"),
     ("9",  "TPO_TOP 回测", "UPDATE_STRATEGY_TPO_TOP"),
     ("10", "TPO_M5 回测",       "UPDATE_STRATEGY_TPO_M5"),
-    ("10.1", "TPO_M5_MID 回测", "UPDATE_STRATEGY_TPO_M5_MID"),
-    ("10.2", "TPO_M5_SMALL 回测", "UPDATE_STRATEGY_TPO_M5_SMALL"),
     ("11", "TPO_3 候选",       "UPDATE_TARGET_TPO_3"),
     ("12", "TPO_TOP 候选",     "UPDATE_TARGET_TPO_TOP"),
     ("13", "TPO_M5 候选",      "UPDATE_TARGET_TPO_M5"),
-    ("13.1", "TPO_M5_MID 候选", "UPDATE_TARGET_TPO_M5_MID"),
-    ("13.2", "TPO_M5_SMALL 候选", "UPDATE_TARGET_TPO_M5_SMALL"),
-    ("14", "TPO_M5 高低点",    "UPDATE_TPO_M5_HL"),
+    ("14", "指数列表",          "UPDATE_INDEX_CODES"),
+    ("15", "指数日线原始",      "UPDATE_INDEX_1D_ORIGIN"),
+    ("16", "指数加工日线",      "UPDATE_INDEX_1D"),
 )
 
 

@@ -48,6 +48,26 @@ def PATH_AIDATA_5M() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "5M")
 
 
+def PATH_AIDATA_INDEX_ORIGIN() -> str:
+    """指数原始前复权日线：AIData/INDEX_ORIGIN（与 1D_ORIGIN 同格式，仅 7 列原始行情）"""
+    return os.path.join(PROJECT_ROOT, "AIData", "INDEX_ORIGIN")
+
+
+def PATH_AIDATA_INDEX() -> str:
+    """指数加工日线：AIData/INDEX（与 1D 同格式，25 列，含派生字段）"""
+    return os.path.join(PROJECT_ROOT, "AIData", "INDEX")
+
+
+def PATH_AIDATA_INDEX_CODES() -> str:
+    """指数列表：AIData/INDEX_CODES（每行: 代码|名称，代码带 .SH/.SZ 后缀）"""
+    return os.path.join(PROJECT_ROOT, "AIData", "INDEX_CODES")
+
+
+def PATH_AIDATA_INFO_INDEX() -> str:
+    """指数列表源文件：AIData/INFO/指数.xlsx"""
+    return os.path.join(PROJECT_ROOT, "AIData", "INFO", "指数.xlsx")
+
+
 def PATH_AIDATA_TOP() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "TOP")
 
