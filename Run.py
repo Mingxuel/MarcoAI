@@ -14,7 +14,7 @@ Run.py —— 主交互菜单
     6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
     77. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
-    88. 一条龙更新 —— 依次：更新数据(含5M) → 刷新离线看板 → 更新同花顺板块
+    88. 一条龙更新 —— 先选同花顺策略，再依次：更新数据(含5M) → 刷新离线看板 → 更新同花顺 → 上传 Gitee
     0. 退出
 执行完任一项后自动回到主菜单。
 """
@@ -182,11 +182,12 @@ def _current_branch():
     return out if code == 0 else None
 
 
-def _git_push(remote):
+def _git_push(remote, commit_msg=None):
     """提交改动并推送到指定 remote（remote 名称：gitee / github）。
 
     流程：确认仓库与 remote → 有改动则 add+commit（说明可自定义，回车用默认时间戳）
           → push 到 remote 当前分支（上游未设置时自动带 -u 重试）。
+    commit_msg 为 None 时交互询问提交说明；传入非空字符串则直接采用（用于一条龙等自动流程，避免再弹窗）。
     """
     branch = _current_branch()
     if branch is None:
@@ -209,9 +210,12 @@ def _git_push(remote):
             print(f"    {line}")
         if len(lines) > 20:
             print(f"    ... 其余 {len(lines) - 20} 项已省略")
-        msg = input("  提交说明（回车使用默认时间戳）→ ").strip()
-        if not msg:
-            msg = "chore: 自动提交 " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if commit_msg is None:
+            # 交互模式：允许自定义提交说明，回车用默认时间戳
+            commit_msg = input("  提交说明（回车使用默认时间戳）→ ").strip()
+        if not commit_msg:
+            commit_msg = "chore: 自动提交 " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        msg = commit_msg
         code, out = _git("add", "-A")
         if code != 0:
             print(f"  {Y}git add 失败：{out}{R}")
@@ -246,20 +250,16 @@ def _do_github():
     _git_push("github")
 
 
-def _do_ths():
-    """菜单 7：更新同花顺板块（子菜单选择策略）。
-
-    列出 AIData/Strategy 下的全部策略，用户选一个后调用 CMD_UPDATE_THS：
-    若同花顺在运行会先自动关闭再写入、写完自动重启，使板块立即生效。
-    """
+def _select_strategy():
+    """交互式选择要更新到同花顺板块的策略，返回策略名；用户选 0 返回 None。"""
     try:
         strategies = _list_strategies()
     except Exception as e:
         print(f"  {Y}读取策略列表失败：{e}{R}")
-        return
+        return None
     if not strategies:
         print(f"  {Y}没有可用策略（AIData/Strategy 下无数据）。{R}")
-        return
+        return None
     while True:
         print(f"\n  {C}{B}── 选择要更新到同花顺板块的策略 ──{R}")
         for i, s in enumerate(strategies, 1):
@@ -267,11 +267,24 @@ def _do_ths():
         print(f"  {Y}0{R}  {B}返回主菜单{R}")
         sel = input(f"  {C}请选择策略 → {R}").strip()
         if sel == "0":
-            return
+            return None
         if not sel.isdigit() or not (1 <= int(sel) <= len(strategies)):
             print(f"  {Y}无效选择，请输入 1 ~ {len(strategies)} 或 0。{R}")
             continue
-        strategy = strategies[int(sel) - 1]
+        return strategies[int(sel) - 1]
+
+
+def _do_ths():
+    """菜单 7：更新同花顺板块（子菜单选择策略）。
+
+    列出 AIData/Strategy 下的全部策略，用户选一个后调用 CMD_UPDATE_THS：
+    若同花顺在运行会先自动关闭再写入、写完自动重启，使板块立即生效。
+    可连续为多个策略更新，输入 0 返回主菜单。
+    """
+    while True:
+        strategy = _select_strategy()
+        if not strategy:
+            return
         print(f"  {C}正在更新同花顺板块（策略：{strategy}）...{R}")
         try:
             result = CMD_UPDATE_THS(strategy)
@@ -284,28 +297,45 @@ def _do_ths():
 
 
 def _do_pipeline():
-    """菜单 88：一条龙数据更新 —— 依次执行 更新数据(含 5M) → 刷新离线看板 → 更新同花顺板块。
+    """菜单 88：一条龙数据更新 —— 先选同花顺策略（仅此一步需人工），再依次：
+    更新数据(含5M) → 刷新离线看板 → 更新同花顺 → 上传 Gitee，全程自动。
 
     更新数据（UPDATE_ALL）已内含 5M 原始行情拉取，故此处不再单独调用 _do_update_5m()，
     避免 5M 被重复下载。各步骤错误互不影响，最终汇总结果。
     """
-    print(f"\n  {C}{B}═══ 一条龙更新：① 更新数据(含5M) → ② 刷新离线看板 → ③ 更新同花顺 ═══{R}")
+    print(f"\n  {C}{B}═══ 一条龙更新：① 选策略 → ② 更新数据(含5M) → ③ 刷新离线看板 → ④ 更新同花顺 → ⑤ 上传 Gitee ═══{R}")
+    # ① 先选策略（仅此一步需要人工交互；选 0 则取消整条流水线）
+    strategy = _select_strategy()
+    if not strategy:
+        print(f"  {Y}未选择策略，已取消一条龙更新。{R}")
+        return
+    # ② 更新数据（含 5M）
+    print(f"\n  {C}{B}── ② 更新数据（含 5M）──{R}")
     try:
         _do_update()
     except BaseException as exc:
-        print(f"  {Y}!!!!! ① 更新数据失败：{type(exc).__name__}: {exc}{R}")
-    # ② 数据更新完毕后刷新离线看板（HTML + data/ 伴随文件），保证离线数据与源数据同步
-    print(f"\n  {C}{B}── ② 刷新离线看板（HTML + data/）──{R}")
+        print(f"  {Y}!!!!! ② 更新数据失败：{type(exc).__name__}: {exc}{R}")
+    # ③ 数据更新完毕后刷新离线看板（HTML + data/ 伴随文件），保证离线数据与源数据同步
+    print(f"\n  {C}{B}── ③ 刷新离线看板（HTML + data/）──{R}")
     try:
         GENERATE_STRATEGY_UI_OFFLINE(open_browser=False)
         print(f"  {G}[OK] 离线看板与 data/ 已刷新{R}")
     except BaseException as exc:
-        print(f"  {Y}!!!!! ② 离线看板生成失败：{type(exc).__name__}: {exc}{R}")
-    print(f"\n  {C}{B}── ③ 更新同花顺板块 ──{R}")
+        print(f"  {Y}!!!!! ③ 离线看板生成失败：{type(exc).__name__}: {exc}{R}")
+    # ④ 更新同花顺板块（使用第①步所选策略）
+    print(f"\n  {C}{B}── ④ 更新同花顺板块（策略：{strategy}）──{R}")
     try:
-        _do_ths()
+        result = CMD_UPDATE_THS(strategy)
+        if result:
+            print(f"  {result}")
     except BaseException as exc:
-        print(f"  {Y}!!!!! ③ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
+        print(f"  {Y}!!!!! ④ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
+    # ⑤ 上传 Gitee（自动提交说明，不再弹交互）
+    print(f"\n  {C}{B}── ⑤ 上传 Gitee ──{R}")
+    try:
+        _git_push("origin", commit_msg="chore: 一条龙自动更新 " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    except BaseException as exc:
+        print(f"  {Y}!!!!! ⑤ 上传 Gitee 失败：{type(exc).__name__}: {exc}{R}")
     print(f"\n  {G}{B}── 一条龙更新结束 ──{R}")
 
 
@@ -367,7 +397,7 @@ _MENU_GROUPS = (
     (("6", "上传 Gitee", "提交改动并推送到 Gitee 仓库"),
      ("7", "上传 GitHub", "提交改动并推送到 GitHub 仓库")),
     (("77", "QMT 自动交易", "买入 / 卖出监控 / 常驻 watch"),
-     ("88", "一条龙更新", "数据 → 5M → 同花顺，一步到位")),
+     ("88", "一条龙更新", "先选策略 → 数据 → 离线看板 → 同花顺 → 上传 Gitee，一步到位")),
 )
 
 
