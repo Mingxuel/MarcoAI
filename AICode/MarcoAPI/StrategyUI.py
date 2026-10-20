@@ -3253,7 +3253,7 @@ function renderKline5m(code, anchor) {{
     }}
     const chart = LightweightCharts.createChart(mainEl, {{
       layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
-      grid: {{ vertLines: {{ color: '#1c2230' }}, horzLines: {{ color: '#161616' }} }},
+      grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
       rightPriceScale: {{ borderColor: '#2b2b43' }},
       timeScale: {{ borderColor: '#2b2b43', timeVisible: true, secondsVisible: false, timezone: 'Asia/Shanghai' }},
       crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
@@ -3261,22 +3261,6 @@ function renderKline5m(code, anchor) {{
     }});
     _chart5m = chart;
     const c = klineState.colors;
-    /* 背景网格：一天一个格（按北京时间日期交替淡色，置于最底层） */
-    const bg = chart.addSeries(LightweightCharts.HistogramSeries, {{
-      priceScaleId: 'bg', priceFormat: {{ type: 'custom', formatter: () => '' }},
-      priceLineVisible: false, lastValueVisible: false,
-    }});
-    chart.priceScale('bg').applyOptions({{ scaleMargins: {{ top: 0, bottom: 0 }}, visible: false }});
-    {{
-      let lastDay = null, parity = 0; const bgData = [];
-      for (const b of bars) {{
-        const sh = new Date(b[0] * 1000 + 8 * 3600 * 1000);   // 北京时间(伪UTC)
-        const dayKey = sh.getUTCFullYear() + '-' + sh.getUTCMonth() + '-' + sh.getUTCDate();
-        if (dayKey !== lastDay) {{ parity = 1 - parity; lastDay = dayKey; }}
-        bgData.push({{ time: b[0], value: 1, color: parity ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0)' }});
-      }}
-      bg.setData(bgData);
-    }}
     const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {{
       upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
       wickUpColor: '#d62828', wickDownColor: '#0077b6',
@@ -3295,6 +3279,22 @@ function renderKline5m(code, anchor) {{
     const vol = pane.addSeries(LightweightCharts.HistogramSeries, {{ priceFormat: {{ type: 'volume' }} }});
     vol.setData(bars.map(b => ({{ time: b[0], value: b[5], color: b[4] >= b[1] ? c.up + '66' : c.down + '66' }})));
     chart.timeScale().fitContent();
+    /* 默认放大显示最后 4 个交易日 */
+    {{
+      const dayStart = [];
+      let lastDay = null;
+      for (const b of bars) {{
+        const sh = new Date(b[0] * 1000 + 8 * 3600 * 1000);   // 北京时间(伪UTC)
+        const dayKey = sh.getUTCFullYear() + '-' + sh.getUTCMonth() + '-' + sh.getUTCDate();
+        if (dayKey !== lastDay) {{ lastDay = dayKey; dayStart.push(b[0]); }}
+      }}
+      if (dayStart.length > 4) {{
+        const from = dayStart[dayStart.length - 4];
+        const to = bars[bars.length - 1][0];
+        try {{ chart.timeScale().setVisibleRange({{ from: from, to: to }}); }}
+        catch (e) {{ try {{ chart.timeScale().fitContent(); }} catch (e2) {{}} }}
+      }}
+    }}
     /* 5 分钟光标实时显示：OHLCV + 各可见 MA 值 */
     const info5 = document.getElementById(klineEl('kline-5m-info'));
     chart.subscribeCrosshairMove(param => {{
