@@ -631,10 +631,12 @@ def _read_5m_window(code: str, anchor_date: str, days_before: int = 5, days_span
     start = max(0, idx - days_before)
     end = min(len(udays), start + days_span)
     keep = set(udays[start:end])
+    CST = _dt.timezone(_dt.timedelta(hours=8))   # 北京时间（数据按京时间记录）
     bars: list[list] = []
     for dt, vals in raw:
         if dt.date() in keep:
-            bars.append([int(dt.timestamp()), round(vals[0], 2), round(vals[1], 2),
+            # 显式按北京时间生成真实 UTC 瞬间，避免生成机/浏览器时区不一致导致显示错位
+            bars.append([int(dt.replace(tzinfo=CST).timestamp()), round(vals[0], 2), round(vals[1], 2),
                          round(vals[2], 2), round(vals[3], 2), round(vals[4], 0)])
     return bars
 
@@ -699,10 +701,11 @@ def _read_5m_windows(code: str, anchors: list[str], days_before: int = 5, days_s
             before = days_before
         start = max(0, idx - before)
         end = min(len(udays), start + days_span)
+        CST = _dt.timezone(_dt.timedelta(hours=8))   # 北京时间（数据按京时间记录）
         bars: list[list] = []
         for day in udays[start:end]:
             for dt, vals in by_day.get(day, []):
-                bars.append([int(dt.timestamp()), round(vals[0], 2), round(vals[1], 2),
+                bars.append([int(dt.replace(tzinfo=CST).timestamp()), round(vals[0], 2), round(vals[1], 2),
                              round(vals[2], 2), round(vals[3], 2), round(vals[4], 0)])
         if bars:
             out[str(anchor)] = bars
@@ -3212,7 +3215,10 @@ function calcMA5m(bars, period) {{
 function fmt5mTime(ts) {{
   const d = new Date(ts * 1000);
   const p2 = n => (n < 10 ? '0' + n : '' + n);
-  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  // ts 为北京时间对应的真实 UTC 瞬间；按 Asia/Shanghai 格式化，跨时区查看也一致
+  const parts = new Intl.DateTimeFormat('zh-CN', {{ timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }}).formatToParts(d);
+  const g = {{}}; parts.forEach(p => g[p.type] = p.value);
+  return g.year + '-' + g.month + '-' + g.day + ' ' + g.hour + ':' + g.minute;
 }}
 /* 获取某股的 5 分钟窗口数据：file:// 离线模式用内嵌的 DATA.fiveMin；http 服务模式向 /api/5m 按实际锚定日精确取数 */
 function get5m(code, anchor, cb) {{
@@ -3247,14 +3253,30 @@ function renderKline5m(code, anchor) {{
     }}
     const chart = LightweightCharts.createChart(mainEl, {{
       layout: {{ background: {{ type: LightweightCharts.ColorType.Solid, color: '#000000' }}, textColor: '#d1d4dc' }},
-      grid: {{ vertLines: {{ color: '#161616' }}, horzLines: {{ color: '#161616' }} }},
+      grid: {{ vertLines: {{ color: '#1c2230' }}, horzLines: {{ color: '#161616' }} }},
       rightPriceScale: {{ borderColor: '#2b2b43' }},
-      timeScale: {{ borderColor: '#2b2b43', timeVisible: true, secondsVisible: false }},
+      timeScale: {{ borderColor: '#2b2b43', timeVisible: true, secondsVisible: false, timezone: 'Asia/Shanghai' }},
       crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
       height: mainEl.offsetHeight || 300,
     }});
     _chart5m = chart;
     const c = klineState.colors;
+    /* 背景网格：一天一个格（按北京时间日期交替淡色，置于最底层） */
+    const bg = chart.addSeries(LightweightCharts.HistogramSeries, {{
+      priceScaleId: 'bg', priceFormat: {{ type: 'custom', formatter: () => '' }},
+      priceLineVisible: false, lastValueVisible: false,
+    }});
+    chart.priceScale('bg').applyOptions({{ scaleMargins: {{ top: 0, bottom: 0 }}, visible: false }});
+    {{
+      let lastDay = null, parity = 0; const bgData = [];
+      for (const b of bars) {{
+        const sh = new Date(b[0] * 1000 + 8 * 3600 * 1000);   // 北京时间(伪UTC)
+        const dayKey = sh.getUTCFullYear() + '-' + sh.getUTCMonth() + '-' + sh.getUTCDate();
+        if (dayKey !== lastDay) {{ parity = 1 - parity; lastDay = dayKey; }}
+        bgData.push({{ time: b[0], value: 1, color: parity ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0)' }});
+      }}
+      bg.setData(bgData);
+    }}
     const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {{
       upColor: '#d62828', downColor: '#0077b6', borderUpColor: '#d62828', borderDownColor: '#0077b6',
       wickUpColor: '#d62828', wickDownColor: '#0077b6',
