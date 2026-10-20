@@ -1,0 +1,31 @@
+bin/
+obj/
+.vs/
+Debug/
+Release/
+*.user
+*.vscode/
+李明学的大A/Data/1M/
+李明学的大A/Data/1M/*
+李明学的大A/Data/5M/
+李明学的大A/Data/5M/*
+__pycache__/
+AIData/5M/
+AIData/5M/*
+
+# 在线版看板已停用（改用离线版 StrategyDashboardOffline.html；体量~400MB，不入库）
+AICode/MarcoAPI/UI/StrategyDashboard.html
+
+# 本地 IDE/项目状态，不入库
+.codebuddy/
+
+# AIData：仅保留「源数据/手工输入」，其余动态生成数据不入库（开发机可用 UPDATE_ALL 重生成）
+AIData/*
+!AIData/TOP_ORIGIN/
+!AIData/INFO/
+!AIData/THS/
+!AIData/DAILY/
+
+# 日志
+*.log
+update_log.txt
