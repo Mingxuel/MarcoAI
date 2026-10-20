@@ -321,7 +321,8 @@ def _T_DAY_5M_MA60_OK(code: str, trading_date: str) -> bool:
     return below <= 4 and last_close > last_ma
 
 
-def UPDATE_TOP_FIRST_VOL_MA60(stock_codes: list[str] | None = None):
+def UPDATE_TOP_FIRST_VOL_MA60(stock_codes: list[str] | None = None,
+                              rotate: bool = False, recent_n: int = 3):
     """生成每日【首板次日守5分钟MA60股】落盘到 TOP_FIRST_VOL_MA60：
 
     条件（trading_date 即 T 日 / 关注日）：
@@ -329,10 +330,15 @@ def UPDATE_TOP_FIRST_VOL_MA60(stock_codes: list[str] | None = None):
         T（当日）        ：未涨停 is_top==0
         T 日 5 分钟 K 线 ：48 根中「最低价 < MA60」的根数 <= 4，且最后一根收盘价 > MA60
     文件格式与 TOP 一致：AIData/TOP_FIRST_VOL_MA60/{交易日}，每行一个带 .SZ/.SH 后缀的代码。
+
+    rotate=True  : 清空整个目录并全量重算（耗时，且依赖完整 5M；仅手动全量重建用）。
+    rotate=False : 不清空历史，仅对最近 recent_n 个有效交易日增量重算（一条龙默认）。
+                   既补上最新交易日，又不破坏「依赖有限 5M」的历史视图。
     """
     from .SZ2001D import GET_SZ200_1D_PREVIOUS, _rotate_dir
     out_dir = PATH_AIDATA_TOP_FIRST_VOL_MA60()
-    _rotate_dir(out_dir)
+    if rotate:
+        _rotate_dir(out_dir)
     trading_dates = TRADING_DATES()
     effective_latest = EFFECTIVE_LATEST_TRADING_DATE()
     effective_dates = [d for d in trading_dates if d <= effective_latest]
@@ -340,19 +346,28 @@ def UPDATE_TOP_FIRST_VOL_MA60(stock_codes: list[str] | None = None):
         print(f"注：有效最新交易日 = {effective_latest}，已跳过其后 "
               f"{len(trading_dates) - len(effective_dates)} 个交易日（盘中/未确认，不生成 T-0 文件）")
     trading_dates = effective_dates
+    if not rotate and recent_n and recent_n > 0:
+        trading_dates = trading_dates[-recent_n:]
     if stock_codes is None:
         stock_codes = STOCK_CODES_ALL()
     if not trading_dates or not stock_codes:
         return "TOP_FIRST_VOL_MA60: 无交易日或股票池"
-    with ProcessPoolExecutor(max_workers=32) as pool:
-        fn = partial(GENERATE_TOP_FIRST_VOL_MA60, stock_codes, out_dir)
-        future_to_date = {pool.submit(fn, d): d for d in trading_dates}
-        with tqdm(total=len(future_to_date), desc="TOP_FIRST_VOL_MA60", ncols=90, disable=False) as bar:
-            for fut in as_completed(future_to_date):
-                fut.result()
-                bar.set_postfix(date=future_to_date[fut], refresh=False)
-                bar.update(1)
-    return f"TOP_FIRST_VOL_MA60: 完成 {len(trading_dates)} 个交易日"
+    if rotate:
+        # 全量重建：多进程加速
+        with ProcessPoolExecutor(max_workers=32) as pool:
+            fn = partial(GENERATE_TOP_FIRST_VOL_MA60, stock_codes, out_dir)
+            future_to_date = {pool.submit(fn, d): d for d in trading_dates}
+            with tqdm(total=len(future_to_date), desc="TOP_FIRST_VOL_MA60", ncols=90, disable=False) as bar:
+                for fut in as_completed(future_to_date):
+                    fut.result()
+                    bar.set_postfix(date=future_to_date[fut], refresh=False)
+                    bar.update(1)
+    else:
+        # 增量：仅最近 few 天，顺序执行即可（快、且无多进程递归风险）
+        for d in trading_dates:
+            GENERATE_TOP_FIRST_VOL_MA60(stock_codes, out_dir, d)
+            print(f"  MA60 增量: {d}")
+    return f"TOP_FIRST_VOL_MA60: 完成 {len(trading_dates)} 个交易日（rotate={rotate}）"
 
 
 def GENERATE_TOP_FIRST_VOL_MA60(stock_codes: list[str], out_dir: str, trading_date: str):

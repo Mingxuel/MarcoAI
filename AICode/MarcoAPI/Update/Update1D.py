@@ -131,6 +131,14 @@ def UPDATE_ALL(scope_codes: list[str] | None = None, recent_days_5m: int = 0):
         # AIData/TOP、TOP_FIRST、TOP_FIRST_VOL、TOP_FIRST_VOL_SUN 收集「首板相关涉及股」，
         # 这些目录由上面 UPDATE_TOP / UPDATE_TOP_FIRST* 步骤产出，故置于末尾。
         ("UPDATE_5M_ORIGIN", lambda: UPDATE_5M_PANELS()),
+        # MA60 须在所有 5M 准备好之后：依赖 T 日 5 分钟守 MA60 判定（5M 由上面步骤产出）。
+        # 增量重算最近 3 个交易日，不清除历史（避免有限 5M 下全量重算毁掉历史视图）。
+        ("UPDATE_TOP_FIRST_VOL_MA60", lambda: UPDATE_TOP_FIRST_VOL_MA60()),
+        # 数据齐全后，重新烘焙离线看板（把最新数据烤进 UI/data 与 HTML），
+        # 这样一条龙跑完看板即跟上，无需再手动单独生成。
+        ("GENERATE_STRATEGY_UI_OFFLINE", lambda: __import__(
+            "AICode.MarcoAPI.StrategyUI", fromlist=["GENERATE_STRATEGY_UI_OFFLINE"]
+        ).GENERATE_STRATEGY_UI_OFFLINE(open_browser=False)),
     ]
     import time
     import datetime as _dt
