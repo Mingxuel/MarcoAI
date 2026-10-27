@@ -37,14 +37,14 @@ from AICode.MarcoAPI.Update.Path import (
     PATH_AIDATA_STRATEGY, PATH_AIDATA_TARGET, PATH_AIDATA_1D_ORIGIN, PATH_AIDATA, PATH_AIDATA_TOP,
     PATH_AIDATA_TOP_FIRST, PATH_AIDATA_TOP_FIRST_VOL, PATH_AIDATA_TOP_FIRST_VOL_SUN, PATH_AIDATA_5M,
     PATH_AIDATA_TOP_FIRST_VOL_MA60,
-    PATH_AIDATA_INDEX_ORIGIN,
+    PATH_AIDATA_INDEX_ORIGIN, PATH_TDX,
 )
 from AICode.MarcoAPI.Update.Update1D import UPDATE_ALL
 from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS, UPDATE_1D_ORIGIN, UPDATE_1D
 from AICode.MarcoAPI.Update.SZ200Index import UPDATE_INDEX_CODES, UPDATE_INDEX_1D_ORIGIN, UPDATE_INDEX_1D, INDEX_CODES, GET_INDEX_NAME
 from AICode.MarcoAPI.Update.SZ200Strategy import BUILD_SENTIMENT_KLINE
 from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO, UPDATE_STOCK_CODES
-from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES
+from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES, EFFECTIVE_LATEST_TRADING_DATE
 from AICode.MarcoAPI.Update.SZ200Top import UPDATE_TOP, UPDATE_TOP_FIRST, UPDATE_TOP_FIRST_VOL, UPDATE_TOP_FIRST_VOL_SUN, UPDATE_TOP_FIRST_VOL_MA60
 from AICode.MarcoAPI.Update.SZ200Strategy import (
     UPDATE_STRATEGY_TPO_3, UPDATE_STRATEGY_TPO_TOP, UPDATE_STRATEGY_TPO_M5,
@@ -4455,42 +4455,182 @@ def _sort_by_cap_desc(codes: list[str], trading_date: str) -> list[str]:
     return [c for _, c in scored]
 
 
+def _last_5m_close_below_ma60(code: str, last_day: str) -> bool:
+    """该股票在有效最新交易日之前、最近一个「完整(>=48根)5分钟」交易日的末根收盘价是否 < 末根 ma60。
+
+    与 GENERATE_TOP_FIRST_VOL_MA60 同一 5M 文件、同一 ma60 列(p[11])，
+    仅把判定从「末根收盘 > MA60(守MA60)」反转为「末根收盘 < MA60(跌破MA60)」。
+    - 取 <= last_day 的最新一个当日 >=48 根且 ma60>0 的交易日（避免 5M 下载范围限制导致缺数据）；
+    - 该日末根收盘价 < 末根 ma60 才返回 True。
+    """
+    path = os.path.join(PATH_AIDATA_5M(), code)
+    if not os.path.isfile(path):
+        return False
+    dash_last = f"{last_day[:4]}-{last_day[4:6]}-{last_day[6:8]}"
+    latest_d = ""
+    latest_close = 0.0
+    latest_ma = 0.0
+    cur_d = ""
+    cur_cnt = 0
+    cur_close = 0.0
+    cur_ma = 0.0
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                p = line.split("|")
+                if len(p) < 12:
+                    continue
+                d = p[0].strip()[:10]
+                if d > dash_last:
+                    continue
+                if d != cur_d:
+                    if cur_d and cur_cnt >= 48 and cur_ma > 0 and cur_d > latest_d:
+                        latest_d, latest_close, latest_ma = cur_d, cur_close, cur_ma
+                    cur_d = d
+                    cur_cnt = 0
+                    cur_close = 0.0
+                    cur_ma = 0.0
+                cur_cnt += 1
+                try:
+                    cur_close = float(p[4]); cur_ma = float(p[11])
+                except (ValueError, TypeError):
+                    pass
+    except OSError:
+        return False
+    if cur_d and cur_cnt >= 48 and cur_ma > 0 and cur_d > latest_d:
+        latest_d, latest_close, latest_ma = cur_d, cur_close, cur_ma
+    if not latest_d:
+        return False
+    return latest_close < latest_ma
+
+
+def _refresh_5m_for_codes(stock_codes: list[str], last_day: str) -> int:
+    """临时从通达信补下候选股的 5 分钟数据，使 HIS 能【严格按最后一个交易日】判定（而非最近可用日）。
+
+    - 仅补下载 last_day 当天（及前 7 天以凑满 60 根、保证末根 MA60 有效）缺失的票；
+      已含 last_day 完整 5M（>=48 根且 ma60>0）的票跳过，避免重复下载。
+    - 合并写入 5M 目录（保留历史、不 rotate），前复权以「下载当天」为基准；
+      最近 ~2 交易日的棒均为本次新下、同一基准，故末根 MA60 与收盘同基准、判定一致。
+    - 通达信不可用 / 出错时静默返回 0（调用方自动降级为「最近可用 5M 日」口径）。
+    返回成功补下的股票数。
+    """
+    if not stock_codes:
+        return 0
+    dash_last = f"{last_day[:4]}-{last_day[4:6]}-{last_day[6:8]}"
+    need: list[str] = []
+    for code in stock_codes:
+        path = os.path.join(PATH_AIDATA_5M(), code)
+        if not os.path.isfile(path):
+            need.append(code)
+            continue
+        cnt = 0
+        ok = False
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    p = line.split("|")
+                    if len(p) < 12:
+                        continue
+                    if p[0].strip()[:10] == dash_last:
+                        cnt += 1
+                        try:
+                            if float(p[11]) > 0:
+                                ok = True
+                        except (ValueError, TypeError):
+                            pass
+        except OSError:
+            pass
+        if cnt < 48 or not ok:
+            need.append(code)
+    if not need:
+        return 0
+    import datetime as _dd
+    try:
+        ld = _dd.datetime.strptime(last_day, "%Y%m%d").date()
+    except Exception:
+        return 0
+    start_t = (ld - _dd.timedelta(days=7)).strftime("%Y%m%d")
+    end_t = (ld + _dd.timedelta(days=1)).strftime("%Y%m%d")
+    try:
+        sys.path.append(PATH_TDX())
+        from tqcenter import tq
+        tq.initialize(__file__)
+        from AICode.MarcoAPI.Update.SZ2005M import _write_5m_one
+        import pandas as pd
+        data = tq.get_market_data(
+            field_list=["Open", "High", "Low", "Close", "Volume", "Amount"],
+            stock_list=need, start_time=start_t, end_time=end_t, count=-1,
+            dividend_type="front", period="5m", fill_data=False)
+        if not data or "Open" not in data:
+            return 0
+        open_df = data["Open"]
+        done = 0
+        for code in need:
+            if code not in open_df.columns:
+                continue
+            o = open_df[code]; h = data["High"][code]; l = data["Low"][code]
+            c = data["Close"][code]; v = data["Volume"][code]; am = data["Amount"][code]
+            new_rows: list[tuple] = []
+            for dt, ov, hv, lv, cv, vv, av in zip(o.index, o.values, h.values, l.values, c.values, v.values, am.values):
+                if pd.isna(ov):
+                    continue
+                new_rows.append((str(dt), float(ov), float(hv), float(lv), float(cv), float(vv), float(av)))
+            if not new_rows:
+                continue
+            existing: list[tuple] = []
+            path = os.path.join(PATH_AIDATA_5M(), code)
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        p = line.strip().split("|")
+                        if len(p) >= 7:
+                            try:
+                                existing.append((p[0], float(p[1]), float(p[2]), float(p[3]),
+                                                float(p[4]), float(p[5]), float(p[6])))
+                            except (ValueError, TypeError):
+                                pass
+            _write_5m_one(code, existing + new_rows)
+            done += 1
+        return done
+    except BaseException as exc:
+        print(f"[HIS 5M 补数跳过] {type(exc).__name__}: {exc}")
+        return 0
+
+
 def _load_his_codes() -> list[str]:
-    """HIS 板块选股：UI「首板涨停放量股」TAB 最近 5 个交易日（以今日为例 08/09/12/13/14）的全部个股，
-    剔除「首板涨停日之后其它日也出现涨停」的个股（如 10/12 首板、10/13 再涨停则剔除）。
+    """HIS 板块选股（按用户要求更新口径）：
+
+    取「首板+MA60」(TOP_FIRST_VOL_MA60) 最近 8 个交易日文件的全部个股并集为候选池，
+    再过滤：仅保留「最后一个交易日」的 5 分钟 K 线末根收盘价 < 该 K 线 MA60（即已跌破 5 分钟 MA60）的个股。
 
     口径：
-      - 取 TOP_FIRST_VOL 最近 5 个交易日日期，合并其全部个股为候选池（即该 TAB 最近 5 日所有股）；
-      - 每只个股以其窗口内最早「首板日」（出现在 TOP_FIRST_VOL 的日期）为参照；
-      - 若个股在「参照首板日之后」的任一日（窗口内）出现在权威涨停列表 TOP 中（含连板 / 再涨停 /
-        反复涨停），则剔除；
-      - 仅保留首板日之后窗口内再无涨停的个股。
-    返回股票代码列表。
+      - 源：AIData/TOP_FIRST_VOL_MA60（T-1 首板 + T 未涨停 + T 日 5 分钟守 MA60 的股）；
+      - 窗口：该目录最近 8 个交易日（倒序）的并集（即「最近 8 个交易日的所有股票」）；
+      - 最后一个交易日：有效最新交易日 EFFECTIVE_LATEST_TRADING_DATE；
+      - 严格判定：选股前先 _refresh_5m_for_codes 临时补下候选股当天 5 分钟（凑满 MA60），
+        使「末根收盘 < MA60」严格发生在最后一个交易日；
+        若通达信不可用则自动降级为「该上界之前最近一个完整 5 分钟交易日」口径。
+    返回按流通市值倒序的代码列表（与 UI 其它板块一致）。
     """
-    tfv = _load_top_first_vol()
-    dates = sorted(tfv.keys(), reverse=True)   # 日期倒序
-    if len(dates) < 5:
+    ma60_files = _load_top_first_vol_ma60()
+    dates = sorted(ma60_files.keys(), reverse=True)
+    if not dates:
         return []
-    window = dates[:5]        # 最近 5 个交易日（倒序）[T0..T4]
-    # 候选池：最近 5 日首板涨停放量股并集（code -> 最早首板日）
-    first_days: dict[str, str] = {}
+    window = dates[:8]                                   # 最近 8 个交易日
+    candidates: set[str] = set()
     for d in window:
-        for row in tfv.get(d, []):
-            if row[0] not in first_days or d < first_days[row[0]]:
-                first_days[row[0]] = d
-    if not first_days:
+        for row in ma60_files.get(d, []):
+            candidates.add(row[0])
+    if not candidates:
         return []
-    # 预构建窗口内每日涨停 code 集合（TOP 为权威涨停列表，含连板）
-    top = _load_top()
-    top_sets = {d: {r[0] for r in top.get(d, [])} for d in window}
-    out: list[str] = []
-    for code, ref_day in first_days.items():
-        # 参照首板日之后的窗口日期
-        later = [d for d in window if d > ref_day]
-        if any(code in top_sets[d] for d in later):
-            continue  # 首板日之后仍有涨停 → 剔除
-        out.append(code)
-    return out
+    last_day = EFFECTIVE_LATEST_TRADING_DATE()
+    if not last_day:
+        return []
+    # 临时补下候选股当天 5 分钟（凑满 MA60），使跌破判定严格发生在最后一个交易日；
+    # 通达信不可用时静默跳过，下面自动降级为「最近可用 5M 日」口径。
+    _refresh_5m_for_codes(list(candidates), last_day)
+    keep = [c for c in candidates if _last_5m_close_below_ma60(c, last_day)]
+    return _sort_by_cap_desc(keep, last_day)
 
 
 def CMD_UPDATE_THS(strategy_name: str) -> str:
@@ -4500,7 +4640,7 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     - ===TPO3===  : 最近 1 日首板涨停放量股（TOP_FIRST_VOL 最新交易日）
     - ===TPO31=== : 前 1 日首板涨停放量股（TOP_FIRST_VOL 次新交易日，为空则板块留空）
     - ===TOP===   : 当天涨停股（TOP_FIRST 最新交易日，与 UI「首板涨停股」TAB 一致）
-    - ===HIS===   : 最近 5 日首板涨停放量股（TOP_FIRST_VOL），剔除首板日后其它日又涨停的个股
+    - ===HIS===   : 首板+MA60(TOP_FIRST_VOL_MA60) 最近 8 日并集，且最后一个交易日 5 分钟末根收盘价 < MA60（跌破 MA60）的个股
     - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件。
 
     注：strategy_name 仅保留以兼容既有调用入口，TPO3/TPO31 已不再依赖策略候选池。
@@ -4536,8 +4676,8 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
     top_block = "\n".join(_code_to_ths_security(c) for c in tops)
 
-    # HIS 板块：最近 5 日首板涨停放量股（TOP_FIRST_VOL，UI「首板涨停放量股」TAB），
-    # 剔除首板日之后其它日又涨停的个股 -> ===HIS===
+    # HIS 板块：首板+MA60(TOP_FIRST_VOL_MA60) 最近 8 日并集，
+    # 过滤「最后一个交易日 5 分钟末根收盘价 < MA60(跌破MA60)」的个股 -> ===HIS===
     his_codes = _load_his_codes()
     history_block = "\n".join(_code_to_ths_security(c) for c in his_codes)
 
@@ -4564,7 +4704,7 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
         f"首板放量(TPO3) {latest_tfv or '无'} 共 {len(tpo3)} 只, "
         f"前日(TPO31) {prev_tfv or '无'} 共 {len(tpo31)} 只, "
         f"涨停(TOP) {top_date or '无'} 共 {len(tops)} 只, "
-        f"首板放量(HIS) 近5日 共 {len(his_codes)} 只"
+        f"首板+MA60(HIS) 近8日跌破5分钟MA60 共 {len(his_codes)} 只"
     )
     print(f"CMD_UPDATE_THS: 已写入 {target_file}\n{detail}")
     return f"同花顺板块已更新:\n{detail}\n已覆盖: {target_file}"
