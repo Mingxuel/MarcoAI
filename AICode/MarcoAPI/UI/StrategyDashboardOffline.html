@@ -331,7 +331,7 @@ table.detail-table tbody tr { cursor: pointer; }
 <!-- ============ 主内容区 ============ -->
 <div class="main">
 <h1>📊 策略回测 & 实盘目标股看板</h1>
-<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">看板生成时间：2026-10-27 17:19:47（数据更新后请重新生成并刷新本页）</div>
+<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">看板生成时间：2026-10-28 17:37:41（数据更新后请重新生成并刷新本页）</div>
 <div class="tabs">
   <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">1 策略回测</div>
   <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
@@ -730,7 +730,7 @@ table.detail-table tbody tr { cursor: pointer; }
     <div class="sel-cond"><b>选股条件：</b>T-1 首板涨停（is_top=1 且 lian_ban=1）＋ T 日未涨停（is_top=0）＋ T 日 5 分钟 K 线共 48 根中「最低价 &lt; MA60」的根数 ≤ 4，且最后一根收盘价 &gt; MA60。</div>
     <div class="cand-layout">
       <div style="padding:10px">
-        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">关注日（T）</div>
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">关注日（T）　/　T+3 平均涨跌幅</div>
         <div class="date-list" id="top_first_vol_ma60-date-list"></div>
       </div>
       <div style="padding:10px">
@@ -2039,7 +2039,14 @@ function loadTopFirstVolMa60() {
     const n = (DATA.top_first_vol_ma60[d] || []).length;
     const el = document.createElement('div');
     el.className = 'date-item';
-    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
+    let extra = '';
+    const avg = (DATA.top_first_vol_ma60_avg && DATA.top_first_vol_ma60_avg[d]);
+    if (typeof avg === 'number') {
+      const pct = (avg * 100).toFixed(2);
+      const col = avg >= 0 ? '#26a69a' : '#ef5350';
+      extra = ' <span style="color:' + col + '">T+3 ' + (avg >= 0 ? '+' : '') + pct + '%</span>';
+    }
+    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>' + extra;
     el.onclick = () => { selectTopFirstVolMa60Date(d); };
     list.appendChild(el);
   });

@@ -44,7 +44,7 @@ from AICode.MarcoAPI.Update.SZ2001D import GET_SZ200_1D_PREVIOUS, UPDATE_1D_ORIG
 from AICode.MarcoAPI.Update.SZ200Index import UPDATE_INDEX_CODES, UPDATE_INDEX_1D_ORIGIN, UPDATE_INDEX_1D, INDEX_CODES, GET_INDEX_NAME
 from AICode.MarcoAPI.Update.SZ200Strategy import BUILD_SENTIMENT_KLINE
 from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO, UPDATE_STOCK_CODES
-from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES, EFFECTIVE_LATEST_TRADING_DATE
+from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES, EFFECTIVE_LATEST_TRADING_DATE, TRADING_DATES
 from AICode.MarcoAPI.Update.SZ200Top import UPDATE_TOP, UPDATE_TOP_FIRST, UPDATE_TOP_FIRST_VOL, UPDATE_TOP_FIRST_VOL_SUN, UPDATE_TOP_FIRST_VOL_MA60
 from AICode.MarcoAPI.Update.SZ200Strategy import (
     UPDATE_STRATEGY_TPO_3, UPDATE_STRATEGY_TPO_TOP, UPDATE_STRATEGY_TPO_M5,
@@ -513,6 +513,48 @@ def _load_top_first_vol_sun() -> dict[str, list[list[str]]]:
     return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
 
 
+def _load_top_first_vol_ma60_avg() -> dict[str, float]:
+    """首板+MA60 每个「关注日(T)」的 T+3 平均涨跌幅：对当日所有股算 (收[T+3]-收[T])/收[T] 取均值。
+
+    - 公式里的 T 取文件日期（UI 标注的「关注日 T」，即首板次日）；
+    - T+3 交易日不存在（T 太近、未来不足 3 个交易日）则该日不计算（跳过，UI 显示 —）；
+    - 个股缺 T 或 T+3 收盘则剔除该股、不影响其余均值。
+    返回 {日期: 平均涨跌幅(float)}（倒序）。
+    """
+    ma60_files = _load_top_first_vol_ma60()
+    if not ma60_files:
+        return {}
+    tdates = TRADING_DATES()
+    if not tdates:
+        return {}
+    close_cache: dict[str, dict[str, float]] = {}
+
+    def _closes(code: str) -> dict[str, float]:
+        if code not in close_cache:
+            close_cache[code] = _stock_close_map(code)
+        return close_cache[code]
+
+    out: dict[str, float] = {}
+    for d in ma60_files:
+        try:
+            i = tdates.index(d)
+        except ValueError:
+            continue
+        if i + 3 >= len(tdates):
+            continue  # 未来不足 3 个交易日 -> 不计算
+        t3 = tdates[i + 3]
+        rets: list[float] = []
+        for r in ma60_files[d]:
+            closes = _closes(r[0])
+            c0 = closes.get(d)
+            c3 = closes.get(t3)
+            if c0 and c0 > 0 and c3:
+                rets.append(c3 / c0 - 1)
+        if rets:
+            out[d] = sum(rets) / len(rets)
+    return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
+
+
 def _load_top_first_vol_ma60() -> dict[str, list[list[str]]]:
     """读取首板次日守5分钟MA60股 {日期: [[code, name, market_value], ...]}（来自 AIData/TOP_FIRST_VOL_MA60）。
 
@@ -879,7 +921,7 @@ def _write_offline_data(here: str, data: dict) -> None:
         "strategies": data.get("strategies", []),
         "backtest": data.get("backtest", {}),
         "sentiment": data.get("sentiment", {}),
-        "top": {}, "top_first": {}, "top_first_vol": {}, "top_first_vol_sun": {}, "top_first_vol_ma60": {}, "candidates": {}, "strategy_detail": {},   # 占位，进对应 TAB 后填充
+        "top": {}, "top_first": {}, "top_first_vol": {}, "top_first_vol_sun": {}, "top_first_vol_ma60": {}, "top_first_vol_ma60_avg": {}, "candidates": {}, "strategy_detail": {},   # 占位，进对应 TAB 后填充
         "kline": {},
         "fiveMin": {},
         "index_kline": data.get("index_kline", {}),
@@ -893,11 +935,16 @@ def _write_offline_data(here: str, data: dict) -> None:
     for fname, key in (("top.js", "top"), ("top_first.js", "top_first"),
                        ("top_first_vol.js", "top_first_vol"),
                        ("top_first_vol_sun.js", "top_first_vol_sun"),
-                       ("top_first_vol_ma60.js", "top_first_vol_ma60"),
                        ("candidates.js", "candidates"), ("detail.js", "strategy_detail")):
         with open(os.path.join(data_dir, fname), "w", encoding="utf-8") as f:
             f.write("Object.assign(window.__IDX, "
                     + json.dumps({key: data.get(key, {})}, ensure_ascii=False) + ");\n")
+    # 首板+MA60：附带每「关注日(T)」的 T+3 平均涨跌幅列（与股票列表同文件下发）
+    with open(os.path.join(data_dir, "top_first_vol_ma60.js"), "w", encoding="utf-8") as f:
+        f.write("Object.assign(window.__IDX, "
+                + json.dumps({"top_first_vol_ma60": data.get("top_first_vol_ma60", {}),
+                              "top_first_vol_ma60_avg": data.get("top_first_vol_ma60_avg", {})},
+                             ensure_ascii=False) + ");\n")
     kline = data.get("kline", {}) or {}
     five_min = data.get("fiveMin", {}) or {}
     all_codes = sorted(set(kline.keys()) | set(five_min.keys()))
@@ -1640,7 +1687,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
     <div class="sel-cond"><b>选股条件：</b>T-1 首板涨停（is_top=1 且 lian_ban=1）＋ T 日未涨停（is_top=0）＋ T 日 5 分钟 K 线共 48 根中「最低价 &lt; MA60」的根数 ≤ 4，且最后一根收盘价 &gt; MA60。</div>
     <div class="cand-layout">
       <div style="padding:10px">
-        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">关注日（T）</div>
+        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">关注日（T）　/　T+3 平均涨跌幅</div>
         <div class="date-list" id="top_first_vol_ma60-date-list"></div>
       </div>
       <div style="padding:10px">
@@ -2949,7 +2996,14 @@ function loadTopFirstVolMa60() {{
     const n = (DATA.top_first_vol_ma60[d] || []).length;
     const el = document.createElement('div');
     el.className = 'date-item';
-    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
+    let extra = '';
+    const avg = (DATA.top_first_vol_ma60_avg && DATA.top_first_vol_ma60_avg[d]);
+    if (typeof avg === 'number') {{
+      const pct = (avg * 100).toFixed(2);
+      const col = avg >= 0 ? '#26a69a' : '#ef5350';
+      extra = ' <span style="color:' + col + '">T+3 ' + (avg >= 0 ? '+' : '') + pct + '%</span>';
+    }}
+    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>' + extra;
     el.onclick = () => {{ selectTopFirstVolMa60Date(d); }};
     list.appendChild(el);
   }});
@@ -4999,6 +5053,7 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
         "top_first_vol": top_first_vol,
         "top_first_vol_sun": top_first_vol_sun,
         "top_first_vol_ma60": top_first_vol_ma60,
+        "top_first_vol_ma60_avg": _load_top_first_vol_ma60_avg(),
         "kline": kline,
         "strategy_detail": strategy_detail,
         "fiveMin": five_min,
@@ -5175,6 +5230,7 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
         "top_first_vol": top_first_vol,
         "top_first_vol_sun": top_first_vol_sun,
         "top_first_vol_ma60": top_first_vol_ma60,
+        "top_first_vol_ma60_avg": _load_top_first_vol_ma60_avg(),
         "kline": kline,
         "strategy_detail": strategy_detail,
         "fiveMin": five_min,
