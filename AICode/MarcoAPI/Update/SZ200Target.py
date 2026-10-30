@@ -66,6 +66,29 @@ def UPDATE_TARGET_TPO_M5_SMALL():
                              market_min=0.0, market_max=5e9, market_max_inclusive=False)
 
 
+def UPDATE_TARGET_TPO_MA60():
+    """实盘候选池 TPO_MA60：条件同策略（首板涨停股+涨停前4日量价异动，按市值倒序），按关注日 T 归档。
+
+    选股结果复用面板 _load_top_first_vol_ma60_mode3（与面板回测口径一致）。候选池展示于关注日 T（=涨停日+1）。
+    """
+    from AICode.MarcoAPI.StrategyUI import _load_top_first_vol_ma60_mode3
+    target_dir = PATH_AIDATA_TARGET_TPO_MA60()
+    _rotate_dir(target_dir)
+    mode3 = _load_top_first_vol_ma60_mode3()
+    if not mode3:
+        return "TARGET TPO_MA60: 无候选（TOP_FIRST 为空？）"
+    for d in TRADING_DATES():
+        open(f"{target_dir}/{d}", "a").close()
+    for T, rows in mode3.items():
+        with open(f"{target_dir}/{T}", "w") as f:
+            if not rows:
+                f.write("\n")
+            else:
+                for r in rows:
+                    f.write(f"{r[0]}|{r[1]}|{r[2]}\n")
+    return "TARGET TPO_MA60: 完成"
+
+
 def _UPDATE_TARGET_CANDIDATE(strategy_name: str, market_index: int, sort_by_market: bool = False, require_first_plate: bool = True, market_min: float = 2e10, market_max: float = float("inf"), market_max_inclusive: bool = True):
     """生成 T-2 日候选股票池到 TARGET/{strategy_name}/（多进程）"""
     target_dir = PATH_AIDATA_TARGET(strategy_name)

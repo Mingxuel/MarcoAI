@@ -205,6 +205,16 @@ def PATH_AIDATA_STRATEGY_TPO_M5_SMALL() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "Strategy", "TPO_M5_SMALL")
 
 
+def PATH_AIDATA_STRATEGY_TPO_MA60() -> str:
+    """TPO_MA60：移植首板MA60面板策略3（首板涨停股+涨停前4日量价异动，大市值优先）"""
+    return os.path.join(PROJECT_ROOT, "AIData", "Strategy", "TPO_MA60")
+
+
+def PATH_AIDATA_TARGET_TPO_MA60() -> str:
+    """TPO_MA60 实盘候选池：与策略同口径"""
+    return os.path.join(PROJECT_ROOT, "AIData", "TARGET", "TPO_MA60")
+
+
 def PATH_AIDATA_1D_MOTION_PRICE() -> str:
     return os.path.join(PROJECT_ROOT, "AIData", "1D_MOTION_PRICE")
 

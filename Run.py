@@ -14,7 +14,7 @@ Run.py —— 主交互菜单
     6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
     77. QMT 自动交易 —— 买入 / 卖出监控 / 常驻 watch
-    88. 一条龙更新 —— 先选同花顺策略，再依次：更新数据(含5M) → 刷新离线看板 → 更新同花顺 → 上传 Gitee
+    88. 一条龙更新 —— 进入后 5 秒倒计时（默认策略 TPO_MA60 + 周期 12 个月，倒计时内按键转人工选择），再依次：更新数据(含5M) → 刷新离线看板 → 更新同花顺 → 上传 Gitee
     0. 退出
 执行完任一项后自动回到主菜单。
 """
@@ -23,6 +23,7 @@ import datetime
 import os
 import subprocess
 import sys
+import time
 import unicodedata
 
 # 项目根（Run.py 所在目录）加入 sys.path，保证 AICode.* 可被导入
@@ -359,21 +360,70 @@ def _do_ths():
         print(f"  {G}── 更新完成，可继续选择其它策略或输入 0 返回 ──{R}")
 
 
+def _pipeline_choose(seconds: int = 5):
+    """一条龙进入时提供 5 秒倒计时：倒计时内按任意键 → 转人工选择策略/周期；
+    倒计时结束未按键 → 直接采用默认（策略=TPO_MA60，周期=最近12个月）。
+
+    返回 (strategy, scope_codes, recent_days_5m)；用户中途取消（人工选择时选 0）返回 None。
+    """
+    default_strategy = "TPO_MA60"
+    default_months = 12  # 对应 _PERIOD_OPTIONS 中「最近 12 个月」
+
+    # Windows 用 msvcrt 做非阻塞按键检测；其它平台降级为「仅默认、不可中断」
+    try:
+        import msvcrt
+        def _kbhit() -> bool:
+            return msvcrt.kbhit()
+        def _getch() -> str:
+            return msvcrt.getwch()
+    except Exception:
+        def _kbhit() -> bool:
+            return False
+        def _getch() -> str:
+            return ""
+
+    def manual():
+        strategy = _select_strategy()
+        if not strategy:
+            return None
+        scope_codes, recent_days_5m = _select_period()
+        return strategy, scope_codes, recent_days_5m
+
+    print(f"\n  {C}{B}═══ 一条龙更新（{seconds} 秒后自动以默认执行）═══{R}")
+    print(f"  {Y}默认：策略 = {default_strategy}，周期 = 最近 12 个月（按时间窗圈定 5M 下载范围）{R}")
+    print(f"  {G}倒计时内按任意键 → 进入人工选择（策略 / 周期）；什么也不按 → {seconds} 秒后自动开始{R}")
+    deadline = time.time() + seconds
+    while True:
+        left = max(0, int(round(deadline - time.time())))
+        sys.stdout.write(f"\r  {C}自动开始倒计时：{left:>2} 秒（按任意键人工选择）{' ' * 6}{R}")
+        sys.stdout.flush()
+        if left <= 0:
+            break
+        if _kbhit():
+            _getch()  # 消费掉该按键，避免带入后续 input
+            sys.stdout.write("\r\n")
+            return manual()
+        time.sleep(0.1)
+    sys.stdout.write("\r\n")
+    codes = _top_codes_in_period(default_months)
+    print(f"  {G}✓ 采用默认：策略={default_strategy}，周期=最近12个月（已圈定 {len(codes)} 只涨停股）{R}")
+    return default_strategy, sorted(codes), _RECENT_DAYS_5M
+
+
 def _do_pipeline():
-    """菜单 88：一条龙数据更新 —— 先选同花顺策略（仅此一步需人工），再依次：
-    更新数据(含5M) → 刷新离线看板 → 更新同花顺 → 上传 Gitee，全程自动。
+    """菜单 88：一条龙数据更新 —— 倒计时默认（TPO_MA60 + 12 个月）或人工选择策略/周期，
+    然后依次：更新数据(含5M) → 刷新离线看板 → 更新同花顺 → 上传 Gitee，全程自动。
 
     更新数据（UPDATE_ALL）已内含 5M 原始行情拉取，故此处不再单独调用 _do_update_5m()，
     避免 5M 被重复下载。各步骤错误互不影响，最终汇总结果。
     """
     print(f"\n  {C}{B}═══ 一条龙更新：① 选策略 → ② 更新数据(含5M) → ③ 刷新离线看板 → ④ 更新同花顺 → ⑤ 上传 Gitee ═══{R}")
-    # ① 先选策略（仅此一步需要人工交互；选 0 则取消整条流水线）
-    strategy = _select_strategy()
-    if not strategy:
-        print(f"  {Y}未选择策略，已取消一条龙更新。{R}")
+    # ① 选策略/周期：5 秒倒计时默认 TPO_MA60 + 12 个月；倒计时内按键转人工
+    chosen = _pipeline_choose()
+    if chosen is None:
+        print(f"  {Y}已取消一条龙更新。{R}")
         return
-    # ①b 选择数据更新周期（缩小 5M 下载范围；选 0 为全量）
-    scope_codes, recent_days_5m = _select_period()
+    strategy, scope_codes, recent_days_5m = chosen
     # ② 更新数据（含 5M）；按周期圈定的股票范围 + 最近 5M 窗口，极大缩短下载
     print(f"\n  {C}{B}── ② 更新数据（含 5M）──{R}")
     try:
@@ -413,19 +463,13 @@ _UPDATE_STEP_ITEMS = (
     ("5",  "涨停列表",     "UPDATE_TOP"),
     ("6",  "加工日线",     "UPDATE_1D"),
     ("7",  "首板涨停",     "UPDATE_TOP_FIRST"),
-    ("8",  "TPO_3 回测",   "UPDATE_STRATEGY_TPO_3"),
-    ("9",  "TPO_TOP 回测", "UPDATE_STRATEGY_TPO_TOP"),
-    ("10", "TPO_M5 回测",       "UPDATE_STRATEGY_TPO_M5"),
-    ("11", "TPO_3 候选",       "UPDATE_TARGET_TPO_3"),
-    ("12", "TPO_TOP 候选",     "UPDATE_TARGET_TPO_TOP"),
-    ("13", "TPO_M5 候选",      "UPDATE_TARGET_TPO_M5"),
-    ("14", "指数列表",          "UPDATE_INDEX_CODES"),
-    ("15", "指数日线原始",      "UPDATE_INDEX_1D_ORIGIN"),
-    ("16", "指数加工日线",      "UPDATE_INDEX_1D"),
-    ("17", "TPO_M5_MID 回测",   "UPDATE_STRATEGY_TPO_M5_MID"),
-    ("18", "TPO_M5_SMALL 回测", "UPDATE_STRATEGY_TPO_M5_SMALL"),
-    ("19", "TPO_M5_MID 候选",   "UPDATE_TARGET_TPO_M5_MID"),
-    ("20", "TPO_M5_SMALL 候选", "UPDATE_TARGET_TPO_M5_SMALL"),
+    ("8",  "TPO_M5 回测",     "UPDATE_STRATEGY_TPO_M5"),
+    ("9",  "TPO_MA60 回测",   "UPDATE_STRATEGY_TPO_MA60"),
+    ("10", "TPO_M5 候选",      "UPDATE_TARGET_TPO_M5"),
+    ("11", "TPO_MA60 候选",    "UPDATE_TARGET_TPO_MA60"),
+    ("12", "指数列表",          "UPDATE_INDEX_CODES"),
+    ("13", "指数日线原始",      "UPDATE_INDEX_1D_ORIGIN"),
+    ("14", "指数加工日线",      "UPDATE_INDEX_1D"),
 )
 
 

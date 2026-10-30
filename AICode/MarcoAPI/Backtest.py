@@ -501,4 +501,4 @@ def BACKTEST(strategy_name: str, sell_modes: list[str] | None = None) -> dict[st
 
 
 if __name__ == "__main__":
-    BACKTEST("TPO_3")
+    BACKTEST("TPO_MA60")

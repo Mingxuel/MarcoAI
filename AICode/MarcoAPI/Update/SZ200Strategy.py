@@ -63,6 +63,45 @@ def UPDATE_STRATEGY_TPO_M5_SMALL():
     )
 
 
+def UPDATE_STRATEGY_TPO_MA60():
+    """策略 TPO_MA60：移植首板MA60面板策略3（首板涨停股 + 涨停前4日量价异动，按市值倒序，大市值优先）。
+
+    选股结果直接复用面板 _load_top_first_vol_ma60_mode3（与面板回测口径完全一致，同宇宙/同数据）。
+    时间线：D=涨停日，T=关注日=D+1（入场参考日，收盘买），卖出日=T+1=D+2（盘中卖）。
+    故候选按「卖出日 = 关注日+1」写入 Strategy/TPO_MA60/{卖出日}（29列 + 止损线 -2%）。
+    """
+    from AICode.MarcoAPI.StrategyUI import _load_top_first_vol_ma60_mode3
+    strategy_dir = PATH_AIDATA_STRATEGY_TPO_MA60()
+    _rotate_dir(strategy_dir)
+    mode3 = _load_top_first_vol_ma60_mode3()
+    if not mode3:
+        return "STRATEGY TPO_MA60: 无候选（TOP_FIRST 为空？）"
+    trading_dates = TRADING_DATES()
+    # 每个交易日先建空文件（与现有 TPO 策略一致：空日=无交易）
+    for d in trading_dates:
+        open(f"{strategy_dir}/{d}", "a").close()
+    for T, rows in mode3.items():
+        if not rows:
+            continue
+        sell_date = TRADING_DATE_AFTER(T, 1)          # 卖出日 = 关注日 +1 = 涨停日+2
+        if sell_date is None:
+            continue
+        data = []
+        for r in rows:
+            rec0 = GET_SZ200_1D_PREVIOUS(r[0], sell_date, 0)   # 卖出日当日加工数据
+            if rec0 is None:
+                continue
+            data.append((rec0, r[0], r[1], float(r[2])))
+        data.sort(key=lambda x: x[3], reverse=True)   # 按流通市值倒序（大市值优先）
+        with open(f"{strategy_dir}/{sell_date}", "w") as file:
+            if not data:
+                file.write("\n")
+            else:
+                for d, code, name, mv in data:
+                    _write_row(file, sell_date, code, name, mv, d, stop_loss=-0.02)
+    return f"STRATEGY TPO_MA60: 完成（关注日 {len(mode3)} 个，命中卖出日若干）"
+
+
 def _UPDATE_STRATEGY_TPO(strategy_name: str, strategy_dir: str, market_index: int, max_ratio: float = 3.0, sort_by_market: bool = False, sort_by_vol_ratio: bool = False, sort_by_vol_ratio_asc: bool = False, require_first_plate: bool = True, market_min: float = 2e10, market_max: float = float("inf"), market_max_inclusive: bool = True, ma5_predict: bool = False, stop_loss: float = -0.06):
     """TPO 策略通用选股：生成回测数据到 Strategy/{strategy_name}/。
 

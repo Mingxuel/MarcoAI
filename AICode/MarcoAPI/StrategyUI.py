@@ -47,12 +47,10 @@ from AICode.MarcoAPI.Update.StockCodes import GET_STOCK_INFO, UPDATE_STOCK_CODES
 from AICode.MarcoAPI.Update.TradingDates import UPDATE_TRADING_DATES, EFFECTIVE_LATEST_TRADING_DATE, TRADING_DATES
 from AICode.MarcoAPI.Update.SZ200Top import UPDATE_TOP, UPDATE_TOP_FIRST, UPDATE_TOP_FIRST_VOL, UPDATE_TOP_FIRST_VOL_SUN, UPDATE_TOP_FIRST_VOL_MA60
 from AICode.MarcoAPI.Update.SZ200Strategy import (
-    UPDATE_STRATEGY_TPO_3, UPDATE_STRATEGY_TPO_TOP, UPDATE_STRATEGY_TPO_M5,
-    UPDATE_STRATEGY_TPO_M5_MID, UPDATE_STRATEGY_TPO_M5_SMALL,
+    UPDATE_STRATEGY_TPO_M5, UPDATE_STRATEGY_TPO_MA60,
 )
 from AICode.MarcoAPI.Update.SZ200Target import (
-    UPDATE_TARGET_TPO_3, UPDATE_TARGET_TPO_TOP, UPDATE_TARGET_TPO_M5,
-    UPDATE_TARGET_TPO_M5_MID, UPDATE_TARGET_TPO_M5_SMALL,
+    UPDATE_TARGET_TPO_M5, UPDATE_TARGET_TPO_MA60,
 )
 from AICode.MarcoAPI.Update.SZ2005M import UPDATE_5M_ORIGIN
 
@@ -68,7 +66,9 @@ THS_BLOCK_NAME = "blockstockV3.xml"
 PLACEHOLDER_TPO3  = "===TPO3==="
 PLACEHOLDER_TPO31 = "===TPO31==="
 PLACEHOLDER_TOP   = "===TOP==="   # 当天（最新交易日）涨停股
-PLACEHOLDER_HIS    = "===HIS==="   # 最近 5 日首板涨停放量股（TAB: 首板涨停放量股），剔除首板日后其它日又涨停的股
+PLACEHOLDER_HIS    = "===HIS==="   # 首板MA60 mode2 + 近日 5min 跌破 MA60（实盘机板块）
+PLACEHOLDER_DDAY  = "===D-DAY==="  # TPO_MA60 关注日 T=涨停日+1（次日收盘买）已符合 mode3 条件的股（= mode3[涨停日+1]，数据就绪后填充）
+PLACEHOLDER_DAY1  = "===DAY-1==="  # 涨停日 D=最后一个交易日的候选池：首板涨停+前4日量价异动（_mode3_candidates_by_d，经买入日未涨停过滤即 D-DAY 可买股）
 
 
 def _read_text(path):
@@ -145,108 +145,125 @@ def _touched_limit(cols: list[str]) -> bool:
     return high >= _limit_price(pre_close, _limit_ratio(code))
 
 
-def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m") -> dict[str, object]:
-    """构建单个策略的回测数据（first：每日买入第一只股票即市值最大；
-    sell_mode="5m" 用 5 分钟 K 线日内卖出，sell_mode="day" 用日线 O/H/L/C 卖出。
+def _build_strategy_payload(strategy_name: str, sell_mode: str = "5m", pick_mode: str = "first") -> dict[str, object]:
+    """构建单个策略的回测数据。
 
-    返回:
-        name: 策略名
-        dates: 卖出日列表（升序）
-        capital: 资金曲线（first，复利）
-        total: 总收益率
-        final: 最终资金
-        month/quarter/year: 每月/季度/年收益（first）
-        month_trades: 每月交易次数（当日有票即 1 笔；无交易的月份不含该键）
-        month_tops: 每月「摸到涨停」个数（当日最高价触及涨停价即算，不要求收盘封板）
-        kline: 资金 K 线 [{time,open,high,low,close,volume,pre_close}]，
-               每根蜡烛为当日资金 OHLC（由 O/C/H/L 涨跌幅 × 前收资金复利算出），时间 YYYY-MM-DD
-        dist: {open,high,low,close} 四组每日涨跌幅序列（相对前收）
+    pick_mode（选股方式，与 Backtest._backtest 完全对齐）:
+        first: 取当日候选首行（文件首只）
+        last:  取当日候选末行（文件末只）
+        avg:   当日全部候选等权（资金平均分配）
+    sell_mode（T-0 卖出方式）:
+        5m:  5 分钟 K 线日内卖出（缺 5M 数据回退日线）
+        day: 日线 O/H/L/C 卖出
+
+    每日所选股票等权分配当日本金，逐笔扣双边佣金与卖出印花税后复利滚动资金；
+    口径与 Backtest._backtest 一致，故 UI 数字可直接与引擎(first/last/avg/5m)对账。
+
+    返回: {name, dates, capitals, rets, total, final, month, month_trades,
+           month_tops, quarter, year, kline, dist}
     """
     daily = _load_strategy(strategy_name)
     dates = sorted(daily)
 
-    # 资金曲线 + 区间收益（复利，first：每日买入第一只，即市值最大）
     capital = INIT_CAPITAL
     capitals = []
     rets = []        # 每日收益（对应 dates 顺序）
     month = {}
     quarter = {}
     year = {}
-    month_trades = {}  # 每月交易次数（当日有票即算 1 笔，策略每日最多买 1 只）
-    month_tops = {}    # 每月「抓到涨停」个数（当日买入股在 T-0 涨停，即数据第 12 列 is_top==1）
-    kline = []      # 资金 K 线：每根蜡烛为当日资金 OHLC（由涨跌幅×前收资金复利算出）
+    month_trades = {}  # 每月交易次数（当日有票即算 1 笔）
+    month_tops = {}    # 每月「抓到涨停」个数（当日任一候选最高价触及涨停价即算）
+    kline = []      # 资金 K 线：每根蜡烛为当日资金 OHLC
     dist = {"open": [], "high": [], "low": [], "close": []}
     prev_capital = INIT_CAPITAL  # 前收资金（首日 = 起始资金）
     for date in dates:
         rows = daily[date]
         if not rows:
-            # 无票日期：资金不动，K线/涨跌幅留空占位
             capitals.append(round(capital, 2))
             rets.append(0.0)
             kline.append(None)
             for k in dist:
                 dist[k].append(None)
             continue
-        first = rows[0]  # 每日买入第一只（first 模式）
-        # T-0 卖出方式：5m = 5 分钟 K 线日内卖出；day = 日线 O/H/L/C
-        if sell_mode == "5m":
-            sell_price = _sell_price_5m(first)
-            if sell_price is None:  # 缺 5M 数据则回退日线
-                sell_price = _sell_price_1d(first)
+        # 选股方式：first/last 取单只，avg 取当日全部候选
+        if pick_mode == "first":
+            selected = [rows[0]]
+        elif pick_mode == "last":
+            selected = [rows[-1]]
         else:
-            sell_price = _sell_price_1d(first)
-        try:
-            pre = float(first[10])
-        except (ValueError, IndexError):
-            pre = 0.0
-        # 净收益：万1免5 佣金（买卖双边）+ 千0.5 印花税（卖出），满仓 10 万
-        net_ret = _trade_net_return(pre, sell_price, capital) if (sell_price is not None and pre > 0) else 0.0
-        capital *= (1.0 + net_ret)
+            selected = list(rows)
+        # 逐只算卖出价（与 Backtest._sell_price_for 同口径：5m 优先、缺则回退日线）
+        valid = []
+        for row in selected:
+            if sell_mode == "5m":
+                sp = _sell_price_5m(row)
+                if sp is None:
+                    sp = _sell_price_1d(row)
+            else:
+                sp = _sell_price_1d(row)
+            try:
+                pre = float(row[10])
+            except (ValueError, IndexError):
+                pre = 0.0
+            if pre > 0 and sp is not None:
+                valid.append((row, pre, sp))
+        # 等权分配本金、逐笔扣费后复利（与 Backtest._backtest 一致）
+        n = len(valid)
+        day_net_ret = 0.0
+        if n > 0:
+            alloc = capital / n
+            pnl = 0.0
+            for row, pre, sp in valid:
+                pnl += alloc * _trade_net_return(pre, sp, alloc)
+            day_net_ret = pnl / capital if capital > 0 else 0.0
+        capital *= (1.0 + day_net_ret)
         capitals.append(round(capital, 2))
-        rets.append(net_ret)
+        rets.append(day_net_ret)
 
         # 区间复利收益
         ym = date[:6]
-        month[ym] = month.get(ym, 1.0) * (1 + net_ret)
+        month[ym] = month.get(ym, 1.0) * (1 + day_net_ret)
         month_trades[ym] = month_trades.get(ym, 0) + 1
-        # 摸到涨停：当日【最高价触及涨停价】即算（与回测「涨停卖」规则一致：high >= 涨停价），
-        # 不要求收盘封板（is_top==1 只是封板，会漏掉盘中触板又打开的票）
-        month_tops[ym] = month_tops.get(ym, 0) + (1 if _touched_limit(first) else 0)
+        month_tops[ym] = month_tops.get(ym, 0) + (1 if any(_touched_limit(r) for r, _, _ in valid) else 0)
         qm = _quarter_of(date)
-        quarter[qm] = quarter.get(qm, 1.0) * (1 + net_ret)
+        quarter[qm] = quarter.get(qm, 1.0) * (1 + day_net_ret)
         y = date[:4]
-        year[y] = year.get(y, 1.0) * (1 + net_ret)
+        year[y] = year.get(y, 1.0) * (1 + day_net_ret)
 
-        # 资金 K 线：开盘按开盘价、收盘按实际卖出价（与 _stock_return 一致）换算成资金
-        try:
+        # 资金 K 线 + 涨跌分布（avg 模式取等权平均的 O/H/L/C 涨跌幅；first/last 单只）
+        if valid:
+            o_pcts, h_pcts, l_pcts, c_pcts = [], [], [], []
+            vol_sum = 0.0
+            for row, pre, sp in valid:
+                try:
+                    op, hp, lp, cp = float(row[4]), float(row[5]), float(row[6]), float(row[7])
+                    o_pcts.append((op - pre) / pre); h_pcts.append((hp - pre) / pre)
+                    l_pcts.append((lp - pre) / pre); c_pcts.append((cp - pre) / pre)
+                    vol_sum += float(row[8])
+                except (ValueError, IndexError):
+                    pass
             t = date[:4] + '-' + date[4:6] + '-' + date[6:8]
-            open_p = float(first[4])
-            high = float(first[5])
-            low = float(first[6])
-            close = float(first[7])
-            pre = float(first[10])
-            volume = float(first[8])
-            if pre > 0 and sell_price is not None:
-                k_open = prev_capital * (1 + (open_p - pre) / pre)
-                k_high = prev_capital * (1 + (high - pre) / pre)
-                k_low = prev_capital * (1 + (low - pre) / pre)
-                k_close = prev_capital * (1 + net_ret)  # 收盘资金按净收益（含手续费）
+            k_close = prev_capital * (1 + day_net_ret)
+            if o_pcts:
+                ao = sum(o_pcts) / len(o_pcts)
+                ah = sum(h_pcts) / len(h_pcts)
+                al = sum(l_pcts) / len(l_pcts)
+                ac = sum(c_pcts) / len(c_pcts)
                 kline.append({
-                    "time": t, "open": round(k_open, 2), "high": round(k_high, 2),
-                    "low": round(k_low, 2), "close": round(k_close, 2),
-                    "volume": volume, "pre_close": round(prev_capital, 2),
+                    "time": t, "open": round(prev_capital * (1 + ao), 2),
+                    "high": round(prev_capital * (1 + ah), 2),
+                    "low": round(prev_capital * (1 + al), 2),
+                    "close": round(k_close, 2),
+                    "volume": round(vol_sum / len(o_pcts), 2), "pre_close": round(prev_capital, 2),
                 })
-                prev_capital = k_close  # 复利：当日收盘资金作为次日前收资金
-                # O/C/H/L 涨跌幅（相对前收）
-                dist["open"].append((open_p - pre) / pre)
-                dist["high"].append((high - pre) / pre)
-                dist["low"].append((low - pre) / pre)
-                dist["close"].append((close - pre) / pre)
+                dist["open"].append(ao); dist["high"].append(ah)
+                dist["low"].append(al); dist["close"].append(ac)
             else:
                 kline.append(None)
                 for k in dist:
                     dist[k].append(None)
-        except (ValueError, IndexError):
+            prev_capital = k_close
+        else:
             kline.append(None)
             for k in dist:
                 dist[k].append(None)
@@ -317,11 +334,10 @@ def _list_strategies() -> list[str]:
     # 排除 RESULT 与 _rotate_dir 产生的 .old_ 备份目录（否则会被当成策略列进下拉框）
     names = [d for d in os.listdir(base)
              if os.path.isdir(os.path.join(base, d)) and d != "RESULT" and ".old_" not in d]
-    # 注：TPO_M5_MID、TPO_M5_SMALL 已重新上线（市值分档 [50,200) 与 [0,50)），正常出现在看板与策略选择
-    # TPO_M5 系列（大市值档）优先排前，其余按字母序
-    _m5 = ("TPO_M5",)
-    ordered = [n for n in _m5 if n in names]
-    rest = sorted(n for n in names if n not in _m5)
+    # TPO_MA60（首板涨停股异动，大市值优先）与 TPO_M5（大市值档）优先排前，其余按字母序
+    _pri = ("TPO_MA60", "TPO_M5")
+    ordered = [n for n in _pri if n in names]
+    rest = sorted(n for n in names if n not in _pri)
     return ordered + rest
 
 
@@ -514,7 +530,7 @@ def _load_top_first_vol_sun() -> dict[str, list[list[str]]]:
 
 
 def _load_top_first_vol_ma60_avg() -> dict[str, float]:
-    """首板+MA60 每个「关注日(T)」的 T+3 平均涨跌幅：对当日所有股算 (收[T+3]-收[T])/收[T] 取均值。
+    """首板MA60 每个「关注日(T)」的 T+3 平均涨跌幅：对当日所有股算 (收[T+3]-收[T])/收[T] 取均值。
 
     - 公式里的 T 取文件日期（UI 标注的「关注日 T」，即首板次日）；
     - T+3 交易日不存在（T 太近、未来不足 3 个交易日）则该日不计算（跳过，UI 显示 —）；
@@ -579,7 +595,7 @@ def _load_5m_day_buckets(code: str) -> dict[str, list[tuple[float, float]]]:
 
 
 def _load_top_first_vol_ma60_mode2() -> dict[str, list[list[str]]]:
-    """新筛选模式（基于首板+MA60 同基准）：D 日(关注日)起 D..D+6（含）共 7 个交易日内，
+    """新筛选模式（基于首板MA60 同基准）：D 日(关注日)起 D..D+6（含）共 7 个交易日内，
     存在「某一日」其 48 根 5 分钟 K 线中「最高价 > MA60」的根数 ≤ 4
     （即当日 ≥44 根在 MA60 下方）的个股保留。
     候选池与模式1一致（取 top_first_vol_ma60[date] 同批票），仅筛选口径不同。
@@ -622,6 +638,181 @@ def _load_top_first_vol_ma60_mode2() -> dict[str, list[list[str]]]:
         if kept:
             kept.sort(key=lambda r: float(r[2]), reverse=True)
             out[d] = kept
+    for _d in TRADING_DATES():
+        out.setdefault(_d, [])
+    return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
+
+
+def _load_1d_high_vol(code: str) -> dict[str, tuple[float, float]]:
+    """读 1D_ORIGIN，返回 {YYYYMMDD: (high, volume)}（列布局 r[2]=最高价, r[5]=成交量）。"""
+    path = os.path.join(PATH_AIDATA_1D_ORIGIN(), code)
+    if not os.path.exists(path):
+        return {}
+    out = {}
+    for line in _read_text(path).splitlines():
+        p = line.split("|")
+        if len(p) < 6 or not p[0].isdigit():
+            continue
+        try:
+            out[p[0]] = (float(p[2]), float(p[5]))
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def _load_top_codes() -> dict[str, set[str]]:
+    """读 TOP 目录原始涨停股代码集合 {日期: {code, ...}}（代码归一化为 .SH/.SZ）。
+
+    与 _load_top 的区别：不做「缺股票信息 / 缺收盘价」过滤，保留全部涨停代码，
+    以免把「当日确实涨停」的股误判为未涨停（用于买入日「是否买得进去」的判定）。
+    """
+    base = PATH_AIDATA_TOP()
+    out: dict[str, set[str]] = {}
+    if not os.path.isdir(base):
+        return out
+    for date in sorted(os.listdir(base)):
+        if not date.isdigit():
+            continue
+        codes: set[str] = set()
+        for line in _read_text(os.path.join(base, date)).splitlines():
+            c = line.strip()
+            if not c:
+                continue
+            codes.add(c if "." in c else (f"{c}.SH" if c.startswith("6") else f"{c}.SZ"))
+        out[date] = codes
+    return out
+
+
+def _mode3_candidates_by_d() -> dict[str, list[list[str]]]:
+    """mode3 候选（按【涨停日 D】归档，**不含**「买入日 T 未涨停」过滤）。
+
+    即满足 TPO_MA60 在涨停日及其之前日期的全部条件：
+        ① 涨停日 D = 首板涨停（来自 _load_top_first，键 = 涨停日 D）；
+        ② 涨停前 4 日 D-4~D-1 内存在某日 S 满足 high(S) > high(D) 且 volume(S) > volume(D)（量价异动）。
+    此即「候选池」——同花顺 DAY-1 板块用它（尚未施加买入日可买性约束）。
+    返回 {date(=涨停日 D): [[code, name, market_value], ...]}（按市值倒序）。
+    """
+    base = _load_top_first()            # 首板涨停股（键 = 涨停日 D）
+    if not base:
+        return {}
+    tdates = TRADING_DATES()
+    if not tdates:
+        return {}
+    tdict = {d: i for i, d in enumerate(tdates)}
+    codes = {r[0] for rows in base.values() for r in rows}
+    daily_by_code: dict[str, dict[str, tuple[float, float]]] = {}
+    for code in codes:
+        daily_by_code[code] = _load_1d_high_vol(code)
+    by_d: dict[str, list[list[str]]] = {}
+    for d, rows in base.items():
+        if d not in tdict:
+            continue
+        i = tdict[d]
+        # D-4 ~ D-1 = 涨停日前 4 个交易日
+        window = [tdates[j] for j in (i - 1, i - 2, i - 3, i - 4) if j >= 0]
+        kept = []
+        for r in rows:
+            dailies = daily_by_code.get(r[0])
+            if not dailies or d not in dailies:
+                continue
+            hD, vD = dailies[d]
+            if hD <= 0 or vD <= 0:
+                continue
+            ok = False
+            for wd in window:
+                sd = dailies.get(wd)
+                if sd and sd[0] > hD and sd[1] > vD:
+                    ok = True
+                    break
+            if ok:
+                kept.append(r)
+        if kept:
+            kept.sort(key=lambda r: float(r[2]), reverse=True)
+            by_d[d] = kept
+    return dict(sorted(by_d.items(), key=lambda x: x[0], reverse=True))
+
+
+def _load_top_first_vol_ma60_mode3() -> dict[str, list[list[str]]]:
+    """mode3（基于首板涨停股）按【关注日 T = D+1】归档（与模式1/2 一致）。
+
+    候选 = _mode3_candidates_by_d()（涨停日 D 首板涨停 + 前4日量价异动），
+    再施加「买入日可买性」条件（与首板MA60 标准口径 UPDATE_TOP_FIRST_VOL_MA60 一致）：
+    T（=关注日 D+1，收盘买入日）当日【未涨停】（不在 TOP[T] 中）——若 T 日又涨停（连板/封板）
+    收盘根本买不进去，故必须排除。
+
+    返回 {date(=T): [[code, name, market_value], ...]}（按市值倒序）。
+    """
+    by_d = _mode3_candidates_by_d()
+    if not by_d:
+        return {}
+    tdates = TRADING_DATES()
+    tdict = {d: i for i, d in enumerate(tdates)}
+    top_codes = _load_top_codes()       # 每日涨停股集合（用于 T 日「未涨停」判定）
+    out: dict[str, list[list[str]]] = {}
+    for d, rows in by_d.items():
+        i = tdict.get(d)
+        if i is None or i + 1 >= len(tdates):        # D 为最后交易日，无关注日 T，跳过
+            continue
+        t = tdates[i + 1]               # 关注日 T = 涨停日 D 的次交易日（收盘买入日）
+        top_t = top_codes.get(t) or ()  # T 日涨停股：其中任一票收盘都买不进去
+        kept = [r for r in rows if r[0] not in top_t]
+        if kept:
+            out[t] = kept
+    for _d in TRADING_DATES():
+        out.setdefault(_d, [])
+    return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
+
+
+def _load_top_first_vol_ma60_mode4() -> dict[str, list[list[str]]]:
+    """原筛选模式3（基于首板MA60 同基准，保留版）：设首板涨停日为 D（即关注日 T 的前一交易日），
+    在 D-4 ~ D-1 共 4 个交易日中，存在某一日 S 使得
+        high(S) > high(D) 且 volume(S) > volume(D)
+    则保留该股（量价异动：涨停前 4 日内曾出现「更高价 + 更大成交量」的日子）。
+    候选池与模式1/2 一致（top_first_vol_ma60[date] 同批票），仅筛选口径不同。
+    返回 {date: [[code, name, market_value], ...]}（按市值倒序）。
+    """
+    base = _load_top_first_vol_ma60()
+    if not base:
+        return {}
+    tdates = TRADING_DATES()
+    if not tdates:
+        return {}
+    tdict = {d: i for i, d in enumerate(tdates)}
+    codes = {r[0] for rows in base.values() for r in rows}
+    daily_by_code: dict[str, dict[str, tuple[float, float]]] = {}
+    for code in codes:
+        daily_by_code[code] = _load_1d_high_vol(code)
+    out: dict[str, list[list[str]]] = {}
+    for d, rows in base.items():
+        if d not in tdict:
+            continue
+        i = tdict[d]
+        if i < 1:                       # 无前一交易日，无法确定涨停日 D
+            continue
+        d_limit = tdates[i - 1]          # D = 首板涨停日（关注日 T 的前一交易日）
+        # D-4 ~ D-1 = T-5 ~ T-2（涨停前 4 个交易日）
+        window = [tdates[j] for j in (i - 5, i - 4, i - 3, i - 2) if j >= 0]
+        kept = []
+        for r in rows:
+            dailies = daily_by_code.get(r[0])
+            if not dailies or d_limit not in dailies:
+                continue
+            hD, vD = dailies[d_limit]
+            if hD <= 0 or vD <= 0:
+                continue
+            ok = False
+            for wd in window:
+                sd = dailies.get(wd)
+                if sd and sd[0] > hD and sd[1] > vD:
+                    ok = True
+                    break
+            if ok:
+                kept.append(r)
+        if kept:
+            kept.sort(key=lambda r: float(r[2]), reverse=True)
+            out[d] = kept
+    for _d in TRADING_DATES():
+        out.setdefault(_d, [])
     return dict(sorted(out.items(), key=lambda x: x[0], reverse=True))
 
 
@@ -991,7 +1182,7 @@ def _write_offline_data(here: str, data: dict) -> None:
         "strategies": data.get("strategies", []),
         "backtest": data.get("backtest", {}),
         "sentiment": data.get("sentiment", {}),
-        "top": {}, "top_first": {}, "top_first_vol": {}, "top_first_vol_sun": {}, "top_first_vol_ma60": {}, "top_first_vol_ma60_avg": {}, "top_first_vol_ma60_mode2": {}, "candidates": {}, "strategy_detail": {},   # 占位，进对应 TAB 后填充
+        "top": {}, "top_first": {}, "top_first_vol": {}, "top_first_vol_sun": {}, "top_first_vol_ma60": {}, "top_first_vol_ma60_avg": {}, "top_first_vol_ma60_mode2": {}, "top_first_vol_ma60_mode3": {}, "top_first_vol_ma60_mode4": {}, "candidates": {}, "strategy_detail": {},   # 占位，进对应 TAB 后填充
         "kline": {},
         "fiveMin": {},
         "index_kline": data.get("index_kline", {}),
@@ -1009,12 +1200,14 @@ def _write_offline_data(here: str, data: dict) -> None:
         with open(os.path.join(data_dir, fname), "w", encoding="utf-8") as f:
             f.write("Object.assign(window.__IDX, "
                     + json.dumps({key: data.get(key, {})}, ensure_ascii=False) + ");\n")
-    # 首板+MA60：附带每「关注日(T)」的 T+3 平均涨跌幅列（与股票列表同文件下发）
+    # 首板MA60：附带每「关注日(T)」的 T+3 平均涨跌幅列（与股票列表同文件下发）
     with open(os.path.join(data_dir, "top_first_vol_ma60.js"), "w", encoding="utf-8") as f:
         f.write("Object.assign(window.__IDX, "
                 + json.dumps({"top_first_vol_ma60": data.get("top_first_vol_ma60", {}),
                               "top_first_vol_ma60_avg": data.get("top_first_vol_ma60_avg", {}),
-                              "top_first_vol_ma60_mode2": data.get("top_first_vol_ma60_mode2", {})},
+                              "top_first_vol_ma60_mode2": data.get("top_first_vol_ma60_mode2", {}),
+                              "top_first_vol_ma60_mode3": data.get("top_first_vol_ma60_mode3", {}),
+                              "top_first_vol_ma60_mode4": data.get("top_first_vol_ma60_mode4", {})},
                              ensure_ascii=False) + ");\n")
     kline = data.get("kline", {}) or {}
     five_min = data.get("fiveMin", {}) or {}
@@ -1365,15 +1558,21 @@ table.detail-table tbody tr {{ cursor: pointer; }}
   <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
   <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
   <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">4 首板涨停股</div>
-  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">5 首板涨停放量股</div>
-  <div class="tab" data-tab="top_first_vol_ma60" onclick="switchTab('top_first_vol_ma60')">6 首板+MA60</div>
-  <div class="tab" data-tab="index" onclick="switchTab('index')">7 指数K线</div>
+  <div class="tab" data-tab="top_first_vol_ma60" onclick="switchTab('top_first_vol_ma60')">5 首板MA60</div>
+  <div class="tab" data-tab="index" onclick="switchTab('index')">6 指数K线</div>
   </div>
 
 <div id="panel-backtest" class="tab-panel active">
   <div class="toolbar">
     <div><label>策略：</label>
       <select id="strategy-select"></select>
+    </div>
+    <div><label>选股方式：</label>
+      <select id="pick-mode">
+        <option value="first">first（每日首只/文件首行）</option>
+        <option value="avg">avg（当日全部等权）</option>
+        <option value="last">last（文件末行）</option>
+      </select>
     </div>
     <div><label>T-0 卖出：</label>
       <select id="sell-mode">
@@ -1656,52 +1855,7 @@ table.detail-table tbody tr {{ cursor: pointer; }}
   </div>
 </div>
 
-<div id="panel-top_first_vol" class="tab-panel">
-  <div class="card">
-    <h2>首板涨停放量股列表（按流通市值倒序；日期倒序，默认最新）</h2>
-    <div class="sel-cond"><b>选股条件：</b>T-3（前一日）涨停 + 首板（lian_ban=1）+ 放量；T-2（当日）上涨（is_up=1）+ 放量 + 未涨停（is_top=0）。即「首板涨停后的次日放量上涨但未涨停」，不限市值。</div>
-    <div class="cand-layout">
-      <div style="padding:10px">
-        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">放量日（T-2）</div>
-        <div class="date-list" id="top_first_vol-date-list"></div>
-      </div>
-      <div style="padding:10px">
-        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">首板涨停放量股票（市值倒序）</div>
-        <div class="stock-list" id="top_first_vol-stock-list"></div>
-      </div>
-      <div style="padding:10px">
-        <div class="chart-title" id="top_first_vol-kline-title"></div>
-        <div class="kline-info" id="top_first_vol-kline-info"></div>
-        <div class="kline-toolbar">
-          <select id="top_first_vol-kline-period" title="周期">
-            <option value="day">日线</option>
-            <option value="month">月线</option>
-          </select>
-          <button id="top_first_vol-bar-btn" type="button">指标栏</button>
-          <label class="kline-chk"><input type="checkbox" id="top_first_vol-boll"> BOLL</label>
-          <label class="kline-chk"><input type="checkbox" id="top_first_vol-vwap"> VWAP</label>
-          <button id="top_first_vol-ma-btn" type="button">MA 配置</button>
-          <button id="top_first_vol-ma-add" type="button" style="display:none">+</button>
-          <button id="top_first_vol-color-btn" type="button">涨跌颜色</button>
-        </div>
-        <div class="kline-bars" id="top_first_vol-bars"></div>
-        <div class="kline-ma-config" id="top_first_vol-ma-config"></div>
-        <div class="kline-ma-row" id="top_first_vol-kline-ma-row"></div>
-        <div class="kline-color-config" id="top_first_vol-color-config"></div>
-        <div class="kline-split">
-          <div id="top_first_vol-kline">
-            <div id="top_first_vol-kline-main"><div class="empty-hint">请选择放量日期与个股</div></div>
-          </div>
-          <div class="kline-5m-col">
-            <div class="kline-subhead">5 分钟 K 线（放量日居中）· 含 MA</div>
-            <div class="kline-info" id="top_first_vol-kline-5m-info"></div>
-            <div id="top_first_vol-kline-5m"><div id="top_first_vol-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <div id="panel-top_first_vol_sun" class="tab-panel">
   <div class="card">
@@ -1752,12 +1906,14 @@ table.detail-table tbody tr {{ cursor: pointer; }}
 
 <div id="panel-top_first_vol_ma60" class="tab-panel">
   <div class="card">
-    <h2>首板+MA60股列表（按流通市值倒序；日期倒序，默认最新）</h2>
+    <h2>首板MA60股列表（按流通市值倒序；日期倒序，默认最新）</h2>
     <div class="sel-cond"><b>选股条件：</b>T-1 首板涨停（is_top=1 且 lian_ban=1）＋ T 日未涨停（is_top=0）＋ T 日 5 分钟 K 线共 48 根中「最低价 &lt; MA60」的根数 ≤ 4，且最后一根收盘价 &gt; MA60。</div>
     <div class="sel-cond" style="margin-top:6px"><b>筛选方式：</b>
       <select id="ma60-filter-mode" onchange="onMa60FilterModeChange()" style="background:#1f2530;color:#e6e6e6;border:1px solid #333a47;border-radius:6px;padding:3px 6px;font-size:13px">
         <option value="mode1">① 原筛选：守 MA60（D 日 ≥44 根在 MA60 上方）</option>
         <option value="mode2">② 新筛选：D~D+6 跌破 MA60（某日 ≥44 根在 MA60 下方）</option>
+        <option value="mode3">③ 新筛选：涨停前4日量价异动（基于首板涨停股）</option>
+        <option value="mode4">④ 原筛选3：涨停前4日量价异动（基于首板MA60）</option>
       </select>
       <span style="color:#9aa0a6">切换即换数据；后续新增筛选方式在此下拉框追加</span>
     </div>
@@ -1834,7 +1990,7 @@ let current = {{ strategy: null, candStrategy: null, date: null, code: null, top
                 topFirstDate: null, topFirstCode: null,
                 topFirstVolDate: null, topFirstVolCode: null,
                 topFirstVolSunDate: null, topFirstVolSunCode: null,
-                detailDate: null, detailCode: null, savedDate: null, savedCode: null, sellMode: "5m", ma60FilterMode: "mode1" }};
+                detailDate: null, detailCode: null, savedDate: null, savedCode: null, sellMode: "5m", pickMode: "first", ma60FilterMode: "mode1" }};
 
 /* 离线零内嵌：数据外置到 data/ 伴随文件（file:// 下仅 <script src> 兄弟文件可加载，fetch 被禁）
    提速策略：面板渲染出股票列表时后台预取该列表数据，点击时命中缓存，消除逐次点击的 I/O 等待。 */
@@ -1917,8 +2073,6 @@ function prefetchActivePanel(name) {{
     prefetchPanelCodes('top', (DATA.top[current.topDate] || []).map(function (s) {{ return s[0]; }}));
   }} else if (name === 'top_first') {{
     prefetchPanelCodes('top_first', (DATA.top_first[current.topFirstDate] || []).map(function (s) {{ return s[0]; }}));
-  }} else if (name === 'top_first_vol') {{
-    prefetchPanelCodes('top_first_vol', (DATA.top_first_vol[current.topFirstVolDate] || []).map(function (s) {{ return s[0]; }}));
   }} else if (name === 'candidate') {{
     const cs = DATA.candidates[current.candStrategy] || {{}};
     prefetchPanelCodes('candidate', (cs[current.date] || []).map(function (s) {{ return s[0]; }}));
@@ -1948,7 +2102,6 @@ async function ensureTab(name) {{
   _tabInited[name] = true;
   if (name === 'top') {{ await ensurePanelData('top'); loadTop(); }}
   else if (name === 'top_first') {{ await ensurePanelData('top_first'); loadTopFirst(); }}
-  else if (name === 'top_first_vol') {{ await ensurePanelData('top_first_vol'); loadTopFirstVol(); }}
   else if (name === 'top_first_vol_sun') {{ await ensurePanelData('top_first_vol_sun'); loadTopFirstVolSun(); }}
   else if (name === 'top_first_vol_ma60') {{ await ensurePanelData('top_first_vol_ma60'); loadTopFirstVolMa60(); }}
   else if (name === 'candidate') {{ await ensurePanelData('candidate'); loadCandidates(); }}
@@ -2057,7 +2210,6 @@ async function switchTab(name) {{
   document.getElementById('panel-detail').classList.toggle('active', name === 'detail');
   document.getElementById('panel-top').classList.toggle('active', name === 'top');
   document.getElementById('panel-top_first').classList.toggle('active', name === 'top_first');
-  document.getElementById('panel-top_first_vol').classList.toggle('active', name === 'top_first_vol');
   document.getElementById('panel-top_first_vol_sun').classList.toggle('active', name === 'top_first_vol_sun');
   document.getElementById('panel-top_first_vol_ma60').classList.toggle('active', name === 'top_first_vol_ma60');
   document.getElementById('panel-index').classList.toggle('active', name === 'index');
@@ -2076,10 +2228,7 @@ async function switchTab(name) {{
     klineTarget = 'top_first';
     if (current.topFirstCode) requestAnimationFrame(() => selectTopFirstStock(current.topFirstCode));
   }}
-  if (name === 'top_first_vol') {{
-    klineTarget = 'top_first_vol';
-    if (current.topFirstVolCode) requestAnimationFrame(() => selectTopFirstVolStock(current.topFirstVolCode));
-  }} else if (name === 'top_first_vol_sun') {{
+  else if (name === 'top_first_vol_sun') {{
     klineTarget = 'top_first_vol_sun';
     if (current.topFirstVolSunCode) requestAnimationFrame(() => selectTopFirstVolSunStock(current.topFirstVolSunCode));
   }} else if (name === 'top_first_vol_ma60') {{
@@ -2106,6 +2255,13 @@ DATA.strategies.forEach(s => {{
 }});
 strategySelect2.value = DATA.strategies[0];
 
+// 选股方式选择器：first/avg/last（与 Backtest._backtest 口径一致，默认 first）
+const pickModeSelect = document.getElementById('pick-mode');
+pickModeSelect.value = current.pickMode;
+pickModeSelect.addEventListener('change', () => {{
+  current.pickMode = pickModeSelect.value;
+  updateCharts();
+}});
 // T-0 卖出方式选择器：day = 日线收盘；5m = 5 分钟 K 线日内卖出（默认 5m）
 const sellModeSelect = document.getElementById('sell-mode');
 sellModeSelect.value = current.sellMode;
@@ -2117,7 +2273,7 @@ sellModeSelect.addEventListener('change', () => {{
 function backtestPayload() {{
   const p = DATA.backtest[current.strategy];
   if (!p) return null;
-  return p[current.sellMode] || p;
+  return p[`${{current.pickMode}}_${{current.sellMode}}`] || p;
 }}
 
 function fmtPct(v) {{ return (v * 100).toFixed(2) + '%'; }}
@@ -2135,8 +2291,10 @@ function updateCharts() {{
   if (!st) return;
   const legend = document.getElementById('legend');
   const smLabel = current.sellMode === '5m' ? '5分钟卖出' : '日线卖出';
+  const pickLabel = current.pickMode === 'first' ? 'first' : (current.pickMode === 'avg' ? 'avg(等权)' : 'last');
+  const pickCls = current.pickMode === 'first' ? 'b-first' : (current.pickMode === 'avg' ? 'b-avg' : 'b-last');
   legend.innerHTML =
-    `<span class="mode-badge b-first">first</span>` +
+    `<span class="mode-badge ${{pickCls}}">${{pickLabel}}</span>` +
     `<span class="mode-badge b-avg">${{smLabel}}</span>` +
     ` 总收益: <b class="${{pctClass(st.total)}}">${{fmtPct(st.total)}}</b>` +
     ` 最终资金: ${{st.final.toFixed(2)}}` +
@@ -2796,7 +2954,7 @@ function topFirstShowFullFn() {{
   _klineCutoff = null;
   rerenderKline();
 }}
-/* 首板+MA60 面板独立的 K 线模式（全量/1日/2日；与首板涨停股 2日/3日 口径不同，单独一套状态） */
+/* 首板MA60 面板独立的 K 线模式（全量/1日/2日；与首板涨停股 2日/3日 口径不同，单独一套状态） */
 function setTopFirstVolMa60Mode(m) {{
   topFirstVolMa60Mode = m;
   topFirstVolMa60ShowFull = false;
@@ -2850,51 +3008,7 @@ function setTopFirstMaFilter(v) {{
   if (current.topFirstDate) selectTopFirstDate(current.topFirstDate);
 }}
 
-/* ------- 首板涨停放量股（T-3 首板涨停放量 + T-2 上涨放量未涨停，不限市值）------- */
-function loadTopFirstVol() {{
-  const dates = Object.keys(DATA.top_first_vol || {{}}).sort().reverse();
-  const list = document.getElementById('top_first_vol-date-list');
-  list.innerHTML = '';
-  if (dates.length === 0) {{ list.innerHTML = '<div class="empty-hint">无首板涨停放量数据</div>'; return; }}
-  dates.forEach(d => {{
-    const n = (DATA.top_first_vol[d] || []).length;
-    const el = document.createElement('div');
-    el.className = 'date-item';
-    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
-    el.onclick = () => {{ selectTopFirstVolDate(d); }};
-    list.appendChild(el);
-  }});
-  selectTopFirstVolDate(dates[0]);  // 默认最新
-}}
-function selectTopFirstVolDate(date) {{
-  current.topFirstVolDate = date;
-  klineHighlight.top_first_vol = ymdDash(date);   // 放量日(T-2)在 K 线上高亮
-  document.querySelectorAll('#top_first_vol-date-list .date-item').forEach(el => {{
-    el.classList.toggle('active', el.textContent.startsWith(date));
-  }});
-  const stocks = DATA.top_first_vol[date] || [];
-  const list = document.getElementById('top_first_vol-stock-list');
-  list.innerHTML = '';
-  if (stocks.length === 0) {{ list.innerHTML = '<div class="empty-hint">该日无首板涨停放量股</div>'; return; }}
-  stocks.forEach(s => {{
-    const el = document.createElement('div');
-    el.className = 'stock-item';
-    el.innerHTML = s[0] + ' ' + s[1] + (s[2] ? '<span class="stock-market">' + fmtYi(s[2]) + '</span>' : '');
-    el.onclick = () => {{ selectTopFirstVolStock(s[0]); }};
-    list.appendChild(el);
-  }});
-  prefetchPanelCodes('top_first_vol', stocks.map(function (s) {{ return s[0]; }}));
-  selectTopFirstVolStock(stocks[0][0]);
-}}
-function selectTopFirstVolStock(code) {{
-  klineTarget = 'top_first_vol';
-  current.topFirstVolCode = code;
-  current.code = code;
-  document.querySelectorAll('#top_first_vol-stock-list .stock-item').forEach(el => {{
-    el.classList.toggle('active', el.textContent.startsWith(code));
-  }});
-  selectStock(code);
-}}
+
 
 /* ------- 首板涨停放量连阳股（TOP_FIRST_VOL + T-1 收>开 + T-1 创新高）------- */
 function loadTopFirstVolSun() {{
@@ -2944,9 +3058,10 @@ function selectTopFirstVolSunStock(code) {{
 
 /* ------- 首板次日守5分钟MA60股（T-1 首板涨停 + T 未涨停 + T 日 5 分钟守 MA60）------- */
 function ma60Src() {{
-  return current.ma60FilterMode === 'mode2'
-    ? (DATA.top_first_vol_ma60_mode2 || {{}})
-    : (DATA.top_first_vol_ma60 || {{}});
+  if (current.ma60FilterMode === 'mode2') return DATA.top_first_vol_ma60_mode2 || {{}};
+  if (current.ma60FilterMode === 'mode3') return DATA.top_first_vol_ma60_mode3 || {{}};
+  if (current.ma60FilterMode === 'mode4') return DATA.top_first_vol_ma60_mode4 || {{}};
+  return DATA.top_first_vol_ma60 || {{}};
 }}
 function onMa60FilterModeChange() {{
   const sel = document.getElementById('ma60-filter-mode');
@@ -2958,7 +3073,7 @@ function loadTopFirstVolMa60() {{
   const dates = Object.keys(src).sort().reverse();
   const list = document.getElementById('top_first_vol_ma60-date-list');
   list.innerHTML = '';
-  if (dates.length === 0) {{ list.innerHTML = '<div class="empty-hint">无首板+MA60数据</div>'; return; }}
+  if (dates.length === 0) {{ list.innerHTML = '<div class="empty-hint">无首板MA60数据</div>'; return; }}
   dates.forEach(d => {{
     const n = (src[d] || []).length;
     const el = document.createElement('div');
@@ -2985,7 +3100,7 @@ function selectTopFirstVolMa60Date(date) {{
   const stocks = ma60Src()[date] || [];
   const list = document.getElementById('top_first_vol_ma60-stock-list');
   list.innerHTML = '';
-  if (stocks.length === 0) {{ list.innerHTML = '<div class="empty-hint">该日无首板+MA60股</div>'; return; }}
+  if (stocks.length === 0) {{ list.innerHTML = '<div class="empty-hint">该日无首板MA60股</div>'; return; }}
   stocks.forEach(s => {{
     const el = document.createElement('div');
     el.className = 'stock-item';
@@ -3354,8 +3469,8 @@ let klineTarget = 'candidate';
 /* 首板涨停股 TAB 的 K 线显示模式：'full' 全量 / 'd2' 显示到首板后第1日 / 'd3' 显示到首板后第2日 */
 let topFirstMode = 'full';
 let topFirstShowFull = false;     /* 临时「显示全量」：true 时忽略模式截断，换股自动复位 */
-let topFirstVolMa60Mode = 'full';        /* 首板+MA60 面板独立模式：full/d1/d2（1日=关注日当日, 2日=+1日） */
-let topFirstVolMa60ShowFull = false;     /* 首板+MA60 临时显示全量；换股自动复位 */
+let topFirstVolMa60Mode = 'full';        /* 首板MA60 面板独立模式：full/d1/d2（1日=关注日当日, 2日=+1日） */
+let topFirstVolMa60ShowFull = false;     /* 首板MA60 临时显示全量；换股自动复位 */
 let topFirstMaFilter = 0;         /* 首板股 MA60 偏离筛选阈值(%)：0=不过滤，1~5=|(收盘-MA60)/MA60|<=该值 */
 let topFirstZhangfu = 0;         /* 首板股涨跌幅筛选：0=全部，1~5=相对当日5分钟MA60的偏离%阈值(|偏离|<=该值) */
 let _klineCutoff = null;          /* 当前 K 线右边界截止日(YYYY-MM-DD)；null=不截断（top_first / top_first_vol_ma60 面板使用） */
@@ -3831,37 +3946,6 @@ function initTopFirstKlineControls() {{
     if (show) renderColorConfig();
   }}
 }}
-/* 首板涨停放量股 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first_vol- 前缀 */
-function initTopFirstVolKlineControls() {{
-  document.getElementById('top_first_vol-kline-period').onchange = e => {{
-    klineState.period = e.target.value;
-    if (current.topFirstVolCode && DATA.kline[current.topFirstVolCode]) {{
-      document.getElementById(klineEl('kline-title')).innerHTML = klineTitleHtml(DATA.kline[current.topFirstVolCode], current.topFirstVolCode);
-      rerenderKline();
-    }}
-  }};
-  document.getElementById('top_first_vol-boll').onchange = e => {{ klineState.showBOLL = e.target.checked; rerenderKline(); }};
-  document.getElementById('top_first_vol-vwap').onchange = e => {{ klineState.showVWAP = e.target.checked; rerenderKline(); }};
-  document.getElementById('top_first_vol-ma-btn').onclick = () => {{
-    const cfg = document.getElementById('top_first_vol-ma-config');
-    const show = (cfg.style.display === 'none' || cfg.style.display === '');
-    cfg.style.display = show ? 'block' : 'none';
-    renderMaConfig(); rerenderKline();
-  }};
-  document.getElementById('top_first_vol-ma-add').style.display = 'inline-block';
-  document.getElementById('top_first_vol-bar-btn').onclick = () => {{
-    const barsPanel = document.getElementById('top_first_vol-bars');
-    const show = (barsPanel.style.display === 'none' || barsPanel.style.display === '');
-    barsPanel.style.display = show ? 'block' : 'none';
-    if (show) renderBarConfig();
-  }};
-  document.getElementById('top_first_vol-color-btn').onclick = () => {{
-    const cfg = document.getElementById('top_first_vol-color-config');
-    const show = (cfg.style.display === 'none' || cfg.style.display === '');
-    cfg.style.display = show ? 'block' : 'none';
-    if (show) renderColorConfig();
-  }}
-}}
 /* 首板涨停放量连阳股 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first_vol_sun- 前缀 */
 function initTopFirstVolSunKlineControls() {{
   document.getElementById('top_first_vol_sun-kline-period').onchange = e => {{
@@ -3898,7 +3982,6 @@ initKlineControls();
 initBtKlineControls();
 initTopKlineControls();
 initTopFirstKlineControls();
-initTopFirstVolKlineControls();
 initTopFirstVolSunKlineControls();
 renderMaRow();  // 初始渲染所有面板的 MA 复选框行（默认 5/10/20/30/60/120 全勾选）
 window.__errboxMark && window.__errboxMark('init: loadStrategy');
@@ -4229,7 +4312,10 @@ function onClickUpdateTHS(btn) {{
   const sel = document.getElementById('ths-strategy');
   const strategy = sel ? sel.value : '';
   if (!strategy) {{ logCmd('请先选择策略'); return; }}
-  const ok = confirm('将根据策略 ' + strategy + ' 更新同花顺板块 blockstockV3.xml，\\n最新日期股票->TPO3，前一日期->TPO31，并覆盖同花顺用户目录下的同名文件。\\n\\n确定继续吗？');
+  const ok = confirm('将更新同花顺板块 blockstockV3.xml（覆盖同名文件）：\\n'
+    + '· D-DAY  = TPO_MA60 最新关注日（今天）已符合条件的股\\n'
+    + '· DAY-1  = TPO_MA60 上一关注日（昨天）符合涨停日条件的首板涨停股\\n'
+    + '· HIS    = 首板MA60 近日 5min 跌破 MA60 股\\n\\n确定继续吗？');
   if (!ok) {{ logCmd('已取消同花顺更新'); return; }}
   runCommand('UPDATE_THS', {{ strategy }}, btn);
 }}
@@ -4291,16 +4377,10 @@ const UPDATE_STEPS = [
   {{ step: 'UPDATE_TOP', label: '⑤ 涨停列表', desc: '生成每日涨停股 TOP' }},
   {{ step: 'UPDATE_1D', label: '⑥ 加工日线', desc: 'MA/连板/is_top 加工' }},
   {{ step: 'UPDATE_TOP_FIRST', label: '⑦ 首板涨停', desc: '生成首板涨停 TOP_FIRST' }},
-  {{ step: 'UPDATE_STRATEGY_TPO_3', label: '⑧ TPO_3 回测', desc: '策略回测数据' }},
-  {{ step: 'UPDATE_STRATEGY_TPO_TOP', label: '⑧ TPO_TOP 回测', desc: '策略回测数据' }},
   {{ step: 'UPDATE_STRATEGY_TPO_M5', label: '⑧ TPO_M5 回测', desc: '策略回测数据(200~1300亿)' }},
-  {{ step: 'UPDATE_STRATEGY_TPO_M5_MID', label: '⑧ TPO_M5_MID 回测', desc: '策略回测数据(50~200亿)' }},
-  {{ step: 'UPDATE_STRATEGY_TPO_M5_SMALL', label: '⑧ TPO_M5_SMALL 回测', desc: '策略回测数据(<50亿)' }},
-  {{ step: 'UPDATE_TARGET_TPO_3', label: '⑨ TPO_3 候选', desc: '实盘候选池' }},
-  {{ step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' }},
+  {{ step: 'UPDATE_STRATEGY_TPO_MA60', label: '⑧ TPO_MA60 回测', desc: '首板涨停股+涨停前4日量价异动(大市值优先)' }},
   {{ step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' }},
-  {{ step: 'UPDATE_TARGET_TPO_M5_MID', label: '⑨ TPO_M5_MID 候选', desc: '实盘候选池(50~200亿)' }},
-  {{ step: 'UPDATE_TARGET_TPO_M5_SMALL', label: '⑨ TPO_M5_SMALL 候选', desc: '实盘候选池(<50亿)' }},
+  {{ step: 'UPDATE_TARGET_TPO_MA60', label: '⑨ TPO_MA60 候选', desc: '实盘候选池(首板涨停股异动)' }},
   {{ step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' }},
 ];
 function onClickRunStep(step, btn) {{
@@ -4393,16 +4473,10 @@ _UPDATE_STEPS = {
     "UPDATE_TOP_FIRST_VOL": UPDATE_TOP_FIRST_VOL,
     "UPDATE_TOP_FIRST_VOL_SUN": UPDATE_TOP_FIRST_VOL_SUN,
     "UPDATE_TOP_FIRST_VOL_MA60": UPDATE_TOP_FIRST_VOL_MA60,
-    "UPDATE_STRATEGY_TPO_3": UPDATE_STRATEGY_TPO_3,
-    "UPDATE_STRATEGY_TPO_TOP": UPDATE_STRATEGY_TPO_TOP,
     "UPDATE_STRATEGY_TPO_M5": UPDATE_STRATEGY_TPO_M5,
-    "UPDATE_STRATEGY_TPO_M5_MID": UPDATE_STRATEGY_TPO_M5_MID,
-    "UPDATE_STRATEGY_TPO_M5_SMALL": UPDATE_STRATEGY_TPO_M5_SMALL,
-    "UPDATE_TARGET_TPO_3": UPDATE_TARGET_TPO_3,
-    "UPDATE_TARGET_TPO_TOP": UPDATE_TARGET_TPO_TOP,
+    "UPDATE_STRATEGY_TPO_MA60": UPDATE_STRATEGY_TPO_MA60,
     "UPDATE_TARGET_TPO_M5": UPDATE_TARGET_TPO_M5,
-    "UPDATE_TARGET_TPO_M5_MID": UPDATE_TARGET_TPO_M5_MID,
-    "UPDATE_TARGET_TPO_M5_SMALL": UPDATE_TARGET_TPO_M5_SMALL,
+    "UPDATE_TARGET_TPO_MA60": UPDATE_TARGET_TPO_MA60,
     "UPDATE_INDEX_CODES": UPDATE_INDEX_CODES,
     "UPDATE_INDEX_1D_ORIGIN": UPDATE_INDEX_1D_ORIGIN,
     "UPDATE_INDEX_1D": UPDATE_INDEX_1D,
@@ -4589,7 +4663,7 @@ def _refresh_5m_for_codes(stock_codes: list[str], last_day: str) -> int:
 def _load_his_codes() -> list[str]:
     """HIS 板块选股（按用户要求更新口径）：
 
-    取「首板+MA60」(TOP_FIRST_VOL_MA60) 最近 8 个交易日文件的全部个股并集为候选池，
+    取「首板MA60」(TOP_FIRST_VOL_MA60) 最近 8 个交易日文件的全部个股并集为候选池，
     再过滤：仅保留「最后一个交易日」的 5 分钟 K 线末根收盘价 < 该 K 线 MA60（即已跌破 5 分钟 MA60）的个股。
 
     口径：
@@ -4626,46 +4700,53 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
     """【快捷命令】生成同花顺板块 XML 并拷贝到实盘机目录。
 
     板块口径（单一数据源均为一条龙落盘文件，与 UI 各 TAB 一致）：
-    - ===TPO3===  : 所选策略候选池（TARGET/{strategy}）最近 1 日的个股（与 UI「策略选股」候选池一致）
-    - ===TPO31=== : 所选策略候选池前 1 日的个股（为空则板块留空）
-    - ===TOP===   : 当天涨停股（TOP_FIRST 最新交易日，与 UI「首板涨停股」TAB 一致）
-    - ===HIS===   : 首板+MA60 筛选方式2（D~D+6 跌破 MA60）个股中，再要求最近一个交易日 5min ≥44 根在 MA60 下方（比 UI mode2 更严，仅用于同花顺板块）
+    - ===D-DAY=== : TPO_MA60 关注日 T=涨停日+1（次日收盘买）已符合 mode3 条件的股（= mode3[涨停日+1]）；
+                    数据未就绪时为空，跑完一条龙自动填充——即用户于次日从 DAY-1 候选池挑出的可买股
+    - ===DAY-1=== : 涨停日 D = 最后一个交易日（或最近非空涨停日）的【候选池】：首板涨停 + 前4日量价异动
+                    （来自 _mode3_candidates_by_d，即 mode3 在「涨停日 D」归档版，未施加买入日未涨停）；
+                    用户次日（D+1）即可在股票池里挑选符合需求的票——故 DAY-1 就是涨停日候选池
+    - ===HIS===   : 首板MA60 筛选方式2（D~D+6 跌破 MA60）个股中，再要求最近一个交易日 5min ≥44 根在 MA60 下方（比 UI mode2 更严，仅用于同花顺板块）
     - 拷贝模板到 THS_TARGET_DIR 覆盖同名文件。
 
-    注：strategy_name 决定 TPO3/TPO31 的数据源——取该策略候选池（TARGET/{strategy}）最近/前 1 日。
+    注：D-DAY / DAY-1 取自 TPO_MA60 同一套候选（与 TPO_M5/TPO_MA60 选股口径一致）：
+        - DAY-1 = 候选池（按【涨停日 D】归档，键=涨停日）：首板涨停 + 前4日量价异动（_mode3_candidates_by_d）；
+        - D-DAY = 候选池经「买入日未涨停」过滤后按【关注日 T=D+1】归档（_load_top_first_vol_ma60_mode3）。
+        DAY-1 必须取「涨停日 D 归档的候选池」而非「上一关注日已筛选股」，否则会漏掉未过筛但本属候选池的票。
+        strategy_name 参数保留供 UI 调用兼容，但不影响这两个板块的内容。
     """
-    if not strategy_name:
-        return "未选择策略"
     if not os.path.isfile(THS_TEMPLATE_FILE):
         return f"同花顺模板不存在: {THS_TEMPLATE_FILE}"
 
-    # TPO3 / TPO31：所选策略候选池（TARGET/{strategy}）的最近 1 日 / 前 1 日
-    # 与 UI「策略选股」候选池口径一致；按流通市值(第 3 列)倒序
-    cand = _load_candidates(strategy_name)
-    cand_dates = sorted(cand.keys(), reverse=True)
-    latest_cand = cand_dates[0] if cand_dates else None
-    prev_cand = cand_dates[1] if len(cand_dates) >= 2 else None
+    # ===D-DAY=== / ===DAY-1===：TPO_MA60 候选（首板MA60 筛选方式3，与策略选股候选池一致）
+    # 时间线：涨停日 D → 关注日 T=D+1（收盘买）。用户于「涨停日 D 的次交易日 T」从候选池筛选可买股。
+    # DAY-1 = 涨停日 D 候选池（首板涨停+前4日量价异动，by_d），即用户次日可挑的标的；
+    #        用户次日（T=D+1）即可在股票池里挑选符合需求的票。
+    # D-DAY = 关注日 T=D+1 已符合 mode3 条件的股（= mode3[涨停日+1]，数据就绪后自动填充）。
+    mode3 = _load_top_first_vol_ma60_mode3()
+    by_d = _mode3_candidates_by_d()        # 按涨停日 D 归档的候选池（首板涨停+前4日量价异动，未施加买入日未涨停）
+    tdates = TRADING_DATES()
+    tdict = {d: i for i, d in enumerate(tdates)} if tdates else {}
+    # 涨停日锚点 = 最后一个交易日（其候选池即 DAY-1）；若当日无候选则回退到最近非空涨停日
+    _day1 = EFFECTIVE_LATEST_TRADING_DATE()
+    if not (_day1 and by_d.get(_day1)):
+        _day1 = next((d for d in sorted(by_d, reverse=True) if by_d[d]), None)
+    # D-DAY = 涨停日 +1（关注日/买入日）：候选池中剔除买入日涨停后的可买股 = mode3[涨停日+1]
+    #         （次日数据未就绪则为空，跑完一条龙后自动填充）
+    _dday = (tdates[tdict[_day1] + 1]
+             if (_day1 in tdict and tdict[_day1] + 1 < len(tdates)) else None)
 
-    def _cand_codes(date):
-        return [r[0] for r in sorted(cand.get(date, []),
+    def _mode3_codes(date):
+        return [r[0] for r in sorted(mode3.get(date, []),
                                      key=lambda r: float(r[2]), reverse=True)] if date else []
 
-    tpo3 = _cand_codes(latest_cand)
-    tpo31 = _cand_codes(prev_cand)
+    def _day1_codes(date):
+        return [r[0] for r in sorted(by_d.get(date, []),
+                                     key=lambda r: float(r[2]), reverse=True)] if date else []
 
-    # 首板涨停股：直接读一条龙更新落盘的 TOP_FIRST 文件（单一数据源，与 UI「首板涨停股」TAB 一致）
-    top_first_dir = PATH_AIDATA_TOP_FIRST()
-    top_first_dates = sorted(d for d in os.listdir(top_first_dir) if d.isdigit()) if os.path.isdir(top_first_dir) else []
-    top_date = top_first_dates[-1] if top_first_dates else None
-    tops = [c.strip() for c in _read_text(os.path.join(top_first_dir, top_date)).splitlines() if c.strip()] if top_date else []
-    # ===TOP=== 按流通市值倒序排序（大市值在前）
-    tops = _sort_by_cap_desc(tops, top_date) if top_date else []
+    dday_block = "\n".join(_code_to_ths_security(c) for c in _mode3_codes(_dday))
+    day1_block = "\n".join(_code_to_ths_security(c) for c in _day1_codes(_day1))
 
-    tpo3_block = "\n".join(_code_to_ths_security(c) for c in tpo3)
-    tpo31_block = "\n".join(_code_to_ths_security(c) for c in tpo31)
-    top_block = "\n".join(_code_to_ths_security(c) for c in tops)
-
-    # ===HIS=== 板块：在「首板+MA60 筛选方式2（mode2：D~D+6 跌破 MA60）」基础上，
+    # ===HIS=== 板块：在「首板MA60 筛选方式2（mode2：D~D+6 跌破 MA60）」基础上，
     # 额外要求：该股最近一个交易日的 5 分钟 K 线也满足「≥44 根在 MA60 下方（high<=MA60）」。
     # 只取最近 6 个交易日的关注日（用户要求，不要全部）；同时刷新看板数据文件（含全量 mode2，供 UI 查看）
     mode2 = _load_top_first_vol_ma60_mode2()
@@ -4689,7 +4770,7 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
         (r for r in _m2_map.values() if _his_recent_below_ma60(r[0])),
         key=lambda r: float(r[2]), reverse=True)]
     history_block = "\n".join(_code_to_ths_security(c) for c in his_codes)
-    # 同步刷新看板「首板+MA60」数据文件（含 mode1 / avg / mode2），覆盖式重写
+    # 同步刷新看板「首板MA60」数据文件（含 mode1 / avg / mode2），覆盖式重写
     try:
         _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "UI", "data")
         os.makedirs(_data_dir, exist_ok=True)
@@ -4697,16 +4778,17 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
             _f.write("Object.assign(window.__IDX, "
                      + json.dumps({"top_first_vol_ma60": _load_top_first_vol_ma60(),
                                    "top_first_vol_ma60_avg": _load_top_first_vol_ma60_avg(),
-                                   "top_first_vol_ma60_mode2": mode2},
+                                   "top_first_vol_ma60_mode2": mode2,
+                                   "top_first_vol_ma60_mode3": _load_top_first_vol_ma60_mode3(),
+                                   "top_first_vol_ma60_mode4": _load_top_first_vol_ma60_mode4()},
                                   ensure_ascii=False) + ");\n")
     except Exception as _exc:
         print(f"[HIS→mode2] 看板数据文件刷新跳过: {type(_exc).__name__}: {_exc}")
 
     # 读取模板并替换占位符：有股票则填入 securities（首尾不加换行），为空则整行清理（不留占位符/空行，兼容 CRLF/LF）
     raw = _read_text(THS_TEMPLATE_FILE)
-    for ph, block in ((PLACEHOLDER_TPO3, tpo3_block),
-                      (PLACEHOLDER_TPO31, tpo31_block),
-                      (PLACEHOLDER_TOP, top_block),
+    for ph, block in ((PLACEHOLDER_DDAY, dday_block),
+                      (PLACEHOLDER_DAY1, day1_block),
                       (PLACEHOLDER_HIS, history_block)):
         if block:
             raw = raw.replace(ph, block)
@@ -4722,10 +4804,9 @@ def CMD_UPDATE_THS(strategy_name: str) -> str:
         f.write(raw)
 
     detail = (
-        f"策略候选(TPO3) {latest_cand or '无'} 共 {len(tpo3)} 只, "
-        f"前日(TPO31) {prev_cand or '无'} 共 {len(tpo31)} 只, "
-        f"涨停(TOP) {top_date or '无'} 共 {len(tops)} 只, "
-        f"首板+MA60(mode2+近日跌破: 近6日D~D+6跌破 & 最新日≥44根在MA60下) 共 {len(his_codes)} 只"
+        f"D-DAY(TPO_MA60 关注日 {_dday or '无'}) 共 {len(dday_block.splitlines()) if dday_block else 0} 只, "
+        f"DAY-1(涨停日 {_day1 or '无'} 原始首板涨停股·候选池) 共 {len(day1_block.splitlines()) if day1_block else 0} 只, "
+        f"HIS(首板MA60 mode2+近日跌破: 近6日D~D+6跌破 & 最新日≥44根在MA60下) 共 {len(his_codes)} 只"
     )
     print(f"CMD_UPDATE_THS: 已写入 {target_file}\n{detail}")
     return f"同花顺板块已更新:\n{detail}\n已覆盖: {target_file}"
@@ -4888,12 +4969,12 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
             print("STRATEGY_UI: Strategy 目录下无策略")
             return ""
 
-    # 回测数据：同时预计算 day（日线卖出）与 5m（5 分钟日内卖出）两套
+    # 回测数据：选股方式(first/avg/last) × 卖出方式(5m/day) 共 6 套（与 Backtest._backtest 口径一致）
     backtest = {}
     for name in strategies:
         backtest[name] = {
-            "day": _build_strategy_payload(name, "day"),
-            "5m": _build_strategy_payload(name, "5m"),
+            f"{pick}_{sm}": _build_strategy_payload(name, sm, pick)
+            for pick in ("first", "avg", "last") for sm in ("5m", "day")
         }
 
     # 候选池 + K 线
@@ -5022,6 +5103,8 @@ def GENERATE_STRATEGY_UI(strategy_name: str | None = None, open_browser: bool = 
         "top_first_vol_ma60": top_first_vol_ma60,
         "top_first_vol_ma60_avg": _load_top_first_vol_ma60_avg(),
         "top_first_vol_ma60_mode2": _load_top_first_vol_ma60_mode2(),
+        "top_first_vol_ma60_mode3": _load_top_first_vol_ma60_mode3(),
+        "top_first_vol_ma60_mode4": _load_top_first_vol_ma60_mode4(),
         "kline": kline,
         "strategy_detail": strategy_detail,
         "fiveMin": five_min,
@@ -5066,12 +5149,12 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
             print("STRATEGY_UI: Strategy 目录下无策略")
             return ""
 
-    # 回测数据：同时预计算 day（日线卖出）与 5m（5 分钟日内卖出）两套
+    # 回测数据：选股方式(first/avg/last) × 卖出方式(5m/day) 共 6 套（与 Backtest._backtest 口径一致）
     backtest = {}
     for name in strategies:
         backtest[name] = {
-            "day": _build_strategy_payload(name, "day"),
-            "5m": _build_strategy_payload(name, "5m"),
+            f"{pick}_{sm}": _build_strategy_payload(name, sm, pick)
+            for pick in ("first", "avg", "last") for sm in ("5m", "day")
         }
 
     # 候选池 + K 线
@@ -5200,6 +5283,8 @@ def GENERATE_STRATEGY_UI_OFFLINE(strategy_name: str | None = None, open_browser:
         "top_first_vol_ma60": top_first_vol_ma60,
         "top_first_vol_ma60_avg": _load_top_first_vol_ma60_avg(),
         "top_first_vol_ma60_mode2": _load_top_first_vol_ma60_mode2(),
+        "top_first_vol_ma60_mode3": _load_top_first_vol_ma60_mode3(),
+        "top_first_vol_ma60_mode4": _load_top_first_vol_ma60_mode4(),
         "kline": kline,
         "strategy_detail": strategy_detail,
         "fiveMin": five_min,

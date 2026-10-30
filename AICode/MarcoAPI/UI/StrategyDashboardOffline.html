@@ -331,21 +331,27 @@ table.detail-table tbody tr { cursor: pointer; }
 <!-- ============ 主内容区 ============ -->
 <div class="main">
 <h1>📊 策略回测 & 实盘目标股看板</h1>
-<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">看板生成时间：2026-10-29 17:17:47（数据更新后请重新生成并刷新本页）</div>
+<div style="font-size:12px;color:#9aa0a6;margin:2px 0 12px">看板生成时间：2026-10-30 14:39:22（数据更新后请重新生成并刷新本页）</div>
 <div class="tabs">
   <div class="tab active" data-tab="backtest" onclick="switchTab('backtest')">1 策略回测</div>
   <div class="tab" data-tab="candidate" onclick="switchTab('candidate')">2 实盘候选池</div>
   <div class="tab" data-tab="detail" onclick="switchTab('detail')">3 策略选股</div>
   <div class="tab" data-tab="top_first" onclick="switchTab('top_first')">4 首板涨停股</div>
-  <div class="tab" data-tab="top_first_vol" onclick="switchTab('top_first_vol')">5 首板涨停放量股</div>
-  <div class="tab" data-tab="top_first_vol_ma60" onclick="switchTab('top_first_vol_ma60')">6 首板+MA60</div>
-  <div class="tab" data-tab="index" onclick="switchTab('index')">7 指数K线</div>
+  <div class="tab" data-tab="top_first_vol_ma60" onclick="switchTab('top_first_vol_ma60')">5 首板MA60</div>
+  <div class="tab" data-tab="index" onclick="switchTab('index')">6 指数K线</div>
   </div>
 
 <div id="panel-backtest" class="tab-panel active">
   <div class="toolbar">
     <div><label>策略：</label>
       <select id="strategy-select"></select>
+    </div>
+    <div><label>选股方式：</label>
+      <select id="pick-mode">
+        <option value="first">first（每日首只/文件首行）</option>
+        <option value="avg">avg（当日全部等权）</option>
+        <option value="last">last（文件末行）</option>
+      </select>
     </div>
     <div><label>T-0 卖出：</label>
       <select id="sell-mode">
@@ -628,52 +634,7 @@ table.detail-table tbody tr { cursor: pointer; }
   </div>
 </div>
 
-<div id="panel-top_first_vol" class="tab-panel">
-  <div class="card">
-    <h2>首板涨停放量股列表（按流通市值倒序；日期倒序，默认最新）</h2>
-    <div class="sel-cond"><b>选股条件：</b>T-3（前一日）涨停 + 首板（lian_ban=1）+ 放量；T-2（当日）上涨（is_up=1）+ 放量 + 未涨停（is_top=0）。即「首板涨停后的次日放量上涨但未涨停」，不限市值。</div>
-    <div class="cand-layout">
-      <div style="padding:10px">
-        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">放量日（T-2）</div>
-        <div class="date-list" id="top_first_vol-date-list"></div>
-      </div>
-      <div style="padding:10px">
-        <div style="font-size:13px;color:#9aa0a6;margin-bottom:8px">首板涨停放量股票（市值倒序）</div>
-        <div class="stock-list" id="top_first_vol-stock-list"></div>
-      </div>
-      <div style="padding:10px">
-        <div class="chart-title" id="top_first_vol-kline-title"></div>
-        <div class="kline-info" id="top_first_vol-kline-info"></div>
-        <div class="kline-toolbar">
-          <select id="top_first_vol-kline-period" title="周期">
-            <option value="day">日线</option>
-            <option value="month">月线</option>
-          </select>
-          <button id="top_first_vol-bar-btn" type="button">指标栏</button>
-          <label class="kline-chk"><input type="checkbox" id="top_first_vol-boll"> BOLL</label>
-          <label class="kline-chk"><input type="checkbox" id="top_first_vol-vwap"> VWAP</label>
-          <button id="top_first_vol-ma-btn" type="button">MA 配置</button>
-          <button id="top_first_vol-ma-add" type="button" style="display:none">+</button>
-          <button id="top_first_vol-color-btn" type="button">涨跌颜色</button>
-        </div>
-        <div class="kline-bars" id="top_first_vol-bars"></div>
-        <div class="kline-ma-config" id="top_first_vol-ma-config"></div>
-        <div class="kline-ma-row" id="top_first_vol-kline-ma-row"></div>
-        <div class="kline-color-config" id="top_first_vol-color-config"></div>
-        <div class="kline-split">
-          <div id="top_first_vol-kline">
-            <div id="top_first_vol-kline-main"><div class="empty-hint">请选择放量日期与个股</div></div>
-          </div>
-          <div class="kline-5m-col">
-            <div class="kline-subhead">5 分钟 K 线（放量日居中）· 含 MA</div>
-            <div class="kline-info" id="top_first_vol-kline-5m-info"></div>
-            <div id="top_first_vol-kline-5m"><div id="top_first_vol-kline-5m-main"><div class="empty-hint">请选择个股查看 5 分钟 K 线</div></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <div id="panel-top_first_vol_sun" class="tab-panel">
   <div class="card">
@@ -724,12 +685,14 @@ table.detail-table tbody tr { cursor: pointer; }
 
 <div id="panel-top_first_vol_ma60" class="tab-panel">
   <div class="card">
-    <h2>首板+MA60股列表（按流通市值倒序；日期倒序，默认最新）</h2>
+    <h2>首板MA60股列表（按流通市值倒序；日期倒序，默认最新）</h2>
     <div class="sel-cond"><b>选股条件：</b>T-1 首板涨停（is_top=1 且 lian_ban=1）＋ T 日未涨停（is_top=0）＋ T 日 5 分钟 K 线共 48 根中「最低价 &lt; MA60」的根数 ≤ 4，且最后一根收盘价 &gt; MA60。</div>
     <div class="sel-cond" style="margin-top:6px"><b>筛选方式：</b>
       <select id="ma60-filter-mode" onchange="onMa60FilterModeChange()" style="background:#1f2530;color:#e6e6e6;border:1px solid #333a47;border-radius:6px;padding:3px 6px;font-size:13px">
         <option value="mode1">① 原筛选：守 MA60（D 日 ≥44 根在 MA60 上方）</option>
         <option value="mode2">② 新筛选：D~D+6 跌破 MA60（某日 ≥44 根在 MA60 下方）</option>
+        <option value="mode3">③ 新筛选：涨停前4日量价异动（基于首板涨停股）</option>
+        <option value="mode4">④ 原筛选3：涨停前4日量价异动（基于首板MA60）</option>
       </select>
       <span style="color:#9aa0a6">切换即换数据；后续新增筛选方式在此下拉框追加</span>
     </div>
@@ -806,7 +769,7 @@ let current = { strategy: null, candStrategy: null, date: null, code: null, topD
                 topFirstDate: null, topFirstCode: null,
                 topFirstVolDate: null, topFirstVolCode: null,
                 topFirstVolSunDate: null, topFirstVolSunCode: null,
-                detailDate: null, detailCode: null, savedDate: null, savedCode: null, sellMode: "5m", ma60FilterMode: "mode1" };
+                detailDate: null, detailCode: null, savedDate: null, savedCode: null, sellMode: "5m", pickMode: "first", ma60FilterMode: "mode1" };
 
 /* 离线零内嵌：数据外置到 data/ 伴随文件（file:// 下仅 <script src> 兄弟文件可加载，fetch 被禁）
    提速策略：面板渲染出股票列表时后台预取该列表数据，点击时命中缓存，消除逐次点击的 I/O 等待。 */
@@ -889,8 +852,6 @@ function prefetchActivePanel(name) {
     prefetchPanelCodes('top', (DATA.top[current.topDate] || []).map(function (s) { return s[0]; }));
   } else if (name === 'top_first') {
     prefetchPanelCodes('top_first', (DATA.top_first[current.topFirstDate] || []).map(function (s) { return s[0]; }));
-  } else if (name === 'top_first_vol') {
-    prefetchPanelCodes('top_first_vol', (DATA.top_first_vol[current.topFirstVolDate] || []).map(function (s) { return s[0]; }));
   } else if (name === 'candidate') {
     const cs = DATA.candidates[current.candStrategy] || {};
     prefetchPanelCodes('candidate', (cs[current.date] || []).map(function (s) { return s[0]; }));
@@ -920,7 +881,6 @@ async function ensureTab(name) {
   _tabInited[name] = true;
   if (name === 'top') { await ensurePanelData('top'); loadTop(); }
   else if (name === 'top_first') { await ensurePanelData('top_first'); loadTopFirst(); }
-  else if (name === 'top_first_vol') { await ensurePanelData('top_first_vol'); loadTopFirstVol(); }
   else if (name === 'top_first_vol_sun') { await ensurePanelData('top_first_vol_sun'); loadTopFirstVolSun(); }
   else if (name === 'top_first_vol_ma60') { await ensurePanelData('top_first_vol_ma60'); loadTopFirstVolMa60(); }
   else if (name === 'candidate') { await ensurePanelData('candidate'); loadCandidates(); }
@@ -1029,7 +989,6 @@ async function switchTab(name) {
   document.getElementById('panel-detail').classList.toggle('active', name === 'detail');
   document.getElementById('panel-top').classList.toggle('active', name === 'top');
   document.getElementById('panel-top_first').classList.toggle('active', name === 'top_first');
-  document.getElementById('panel-top_first_vol').classList.toggle('active', name === 'top_first_vol');
   document.getElementById('panel-top_first_vol_sun').classList.toggle('active', name === 'top_first_vol_sun');
   document.getElementById('panel-top_first_vol_ma60').classList.toggle('active', name === 'top_first_vol_ma60');
   document.getElementById('panel-index').classList.toggle('active', name === 'index');
@@ -1048,10 +1007,7 @@ async function switchTab(name) {
     klineTarget = 'top_first';
     if (current.topFirstCode) requestAnimationFrame(() => selectTopFirstStock(current.topFirstCode));
   }
-  if (name === 'top_first_vol') {
-    klineTarget = 'top_first_vol';
-    if (current.topFirstVolCode) requestAnimationFrame(() => selectTopFirstVolStock(current.topFirstVolCode));
-  } else if (name === 'top_first_vol_sun') {
+  else if (name === 'top_first_vol_sun') {
     klineTarget = 'top_first_vol_sun';
     if (current.topFirstVolSunCode) requestAnimationFrame(() => selectTopFirstVolSunStock(current.topFirstVolSunCode));
   } else if (name === 'top_first_vol_ma60') {
@@ -1078,6 +1034,13 @@ DATA.strategies.forEach(s => {
 });
 strategySelect2.value = DATA.strategies[0];
 
+// 选股方式选择器：first/avg/last（与 Backtest._backtest 口径一致，默认 first）
+const pickModeSelect = document.getElementById('pick-mode');
+pickModeSelect.value = current.pickMode;
+pickModeSelect.addEventListener('change', () => {
+  current.pickMode = pickModeSelect.value;
+  updateCharts();
+});
 // T-0 卖出方式选择器：day = 日线收盘；5m = 5 分钟 K 线日内卖出（默认 5m）
 const sellModeSelect = document.getElementById('sell-mode');
 sellModeSelect.value = current.sellMode;
@@ -1089,7 +1052,7 @@ sellModeSelect.addEventListener('change', () => {
 function backtestPayload() {
   const p = DATA.backtest[current.strategy];
   if (!p) return null;
-  return p[current.sellMode] || p;
+  return p[`${current.pickMode}_${current.sellMode}`] || p;
 }
 
 function fmtPct(v) { return (v * 100).toFixed(2) + '%'; }
@@ -1107,8 +1070,10 @@ function updateCharts() {
   if (!st) return;
   const legend = document.getElementById('legend');
   const smLabel = current.sellMode === '5m' ? '5分钟卖出' : '日线卖出';
+  const pickLabel = current.pickMode === 'first' ? 'first' : (current.pickMode === 'avg' ? 'avg(等权)' : 'last');
+  const pickCls = current.pickMode === 'first' ? 'b-first' : (current.pickMode === 'avg' ? 'b-avg' : 'b-last');
   legend.innerHTML =
-    `<span class="mode-badge b-first">first</span>` +
+    `<span class="mode-badge ${pickCls}">${pickLabel}</span>` +
     `<span class="mode-badge b-avg">${smLabel}</span>` +
     ` 总收益: <b class="${pctClass(st.total)}">${fmtPct(st.total)}</b>` +
     ` 最终资金: ${st.final.toFixed(2)}` +
@@ -1768,7 +1733,7 @@ function topFirstShowFullFn() {
   _klineCutoff = null;
   rerenderKline();
 }
-/* 首板+MA60 面板独立的 K 线模式（全量/1日/2日；与首板涨停股 2日/3日 口径不同，单独一套状态） */
+/* 首板MA60 面板独立的 K 线模式（全量/1日/2日；与首板涨停股 2日/3日 口径不同，单独一套状态） */
 function setTopFirstVolMa60Mode(m) {
   topFirstVolMa60Mode = m;
   topFirstVolMa60ShowFull = false;
@@ -1822,51 +1787,7 @@ function setTopFirstMaFilter(v) {
   if (current.topFirstDate) selectTopFirstDate(current.topFirstDate);
 }
 
-/* ------- 首板涨停放量股（T-3 首板涨停放量 + T-2 上涨放量未涨停，不限市值）------- */
-function loadTopFirstVol() {
-  const dates = Object.keys(DATA.top_first_vol || {}).sort().reverse();
-  const list = document.getElementById('top_first_vol-date-list');
-  list.innerHTML = '';
-  if (dates.length === 0) { list.innerHTML = '<div class="empty-hint">无首板涨停放量数据</div>'; return; }
-  dates.forEach(d => {
-    const n = (DATA.top_first_vol[d] || []).length;
-    const el = document.createElement('div');
-    el.className = 'date-item';
-    el.innerHTML = d + '<span class="stock-count">' + n + '只</span>';
-    el.onclick = () => { selectTopFirstVolDate(d); };
-    list.appendChild(el);
-  });
-  selectTopFirstVolDate(dates[0]);  // 默认最新
-}
-function selectTopFirstVolDate(date) {
-  current.topFirstVolDate = date;
-  klineHighlight.top_first_vol = ymdDash(date);   // 放量日(T-2)在 K 线上高亮
-  document.querySelectorAll('#top_first_vol-date-list .date-item').forEach(el => {
-    el.classList.toggle('active', el.textContent.startsWith(date));
-  });
-  const stocks = DATA.top_first_vol[date] || [];
-  const list = document.getElementById('top_first_vol-stock-list');
-  list.innerHTML = '';
-  if (stocks.length === 0) { list.innerHTML = '<div class="empty-hint">该日无首板涨停放量股</div>'; return; }
-  stocks.forEach(s => {
-    const el = document.createElement('div');
-    el.className = 'stock-item';
-    el.innerHTML = s[0] + ' ' + s[1] + (s[2] ? '<span class="stock-market">' + fmtYi(s[2]) + '</span>' : '');
-    el.onclick = () => { selectTopFirstVolStock(s[0]); };
-    list.appendChild(el);
-  });
-  prefetchPanelCodes('top_first_vol', stocks.map(function (s) { return s[0]; }));
-  selectTopFirstVolStock(stocks[0][0]);
-}
-function selectTopFirstVolStock(code) {
-  klineTarget = 'top_first_vol';
-  current.topFirstVolCode = code;
-  current.code = code;
-  document.querySelectorAll('#top_first_vol-stock-list .stock-item').forEach(el => {
-    el.classList.toggle('active', el.textContent.startsWith(code));
-  });
-  selectStock(code);
-}
+
 
 /* ------- 首板涨停放量连阳股（TOP_FIRST_VOL + T-1 收>开 + T-1 创新高）------- */
 function loadTopFirstVolSun() {
@@ -1916,9 +1837,10 @@ function selectTopFirstVolSunStock(code) {
 
 /* ------- 首板次日守5分钟MA60股（T-1 首板涨停 + T 未涨停 + T 日 5 分钟守 MA60）------- */
 function ma60Src() {
-  return current.ma60FilterMode === 'mode2'
-    ? (DATA.top_first_vol_ma60_mode2 || {})
-    : (DATA.top_first_vol_ma60 || {});
+  if (current.ma60FilterMode === 'mode2') return DATA.top_first_vol_ma60_mode2 || {};
+  if (current.ma60FilterMode === 'mode3') return DATA.top_first_vol_ma60_mode3 || {};
+  if (current.ma60FilterMode === 'mode4') return DATA.top_first_vol_ma60_mode4 || {};
+  return DATA.top_first_vol_ma60 || {};
 }
 function onMa60FilterModeChange() {
   const sel = document.getElementById('ma60-filter-mode');
@@ -1930,7 +1852,7 @@ function loadTopFirstVolMa60() {
   const dates = Object.keys(src).sort().reverse();
   const list = document.getElementById('top_first_vol_ma60-date-list');
   list.innerHTML = '';
-  if (dates.length === 0) { list.innerHTML = '<div class="empty-hint">无首板+MA60数据</div>'; return; }
+  if (dates.length === 0) { list.innerHTML = '<div class="empty-hint">无首板MA60数据</div>'; return; }
   dates.forEach(d => {
     const n = (src[d] || []).length;
     const el = document.createElement('div');
@@ -1957,7 +1879,7 @@ function selectTopFirstVolMa60Date(date) {
   const stocks = ma60Src()[date] || [];
   const list = document.getElementById('top_first_vol_ma60-stock-list');
   list.innerHTML = '';
-  if (stocks.length === 0) { list.innerHTML = '<div class="empty-hint">该日无首板+MA60股</div>'; return; }
+  if (stocks.length === 0) { list.innerHTML = '<div class="empty-hint">该日无首板MA60股</div>'; return; }
   stocks.forEach(s => {
     const el = document.createElement('div');
     el.className = 'stock-item';
@@ -2326,8 +2248,8 @@ let klineTarget = 'candidate';
 /* 首板涨停股 TAB 的 K 线显示模式：'full' 全量 / 'd2' 显示到首板后第1日 / 'd3' 显示到首板后第2日 */
 let topFirstMode = 'full';
 let topFirstShowFull = false;     /* 临时「显示全量」：true 时忽略模式截断，换股自动复位 */
-let topFirstVolMa60Mode = 'full';        /* 首板+MA60 面板独立模式：full/d1/d2（1日=关注日当日, 2日=+1日） */
-let topFirstVolMa60ShowFull = false;     /* 首板+MA60 临时显示全量；换股自动复位 */
+let topFirstVolMa60Mode = 'full';        /* 首板MA60 面板独立模式：full/d1/d2（1日=关注日当日, 2日=+1日） */
+let topFirstVolMa60ShowFull = false;     /* 首板MA60 临时显示全量；换股自动复位 */
 let topFirstMaFilter = 0;         /* 首板股 MA60 偏离筛选阈值(%)：0=不过滤，1~5=|(收盘-MA60)/MA60|<=该值 */
 let topFirstZhangfu = 0;         /* 首板股涨跌幅筛选：0=全部，1~5=相对当日5分钟MA60的偏离%阈值(|偏离|<=该值) */
 let _klineCutoff = null;          /* 当前 K 线右边界截止日(YYYY-MM-DD)；null=不截断（top_first / top_first_vol_ma60 面板使用） */
@@ -2803,37 +2725,6 @@ function initTopFirstKlineControls() {
     if (show) renderColorConfig();
   }
 }
-/* 首板涨停放量股 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first_vol- 前缀 */
-function initTopFirstVolKlineControls() {
-  document.getElementById('top_first_vol-kline-period').onchange = e => {
-    klineState.period = e.target.value;
-    if (current.topFirstVolCode && DATA.kline[current.topFirstVolCode]) {
-      document.getElementById(klineEl('kline-title')).innerHTML = klineTitleHtml(DATA.kline[current.topFirstVolCode], current.topFirstVolCode);
-      rerenderKline();
-    }
-  };
-  document.getElementById('top_first_vol-boll').onchange = e => { klineState.showBOLL = e.target.checked; rerenderKline(); };
-  document.getElementById('top_first_vol-vwap').onchange = e => { klineState.showVWAP = e.target.checked; rerenderKline(); };
-  document.getElementById('top_first_vol-ma-btn').onclick = () => {
-    const cfg = document.getElementById('top_first_vol-ma-config');
-    const show = (cfg.style.display === 'none' || cfg.style.display === '');
-    cfg.style.display = show ? 'block' : 'none';
-    renderMaConfig(); rerenderKline();
-  };
-  document.getElementById('top_first_vol-ma-add').style.display = 'inline-block';
-  document.getElementById('top_first_vol-bar-btn').onclick = () => {
-    const barsPanel = document.getElementById('top_first_vol-bars');
-    const show = (barsPanel.style.display === 'none' || barsPanel.style.display === '');
-    barsPanel.style.display = show ? 'block' : 'none';
-    if (show) renderBarConfig();
-  };
-  document.getElementById('top_first_vol-color-btn').onclick = () => {
-    const cfg = document.getElementById('top_first_vol-color-config');
-    const show = (cfg.style.display === 'none' || cfg.style.display === '');
-    cfg.style.display = show ? 'block' : 'none';
-    if (show) renderColorConfig();
-  }
-}
 /* 首板涨停放量连阳股 TAB 的 K 线控制：复用共享 klineState，DOM 用 top_first_vol_sun- 前缀 */
 function initTopFirstVolSunKlineControls() {
   document.getElementById('top_first_vol_sun-kline-period').onchange = e => {
@@ -2870,7 +2761,6 @@ initKlineControls();
 initBtKlineControls();
 initTopKlineControls();
 initTopFirstKlineControls();
-initTopFirstVolKlineControls();
 initTopFirstVolSunKlineControls();
 renderMaRow();  // 初始渲染所有面板的 MA 复选框行（默认 5/10/20/30/60/120 全勾选）
 window.__errboxMark && window.__errboxMark('init: loadStrategy');
@@ -3201,7 +3091,10 @@ function onClickUpdateTHS(btn) {
   const sel = document.getElementById('ths-strategy');
   const strategy = sel ? sel.value : '';
   if (!strategy) { logCmd('请先选择策略'); return; }
-  const ok = confirm('将根据策略 ' + strategy + ' 更新同花顺板块 blockstockV3.xml，\n最新日期股票->TPO3，前一日期->TPO31，并覆盖同花顺用户目录下的同名文件。\n\n确定继续吗？');
+  const ok = confirm('将更新同花顺板块 blockstockV3.xml（覆盖同名文件）：\n'
+    + '· D-DAY  = TPO_MA60 最新关注日（今天）已符合条件的股\n'
+    + '· DAY-1  = TPO_MA60 上一关注日（昨天）符合涨停日条件的首板涨停股\n'
+    + '· HIS    = 首板MA60 近日 5min 跌破 MA60 股\n\n确定继续吗？');
   if (!ok) { logCmd('已取消同花顺更新'); return; }
   runCommand('UPDATE_THS', { strategy }, btn);
 }
@@ -3263,16 +3156,10 @@ const UPDATE_STEPS = [
   { step: 'UPDATE_TOP', label: '⑤ 涨停列表', desc: '生成每日涨停股 TOP' },
   { step: 'UPDATE_1D', label: '⑥ 加工日线', desc: 'MA/连板/is_top 加工' },
   { step: 'UPDATE_TOP_FIRST', label: '⑦ 首板涨停', desc: '生成首板涨停 TOP_FIRST' },
-  { step: 'UPDATE_STRATEGY_TPO_3', label: '⑧ TPO_3 回测', desc: '策略回测数据' },
-  { step: 'UPDATE_STRATEGY_TPO_TOP', label: '⑧ TPO_TOP 回测', desc: '策略回测数据' },
   { step: 'UPDATE_STRATEGY_TPO_M5', label: '⑧ TPO_M5 回测', desc: '策略回测数据(200~1300亿)' },
-  { step: 'UPDATE_STRATEGY_TPO_M5_MID', label: '⑧ TPO_M5_MID 回测', desc: '策略回测数据(50~200亿)' },
-  { step: 'UPDATE_STRATEGY_TPO_M5_SMALL', label: '⑧ TPO_M5_SMALL 回测', desc: '策略回测数据(<50亿)' },
-  { step: 'UPDATE_TARGET_TPO_3', label: '⑨ TPO_3 候选', desc: '实盘候选池' },
-  { step: 'UPDATE_TARGET_TPO_TOP', label: '⑨ TPO_TOP 候选', desc: '实盘候选池' },
+  { step: 'UPDATE_STRATEGY_TPO_MA60', label: '⑧ TPO_MA60 回测', desc: '首板涨停股+涨停前4日量价异动(大市值优先)' },
   { step: 'UPDATE_TARGET_TPO_M5', label: '⑨ TPO_M5 候选', desc: '实盘候选池(200~1300亿)' },
-  { step: 'UPDATE_TARGET_TPO_M5_MID', label: '⑨ TPO_M5_MID 候选', desc: '实盘候选池(50~200亿)' },
-  { step: 'UPDATE_TARGET_TPO_M5_SMALL', label: '⑨ TPO_M5_SMALL 候选', desc: '实盘候选池(<50亿)' },
+  { step: 'UPDATE_TARGET_TPO_MA60', label: '⑨ TPO_MA60 候选', desc: '实盘候选池(首板涨停股异动)' },
   { step: 'UPDATE_TOP_FIRST_VOL_SUN', label: '⑨ 首板放量连阳', desc: '首板涨停放量连阳股' },
 ];
 function onClickRunStep(step, btn) {
