@@ -1,0 +1,68 @@
+{
+ "generatedAt": "2026-11-04T17:24:05",
+ "buyDate": "20261104",
+ "forTradeDate": "20261105",
+ "approx": true,
+ "preclose": true,
+ "strategy": "TPO_M5",
+ "env": {
+  "t1": "差",
+  "above": 0,
+  "total": 7,
+  "date": "20261104"
+ },
+ "firstPick": {
+  "code": "002601.SZ",
+  "name": "",
+  "buyPrice": 15.44,
+  "marketValue": 297.16,
+  "ma5Pred": true
+ },
+ "buyList": [
+  {
+   "code": "002601.SZ",
+   "name": "",
+   "buyPrice": 15.44,
+   "marketValue": 297.16,
+   "ma5Pred": true
+  },
+  {
+   "code": "000100.SZ",
+   "name": "",
+   "buyPrice": 4.68,
+   "marketValue": 915.23,
+   "ma5Pred": true
+  },
+  {
+   "code": "603822.SH",
+   "name": "",
+   "buyPrice": 63.95,
+   "marketValue": null,
+   "ma5Pred": true
+  },
+  {
+   "code": "600438.SH",
+   "name": "",
+   "buyPrice": 11.8,
+   "marketValue": 516.83,
+   "ma5Pred": true
+  },
+  {
+   "code": "002294.SZ",
+   "name": "",
+   "buyPrice": 31.5,
+   "marketValue": 341.5,
+   "ma5Pred": true
+  },
+  {
+   "code": "603606.SH",
+   "name": "",
+   "buyPrice": 39.51,
+   "marketValue": 317.55,
+   "ma5Pred": true
+  }
+ ],
+ "candidates": [],
+ "source": "preclose-14:45",
+ "note": "14:45 预生成（尾盘买入用）；15:50 后以正式 strategy.json 为准"
+}

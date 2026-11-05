@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarcoAI 新看板 v1</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1620'/%3E%3Cpath d='M7 23V9l5 7 4-5 4 8 5-9v13' stroke='%23d62828' stroke-width='2.4' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css?v=20261105d">
+<link rel="stylesheet" href="css/realtime.css?v=20261105d">
+<link rel="stylesheet" href="css/training.css?v=20261105d">
+<link rel="stylesheet" href="css/drawings.css?v=20261105d">
+<link rel="stylesheet" href="css/ws-ma.css?v=20261105d">
+</head>
+<body>
+<div id="app">
+  <header id="app-header">
+    <div class="hdr-row hdr-top">
+      <div class="brand">
+        <span class="brand-logo">◈</span>
+        <div class="brand-text">
+          <div class="brand-title">MarcoAI <span class="badge-ver">新看板 v1.4</span></div>
+          <div class="brand-sub">实时看盘 · 策略回测 · 策略选股</div>
+        </div>
+      </div>
+      <div class="data-status" id="data-status">
+        <span class="ds-main" id="ds-main">数据状态加载中…</span>
+        <span class="chip" id="ds-version">版本 —</span>
+        <span class="chip" id="ds-5m">5M —</span>
+        <span class="chip warn" id="ds-realtime">非实时</span>
+        <button class="btn btn-ghost btn-xs" id="btn-refresh-meta" title="重新读取数据状态">刷新</button>
+      </div>
+      <nav class="tabs" id="nav-tabs">
+        <button class="tab on" data-view="realtime">实时看盘</button>
+        <button class="tab" data-view="backtest">策略回测</button>
+        <button class="tab" data-view="picks">策略选股</button>
+        <button class="tab" data-view="training">选股训练</button>
+      </nav>
+    </div>
+    <div class="hdr-row hdr-tools" hidden>
+      <div class="tool-group" id="ws-controls">
+        <span class="tool-label">工作区</span>
+        <select id="ws-select" class="sel" title="切换工作区"></select>
+        <button class="btn btn-xs" id="btn-ws-new" title="新建工作区">新建</button>
+        <button class="btn btn-xs" id="btn-ws-rename" title="重命名当前工作区">重命名</button>
+        <button class="btn btn-xs danger" id="btn-ws-del" title="删除当前工作区">删除</button>
+        <button class="btn btn-xs ghost" id="btn-ws-presets" title="恢复内置预设工作区">恢复预设</button>
+      </div>
+      <div class="tool-group" id="layout-controls">
+        <span class="tool-label">布局</span>
+        <div class="seg" id="layout-btns">
+          <button class="seg-btn" data-layout="1" title="1 图 (快捷键 1)">1 图</button>
+          <button class="seg-btn on" data-layout="2v" title="2 图上下 (快捷键 2)">2 图上下</button>
+          <button class="seg-btn" data-layout="2h" title="2 图左右">2 图左右</button>
+          <button class="seg-btn" data-layout="4" title="4 图 (快捷键 4)">4 图</button>
+        </div>
+      </div>
+      <div class="tool-group" id="link-controls">
+        <span class="tool-label">联动</span>
+        <label class="switch" title="股票联动：任一面板换股/点表格行，所有可见面板同步 (快捷键 S)">
+          <input type="checkbox" id="link-stock" checked><span class="switch-ui"></span><span class="switch-label">股票联动</span>
+        </label>
+        <label class="switch" title="时间轴联动：可视区间与十字光标同步 (快捷键 L)">
+          <input type="checkbox" id="link-time" checked><span class="switch-ui"></span><span class="switch-label">时间轴联动</span>
+        </label>
+        <span class="chip dim" title="产品要求：周期永远独立，改一个面板周期不影响其他面板">周期独立 · 永不联动</span>
+      </div>
+      <div class="tool-group right" id="trade-chip-wrap" hidden>
+        <span class="trade-chip" id="trade-chip"></span>
+        <button class="btn btn-xs ghost" id="btn-trade-clear" title="清除选股日/卖出日标记">清除标记</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+        <section class="view" id="view-backtest" hidden></section>
+    <section class="view" id="view-picks" hidden></section>
+    <section class="view" id="view-training" hidden></section>
+    <section class="view" id="view-realtime"></section>
+  </main>
+
+  <datalist id="symbol-list"></datalist>
+  <div id="toast-wrap"></div>
+  <div id="modal-root"></div>
+</div>
+<script src="vendor/lightweight-charts.standalone.production.js?v=20261105d"></script>
+<script type="module" src="js/main.js?v=20261105d"></script>
+</body>
+</html>

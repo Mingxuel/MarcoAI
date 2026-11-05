@@ -1,0 +1,18 @@
+{
+  "reportMissingTypeStubs": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownParameterType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnusedParameter": "none",
+  "reportUnusedCallResult": "none",
+  "reportUnusedExpression": "none",
+  "reportMatchNotExhaustive": "none",
+  "reportDuplicateImport": "none",
+  "reportRedeclaration": "none",
+  "reportMissingImports": "none",
+  "reportArgumentType": "warning",
+  "reportOptionalMemberAccess": "error",
+  "reportOperatorIssue": "error",
+  "reportImplicitRelativeImport": "error"
+}

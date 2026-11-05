@@ -1,0 +1,48 @@
+{
+  "version": 3,
+  "maintainer": "xiao-zhi",
+  "updatedAt": "2026-11-04T17:15:00+08:00",
+  "schema": "journals/SUMMARY_SCHEMA.md",
+  "scanScope": "journals/*.md",
+  "skipNames": ["README.md", "TEMPLATE.md", "INDEX.md", "TAGS.md", "SUMMARY_SCHEMA.md"],
+  "skipDirs": ["summaries", "samples", "coach"],
+  "processed": {
+    "journals/samples/2026-11-04-sample.md": {
+      "mtime": "2026-11-04T12:37:47.168+08:00",
+      "summary": "journals/summaries/2026-11-04-sample.md",
+      "countedInTags": false,
+      "note": "演示用示例日志，不参与 TAGS 统计"
+    }
+  },
+  "legacy": {
+    "source": "AIData/DAILY/Daily.txt",
+    "mtime": "2026-10-01T00:45:59.455+08:00",
+    "summary": "journals/summaries/legacy-notes.md",
+    "migratedAt": "2026-11-04T12:34:00+08:00",
+    "year": "2026",
+    "yearEvidence": "TPO_M5 20260701-20260924 逐日行数 33/35 吻合；差异 7-1(2vs1)、8-12(2vs1)；缺记 2026-07-27(数据2行)；9-29 在区间外不算缺记；口径 78(笔记) / 76(数据行) 并存；详见 legacy-notes §10",
+    "verifiedAt": "2026-11-04T12:48:00+08:00"
+  },
+  "sellMethod": {
+    "current": "B+",
+    "decidedAt": "2026-11-04",
+    "source": "journals/coach/PLAYBOOK.md §2.12（小小A 维护，小志只引用不改）",
+    "schemaField": "SUMMARY_SCHEMA.md §3 卖法版本（B+/旧/未标注）",
+    "ruleSummary": "T-0：涨停价卖 > 成本×0.95 止损 > 好环境持有到 14:55 > 差环境 10:00 宽度≥4 持有 / ≤3 卖",
+    "envRule": "7 宽基日线 MA60 上方 x/7；T-1 收盘定（2026-11-04 实测 0/7 = 差环境）",
+    "widthDataSource": "AIData/INDEX_5M（17 只宽基 5m，2026-01-05~2026-11-04），不是 AIData/5M"
+  },
+  "pendingHints": [
+    {
+      "date": "2026-11-04",
+      "source": "Lead（21:00 例行）",
+      "note": "TPO_M5 今日 2 笔：11-03 600118.SH 止损 -5.06%；11-04 000568.SZ 持有到 14:55 -2.34%。用户若写日志，逐笔卖法标 B+。",
+      "status": "待用户日志核对；非用户日志，不据此建 summary/INDEX/TAGS"
+    }
+  ],
+  "lastScan": {
+    "at": "2026-11-04T21:00:00+08:00",
+    "userLogsFound": 0,
+    "note": "21:00 例行扫描 journals/*.md：0 篇真实日志（仅 samples 示例与 coach/）；summaries 无新增；未发小小A（无摘要可发）。已记录 Lead 提供的 2 笔 B+ 卖法提示到 pendingHints。"
+  }
+}

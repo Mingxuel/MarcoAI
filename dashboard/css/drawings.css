@@ -1,0 +1,38 @@
+/* 专业画线 UI（chart_drawings.js）暗色样式 */
+.cd-toolbar {
+  position: absolute; top: 4px; left: 4px; z-index: 9; display: flex; align-items: center; gap: 2px;
+  background: rgba(14, 20, 29, .92); border: 1px solid var(--border-soft); border-radius: 6px;
+  padding: 2px 3px; max-width: calc(100% - 8px); flex-wrap: wrap; backdrop-filter: blur(4px);
+}
+.ws-head .cd-toolbar { position: static; background: transparent; border: 0; padding: 0; backdrop-filter: none; flex-wrap: nowrap; max-width: none; }
+.cd-tool {
+  min-width: 24px; height: 22px; padding: 0 5px; border: 1px solid transparent; border-radius: 4px;
+  background: transparent; color: #b8c4d6; font-size: 12px; line-height: 1; cursor: pointer; font-family: var(--mono);
+}
+.cd-tool:hover { background: #172233; color: #fff; border-color: #2a3a50; }
+.cd-tool.on { background: #1d2a3b; border-color: #2f4b73; color: #f5c518; }
+.cd-toolbar.collapsed .cd-tool:not(.cd-collapse) { display: none; }
+.cd-props {
+  position: absolute; top: 32px; left: 4px; z-index: 9; display: flex; align-items: center; gap: 3px;
+  background: rgba(14, 20, 29, .92); border: 1px solid var(--border-soft); border-radius: 6px;
+  padding: 2px 4px; max-width: calc(100% - 8px); flex-wrap: wrap; backdrop-filter: blur(4px);
+}
+.ws-chart .cd-props { top: 4px; left: 4px; }
+.cd-swatch { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); cursor: pointer; padding: 0; }
+.cd-swatch.on { box-shadow: 0 0 0 2px #fff; }
+.cd-w, .cd-style, .cd-icon {
+  min-width: 20px; height: 20px; padding: 0 4px; border: 1px solid #223046; border-radius: 4px;
+  background: #0f1824; color: #b8c4d6; font-size: 10.5px; cursor: pointer;
+}
+.cd-w.on, .cd-style.on { background: #1d2a3b; border-color: #2f4b73; color: #f5c518; }
+.cd-icon:hover, .cd-w:hover, .cd-style:hover { color: #fff; border-color: #36506f; }
+.cd-magnet { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.cd-magnet input { width: 11px; height: 11px; margin: 0; }
+.cd-svg { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.cd-drawing { cursor: crosshair; }
+@media (max-width: 1200px) {
+  .cd-toolbar .cd-tool:not(.on):not(.cd-collapse) { display: none; }
+  .cd-toolbar.expanded .cd-tool { display: inline-block; }
+  .cd-props { display: none; }
+  .cd-props.expanded { display: flex; }
+}

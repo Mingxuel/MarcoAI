@@ -1,0 +1,48 @@
+/* 选股训练页 */
+.tr-page { overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+.tr-controls { display: flex; align-items: center; gap: 8px; }
+.tr-summary { flex: 0 0 auto; margin: 6px 0; }
+.tr-sum-empty { font-size: 11px; color: var(--muted); padding: 6px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+.tr-sum-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.tr-sum-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.tr-sum-card .k { font-size: 10.5px; color: var(--muted); }
+.tr-sum-card .v { font-size: 16px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+.tr-sum-card .v.up { color: #ef4444; }
+.tr-sum-card .v.down { color: #60a5fa; }
+.tr-sum-card .v.dim { color: var(--muted); }
+.tr-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 44%) minmax(0, 56%); gap: 10px; }
+.tr-chart-panel, .tr-list-panel { min-height: 0; display: flex; flex-direction: column; }
+.tr-chart-panel .panel-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.tr-chart-host { flex: 1 1 auto; min-height: 0; position: relative; }
+.tr-chart-title { font-size: 11.5px; }
+.tr-list-panel .panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0; }
+.tr-table-wrap { min-height: 0; }
+.tr-tbl { width: 100%; table-layout: fixed; }
+.tr-tbl th, .tr-tbl td { height: 30px; padding: 0 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.tr-tbl th { font-size: 10.5px; }
+.tr-tbl td.num { text-align: right; }
+.tr-row { cursor: pointer; }
+.tr-row:hover { background: #121a26; }
+.tr-row.done { background: rgba(74, 222, 128, 0.04); }
+.tr-in { width: 100%; height: 24px; padding: 0 4px; font-size: 11px; }
+.tr-reason { color: var(--muted); max-width: 280px; }
+@media (max-width: 1200px) {
+  .tr-grid { grid-template-columns: 1fr; }
+  .tr-sum-cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+.tr-tbl td:first-child, .tr-tbl th:first-child { text-align: center; }
+.tr-row.unselected { opacity: .5; }
+.tr-group td { background: #16202e; color: #dbe7f5; font-weight: 600; height: 26px; font-size: 11px; border-top: 1px solid var(--border-soft); }
+.tr-daily { margin: 4px 0 6px; }
+.tr-daily-title { font-size: 10.5px; color: var(--muted); margin: 2px 0 3px; }
+.tr-daily-list { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.tr-daily-row { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; font-size: 10.5px; }
+.tr-daily-row .d { color: #93c5fd; }
+.tr-daily-row .c { color: var(--muted-2); }
+.tr-daily-row .v.up { color: #ef4444; }
+.tr-daily-row .v.down { color: #60a5fa; }
+
+.tr-left-body { flex: 1 1 auto; min-height: 0; display: flex; padding: 0; }
+.tr-left-ws { flex: 1 1 auto; height: 100%; min-height: 0; position: relative; }
+.tr-left-ws > .ws-grid { height: 100%; }

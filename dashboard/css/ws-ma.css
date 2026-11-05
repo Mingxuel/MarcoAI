@@ -1,0 +1,10 @@
+/* Workspace 面板均线快捷条 */
+.ws-ma-bar {
+  position: absolute; top: 4px; right: 4px; z-index: 7; display: flex; align-items: center; gap: 5px;
+  padding: 2px 6px; background: rgba(14,20,29,.9); border: 1px solid var(--border-soft);
+  border-radius: 6px; font-size: 10px; color: var(--muted); backdrop-filter: blur(4px);
+}
+.ws-ma-bar label { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; }
+.ws-ma-bar input { width: 10px; height: 10px; margin: 0; }
+.ws-ma-bar .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+@media (max-width: 1200px) { .ws-ma-bar { display: none; } }

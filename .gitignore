@@ -1,0 +1,78 @@
+﻿bin/
+obj/
+.vs/
+Debug/
+Release/
+*.user
+*.vscode/
+鏉庢槑瀛︾殑澶/Data/1M/
+鏉庢槑瀛︾殑澶/Data/1M/*
+鏉庢槑瀛︾殑澶/Data/5M/
+鏉庢槑瀛︾殑澶/Data/5M/*
+__pycache__/
+
+# 鍦ㄧ嚎鐗堢湅鏉垮凡鍋滅敤锛堟敼鐢ㄧ绾跨増 StrategyDashboardOffline.html锛涗綋閲弤400MB锛屼笉鍏ュ簱锛?
+AICode/MarcoAPI/UI/StrategyDashboard.html
+
+# 鏈湴 IDE/椤圭洰鐘舵€侊紝涓嶅叆搴?
+.codebuddy/
+
+# AIData锛氫粎淇濈暀銆屾簮鏁版嵁/鎵嬪伐杈撳叆銆嶏紝鍏朵綑鍔ㄦ€佺敓鎴愭暟鎹笉鍏ュ簱锛堝紑鍙戞満鍙敤 UPDATE_ALL 閲嶇敓鎴愶級
+AIData/*
+!AIData/TOP_ORIGIN/
+!AIData/INFO/
+!AIData/THS/
+!AIData/DAILY/
+
+# 鏃ュ織
+*.log
+update_log.txt
+
+# ===== Marco Terminal (UI/MarcoUI) 鏋勫缓涓庤繍琛屼骇鐗╋紝涓嶅叆搴?=====
+# 铏氭嫙鐜锛堝惈 PySide6 / pandas / PyInstaller锛屼綋閲忔瀬澶э級
+.venv/
+venv/
+
+# PyInstaller 鎵撳寘浜х墿锛堝崟鏂囦欢 exe ~250MB锛沚uild 涓轰腑闂寸洰褰曪級
+dist/
+build/
+*.spec
+
+# 鏈湴閰嶇疆锛堝惈鏈満璺緞锛宨nstall.ps1 浼氳嚜鍔ㄩ噸寤猴級
+AICode/MarcoAPI/UI/MarcoUI/config.json
+
+# 鎺掓煡鏈熺敓鎴愮殑涓存椂璇婃柇鏂囦欢
+AICode/MarcoAPI/UI/MarcoUI/_*.err
+AICode/MarcoAPI/UI/MarcoUI/_*.txt
+AICode/MarcoAPI/UI/MarcoUI/_*.html
+AICode/MarcoAPI/UI/MarcoUI/_*.png
+AICode/MarcoAPI/UI/MarcoUI/_*.js
+AICode/MarcoAPI/UI/MarcoUI/_ud/
+AICode/MarcoAPI/UI/MarcoUI/_run_install.ps1
+AICode/MarcoAPI/UI/MarcoUI/_poll.ps1
+
+# Python 瀛楄妭鐮?
+*.pyc
+
+# ===== 鏈湴鑷姩鍖栬繍琛屾椂锛堢綉椤靛鍑鸿剼鏈敤锛屼笉鍏ュ簱锛?====
+.tools/
+.edge-profile/
+.downloads/
+logs/
+
+# 2026-11-05：数据量已下降，纳入数据目录（用户要求尽量上传数据）
+!AIData/1D/
+!AIData/1D_ORIGIN/
+!AIData/5M/
+!AIData/INDEX/
+!AIData/INDEX_ORIGIN/
+!AIData/INDEX_5M/
+!AIData/STRATEGY/
+!AIData/TOP/
+!AIData/TOP_FIRST/
+!AIData/TOP_ORIGIN/
+!AIData/NEXT_DAY/
+!AIData/INFO/
+!AIData/THS/
+!AIData/DAILY/
+!AIData/BACKTEST_CACHE/

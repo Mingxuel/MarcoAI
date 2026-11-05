@@ -1,0 +1,25 @@
+/* 回测页 v2：资金曲线线段 + 指数叠加 */
+.bt-line-panel .panel-body { position: relative; }
+.bt-index-sel { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; font-size: 11px; color: var(--muted); }
+.bt-index-sel label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+.bt-index-sel .dot,
+.bt-line-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.bt-line-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; margin-bottom: 4px; }
+.bt-legend-item { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--muted); user-select: none; }
+.bt-legend-item.off { opacity: .4; text-decoration: line-through; }
+.bt-line-chart { height: 330px; position: relative; }
+.bt-line-tip {
+  position: absolute; z-index: 8; pointer-events: none; background: rgba(11,16,23,.94);
+  border: 1px solid var(--border-soft); border-radius: 6px; padding: 6px 8px; font-size: 10.5px;
+  min-width: 170px; box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.bt-line-tip[hidden] { display: none !important; }
+.bt-line-tip .t { color: #dbe7f5; font-family: var(--mono); margin-bottom: 3px; }
+.bt-line-tip .r { display: flex; gap: 6px; justify-content: space-between; color: var(--muted); line-height: 1.55; }
+.bt-line-tip .r .n { flex: 1 1 auto; }
+.bt-line-tip .r .v { font-family: var(--mono); color: #c7d5e6; }
+.bt-line-tip .r .c { font-family: var(--mono); }
+.bt-line-tip .r .c.up { color: #ef4444; }
+.bt-line-tip .r .c.down { color: #60a5fa; }
+.bt-line-tip .r.cap .n { color: #4ade80; }
+@media (max-width: 1100px) { .bt-line-chart { height: 260px; } }
