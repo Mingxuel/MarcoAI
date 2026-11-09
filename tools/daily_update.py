@@ -434,79 +434,26 @@ def step_next_day(day: dt.date, dry_run: bool) -> dict:
 
 
 # ---------------- 步骤 6：重启新 UI 服务 ----------------
-def _find_dashboard_pids() -> list[int]:
-    """找出正在运行的 dashboard_server.py 进程 PID（wmic/CIM 双保险）。"""
-    pids: list[int] = []
-    try:
-        out = subprocess.run(
-            ["wmic", "process", "where", "name='python.exe'", "get", "processid,commandline"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
-        ).stdout or ""
-        for line in out.splitlines():
-            if "dashboard_server" in line:
-                parts = line.replace("\r", " ").split()
-                for tok in reversed(parts):
-                    if tok.isdigit():
-                        pids.append(int(tok))
-                        break
-    except Exception:
-        pass
-    if not pids:
-        try:
-            ps = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*dashboard_server*' } | ForEach-Object { $_.ProcessId }"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
-            ).stdout or ""
-            pids = [int(x) for x in ps.split() if x.strip().isdigit()]
-        except Exception:
-            pass
-    return sorted(set(pids))
-
-
 def step_restart_dashboard(dry_run: bool) -> dict:
-    """数据更新完成后重启新 UI 服务（dashboard_server），避免页面用到启动时的旧缓存。"""
+    """数据更新完成后重启新 UI 服务（dashboard_server）；复用 tools/ui_server.py 的 restart_dashboard。
+
+    返回 {"step": "restart_ui", "ok": bool, "pid": int|None, ...}（失败不阻断主流程）。
+    """
     if dry_run:
         return {"step": "restart_ui", "ok": True, "dry_run": True,
                 "note": "将重启新 UI 服务（http://127.0.0.1:8765）"}
-    script = os.path.join(TOOLS, "dashboard_server.py")
-    if not os.path.exists(script):
-        return {"step": "restart_ui", "ok": False, "error": f"找不到 {script}"}
     log("[6/6] 重启新 UI 服务（dashboard_server）...")
-    killed = _find_dashboard_pids()
-    for pid in killed:
-        try:
-            subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=20)
-        except Exception:
-            pass
-    log(f"[6/6] 已停止旧服务进程 {killed or '（未发现）'}")
-    time.sleep(1.5)
-    try:
-        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-        proc = subprocess.Popen(
-            [sys.executable, script, "--port", "8765"], cwd=ROOT,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            creationflags=flags, close_fds=True,
-        )
-    except Exception as exc:
-        return {"step": "restart_ui", "ok": False, "error": f"{type(exc).__name__}: {exc}"}
-    # 等待端口就绪（最多 40 秒）
-    import urllib.request
-    deadline = time.time() + 40
-    ready = False
-    while time.time() < deadline:
-        try:
-            with urllib.request.urlopen("http://127.0.0.1:8765/api/meta", timeout=3) as resp:
-                if resp.status == 200:
-                    ready = True
-                    break
-        except Exception:
-            time.sleep(1.0)
-    if ready:
-        log(f"[6/6] 新 UI 服务已就绪（PID {proc.pid}）")
-        return {"step": "restart_ui", "ok": True, "pid": proc.pid, "note": "新 UI 服务已重启并就绪"}
-    return {"step": "restart_ui", "ok": False, "pid": proc.pid,
-            "error": "新 UI 服务启动后 40 秒内未就绪，请检查 logs/dashboard_server.log"}
+    tool = _load_tool("ui_server")
+    result = tool.restart_dashboard(port=8765)
+    old = result.get("oldPids") or []
+    if old:
+        log(f"[6/6] 已停止旧服务进程 {old}")
+    if result.get("ok"):
+        log(f"[6/6] 新 UI 服务已就绪（PID {result.get('pid')}）")
+        return {"step": "restart_ui", "ok": True, "pid": result.get("pid"),
+                "note": "新 UI 服务已重启并就绪"}
+    return {"step": "restart_ui", "ok": False, "pid": result.get("pid"),
+            "error": result.get("error", "重启失败")}
 
 
 # ---------------- 主流程 ----------------

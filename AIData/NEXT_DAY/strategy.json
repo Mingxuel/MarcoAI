@@ -1,64 +1,50 @@
 {
-  "generatedAt": "2026-11-04T16:31:16",
-  "buyDate": "20261104",
-  "forTradeDate": "20261105",
+  "generatedAt": "2026-11-09T16:13:26",
+  "buyDate": "20261109",
+  "forTradeDate": "20261110",
   "approx": true,
   "strategy": "TPO_M5",
   "env": {
     "t1": "差",
-    "above": 0,
-    "total": 7,
-    "date": "20261104"
+    "score": 0,
+    "state": "S0",
+    "sellRule": "10:00卖出",
+    "above": 1,
+    "total": 3,
+    "date": "20261109",
+    "mode": "s6",
+    "rule": "S6：沪深300上+1、创业板指上+1、中证银行≤MA60+1",
+    "details": [
+      {
+        "code": "000300.SH",
+        "name": "沪深300",
+        "ok": true,
+        "date": "20261109",
+        "close": 4056.11,
+        "ma60": 4404.84,
+        "above": false
+      },
+      {
+        "code": "399006.SZ",
+        "name": "创业板指",
+        "ok": true,
+        "date": "20261109",
+        "close": 2458.56,
+        "ma60": 3142.17,
+        "above": false
+      },
+      {
+        "code": "399986.SZ",
+        "name": "中证银行",
+        "ok": true,
+        "date": "20261109",
+        "close": 7899.74,
+        "ma60": 7539.33,
+        "above": true
+      }
+    ]
   },
-  "firstPick": {
-    "code": "002558.SZ",
-    "name": "巨人网络",
-    "buyPrice": 21.66,
-    "marketValue": 40842916119.04
-  },
-  "buyList": [
-    {
-      "code": "002558.SZ",
-      "name": "巨人网络",
-      "buyPrice": 21.66,
-      "marketValue": 40842916119.04,
-      "ma5Pred": true
-    },
-    {
-      "code": "600570.SH",
-      "name": "恒生电子",
-      "buyPrice": 21.56,
-      "marketValue": 40151792926.72,
-      "ma5Pred": true
-    },
-    {
-      "code": "600801.SH",
-      "name": "华新建材",
-      "buyPrice": 25.36,
-      "marketValue": 33394854856.96,
-      "ma5Pred": true
-    },
-    {
-      "code": "600299.SH",
-      "name": "安迪苏",
-      "buyPrice": 8.47,
-      "marketValue": 26147326494.72,
-      "ma5Pred": true
-    },
-    {
-      "code": "601099.SH",
-      "name": "太平洋",
-      "buyPrice": 3.54,
-      "marketValue": 24402412769.28,
-      "ma5Pred": true
-    },
-    {
-      "code": "600259.SH",
-      "name": "中稀有色",
-      "buyPrice": 63.15,
-      "marketValue": 20477784606.4,
-      "ma5Pred": true
-    }
-  ],
+  "firstPick": null,
+  "buyList": [],
   "candidates": []
 }

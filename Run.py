@@ -12,7 +12,10 @@ Run.py —— 主交互菜单
     5. 单项更新   —— 列出一条龙各步骤，单独运行任意一项（如只刷涨停/只跑某策略回测）
     6. 上传 Gitee  —— 提交改动并推送到 Gitee 仓库（remote: origin）
     7. 上传 GitHub —— 提交改动并推送到 GitHub 仓库（remote: github）
-    88. 一条龙更新 —— 进入后 5 秒倒计时（默认策略 TPO_M5 + 周期 12 个月，倒计时内按键转人工选择），再依次：更新数据(含5M) → 更新同花顺（Gitee 默认关闭）
+    9. 重启服务器 —— 重启新 UI 服务（dashboard_server，端口 8765）并等待就绪
+    88. 一条龙更新 —— 进入后 5 秒倒计时（默认策略 TPO_M5 + 周期 12 个月，倒计时内按键转人工选择），
+                      再依次：网页导出（涨停表→TOP_ORIGIN；SZ100→INFO）→ 更新数据(含5M) → 指数5m全量
+                      → 更新同花顺 → 生成下一交易日名单 → 重启新 UI 服务（Gitee 默认关闭）
     0. 退出
 执行完任一项后自动回到主菜单。
 
@@ -20,6 +23,7 @@ Run.py —— 主交互菜单
 """
 
 import datetime
+import json
 import os
 import subprocess
 import sys
@@ -53,6 +57,98 @@ R = "\033[0m"  if _USE_COLOR else ""   # reset
 
 def _do_update(scope_codes: list[str] | None = None, recent_days_5m: int = 0):
     UPDATE_ALL(scope_codes=scope_codes, recent_days_5m=recent_days_5m)
+
+
+def _load_tool(name: str):
+    """按路径加载 tools/<name>.py 模块（tools 不是包）。"""
+    import importlib.util
+    path = os.path.join(_ROOT, "tools", name + ".py")
+    spec = importlib.util.spec_from_file_location(f"_run_tool_{name}", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(module)
+    return module
+
+
+def _run_tool_script(name: str, args: list[str], timeout: int = 1800) -> tuple[int, str]:
+    """子进程运行 tools/<name>.py，返回 (退出码, 合并输出)。"""
+    path = os.path.join(_ROOT, "tools", name + ".py")
+    try:
+        proc = subprocess.run(
+            [sys.executable, path] + list(args), cwd=_ROOT,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
+        )
+        return proc.returncode, ((proc.stdout or "") + (proc.stderr or "")).strip()
+    except BaseException as exc:  # noqa: BLE001
+        return -1, f"{type(exc).__name__}: {exc}"
+
+
+def _do_restart_ui() -> dict:
+    """重启新 UI 服务（dashboard_server → 8765），返回结果 dict（菜单 9 / 一条龙最后一步共用）。"""
+    print(f"\n  {C}正在重启新 UI 服务（dashboard_server）...{R}")
+    try:
+        tool = _load_tool("ui_server")
+        result = tool.restart_dashboard(port=8765)
+    except BaseException as exc:  # noqa: BLE001
+        print(f"  {Y}!!!!! 重启 UI 服务失败：{type(exc).__name__}: {exc}{R}")
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    if result.get("ok"):
+        print(f"  {G}✅ 新 UI 服务已重启并就绪（PID {result.get('pid')}）{R}")
+    else:
+        print(f"  {Y}!!!!! 重启 UI 服务失败：{result.get('error')}{R}")
+    return result
+
+
+def _pipeline_export_web(day: datetime.date) -> tuple[dict, dict]:
+    """一条龙②：网页导出 涨停表→AIData/TOP_ORIGIN，SZ100→AIData/INFO/SZ100.xlsx（失败不阻断）。"""
+    top: dict = {"ok": False}
+    sz100: dict = {"ok": False}
+    try:
+        top = _load_tool("daily_update").step_export(day, dry_run=False)
+        if top.get("ok"):
+            print(f"  {G}涨停表：{top.get('note') or top.get('path')}{R}")
+        else:
+            print(f"  {Y}!!!!! 涨停表导出失败：{top.get('error')}{R}")
+    except BaseException as exc:  # noqa: BLE001
+        print(f"  {Y}!!!!! 涨停表导出异常：{type(exc).__name__}: {exc}{R}")
+    try:
+        sz100 = _load_tool("tdx_sz100_export").run_export()
+        print(f"  {G}SZ100：{sz100.get('total')} 行数据（按股票代码升序，前两行标题保留）{R}")
+    except BaseException as exc:  # noqa: BLE001
+        print(f"  {Y}!!!!! SZ100 导出/后处理失败：{type(exc).__name__}: {exc}{R}")
+        print(f"  {Y}（旧 SZ100.xlsx 未改动，继续沿用现有股票池）{R}")
+    return top, sz100
+
+
+def _pipeline_export_index_5m() -> dict:
+    """一条龙④：指数/宽基 5m 全量导出到 AIData/INDEX_5M（失败不阻断）。"""
+    code, out = _run_tool_script("export_index_5m", [], timeout=900)
+    tail = out.splitlines()[-1] if out else ""
+    if code == 0:
+        print(f"  {G}{tail}{R}")
+        return {"ok": True, "detail": tail}
+    print(f"  {Y}!!!!! 指数 5m 导出失败（不阻断）：{tail}{R}")
+    return {"ok": False, "detail": tail}
+
+
+def _pipeline_next_day(day: datetime.date) -> dict:
+    """一条龙⑥：生成下一交易日 TPO_M5 名单 → AIData/NEXT_DAY/strategy.json（失败不阻断）。"""
+    code, out = _run_tool_script("next_day_strategy", ["--buy-date", day.strftime("%Y%m%d")], timeout=900)
+    payload: dict | None = None
+    for line in reversed(out.splitlines()):
+        if line.startswith("NEXT_DAY_JSON "):
+            try:
+                payload = json.loads(line[len("NEXT_DAY_JSON "):])
+            except json.JSONDecodeError:
+                payload = None
+            break
+    if code == 0 and payload and payload.get("ok"):
+        pick = payload.get("firstPick") or {}
+        print(f"  {G}forTradeDate={payload.get('forTradeDate')}，首选={pick.get('code', '空仓')} "
+              f"{pick.get('name', '')}，buyList={payload.get('buyListCount')} 只{R}")
+        return payload
+    print(f"  {Y}!!!!! 生成下一交易日名单失败（不阻断）：{out[-300:]}{R}")
+    return {"ok": False}
 
 
 def _safe_rmtree(path: str):
@@ -369,40 +465,58 @@ def _pipeline_choose(seconds: int = 5):
 
 
 def _do_pipeline():
-    """菜单 88：一条龙数据更新 —— 倒计时默认（TPO_M5 + 12 个月）或人工选择策略/周期，
-    然后依次：更新数据(含5M) → 更新同花顺，（Gitee 默认关闭，需要时加 --with-git 到 tools/daily_update.py）。
-
-    更新数据（UPDATE_ALL）已内含 5M 原始行情拉取，故此处不再单独调用 _do_update_5m()，
-    避免 5M 被重复下载。各步骤错误互不影响，最终汇总结果。
+    """菜单 88：一条龙数据更新 —— 倒计时默认（TPO_M5 + 12 个月）或人工选择策略/周期，然后依次：
+    ② 网页导出（涨停表→TOP_ORIGIN；SZ100→INFO）
+    ③ 更新数据（UPDATE_ALL，含 5M；UPDATE_STOCK_CODES 会用刚导出的 SZ100）
+    ④ 指数/宽基 5m 全量
+    ⑤ 更新同花顺
+    ⑥ 生成下一交易日名单
+    ⑦ 重启新 UI 服务
+    Gitee 默认关闭（需要时用菜单 6）；各步骤错误互不影响，最终汇总。
     """
-    print(f"\n  {C}{B}═══ 一条龙更新：① 选策略 → ② 更新数据(含5M) → ③ 更新同花顺 → ④ 上传 Gitee ═══{R}")
-    # ① 选策略/周期：5 秒倒计时默认 TPO_M5 + 12 个月；倒计时内按键转人工
+    print(f"\n  {C}{B}═══ 一条龙更新：① 选策略 → ② 网页导出(涨停+SZ100) → ③ 数据(含5M) "
+          f"→ ④ 指数5m → ⑤ 同花顺 → ⑥ 明日名单 → ⑦ 重启UI ═══{R}")
+    # ① 选策略/周期（5 秒倒计时默认 TPO_M5 + 12 个月；倒计时内按键转人工）
     chosen = _pipeline_choose()
     if chosen is None:
         print(f"  {Y}已取消一条龙更新。{R}")
         return
     strategy, scope_codes, recent_days_5m = chosen
-    # ② 更新数据（含 5M）；按周期圈定的股票范围 + 最近 5M 窗口，极大缩短下载
-    print(f"\n  {C}{B}── ② 更新数据（含 5M）──{R}")
+    day = datetime.date.today()
+
+    # ② 网页导出（涨停表 → TOP_ORIGIN；SZ100 → AIData/INFO/SZ100.xlsx）
+    print(f"\n  {C}{B}── ② 网页导出（涨停表 → TOP_ORIGIN；股票池 → AIData/INFO/SZ100.xlsx）──{R}")
+    _pipeline_export_web(day)
+
+    # ③ 更新数据（含 5M；UPDATE_STOCK_CODES 使用刚导出的 SZ100）
+    print(f"\n  {C}{B}── ③ 更新数据（含 5M，策略：{strategy}）──{R}")
     try:
         _do_update(scope_codes=scope_codes, recent_days_5m=recent_days_5m)
     except BaseException as exc:
-        print(f"  {Y}!!!!! ② 更新数据失败：{type(exc).__name__}: {exc}{R}")
-    # ③ 更新同花顺板块（使用第①步所选策略）
-    print(f"\n  {C}{B}── ③ 更新同花顺板块（策略：{strategy}）──{R}")
+        print(f"  {Y}!!!!! ③ 更新数据失败：{type(exc).__name__}: {exc}{R}")
+
+    # ④ 指数/宽基 5m 全量
+    print(f"\n  {C}{B}── ④ 指数/宽基 5m 全量 ──{R}")
+    _pipeline_export_index_5m()
+
+    # ⑤ 更新同花顺板块（使用第①步所选策略）
+    print(f"\n  {C}{B}── ⑤ 更新同花顺板块（策略：{strategy}）──{R}")
     try:
         result = CMD_UPDATE_THS(strategy)
         if result:
             print(f"  {result}")
     except BaseException as exc:
-        print(f"  {Y}!!!!! ④ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
-    # ④ 上传 Gitee（自动提交说明，不再弹交互）
-    print(f"\n  {C}{B}── ④ 上传 Gitee ──{R}")
-    try:
-        _git_push("origin", commit_msg="chore: 一条龙自动更新 " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    except BaseException as exc:
-        print(f"  {Y}!!!!! ④ 上传 Gitee 失败：{type(exc).__name__}: {exc}{R}")
-    print(f"\n  {G}{B}── 一条龙更新结束 ──{R}")
+        print(f"  {Y}!!!!! ⑤ 更新同花顺失败：{type(exc).__name__}: {exc}{R}")
+
+    # ⑥ 生成下一交易日名单
+    print(f"\n  {C}{B}── ⑥ 生成下一交易日名单 ──{R}")
+    _pipeline_next_day(day)
+
+    # ⑦ 重启新 UI 服务
+    print(f"\n  {C}{B}── ⑦ 重启新 UI 服务 ──{R}")
+    _do_restart_ui()
+
+    print(f"\n  {G}{B}── 一条龙更新结束（Gitee 默认关闭，需要时用菜单 6 上传）──{R}")
 
 
 # 单项更新步骤（与一条龙依赖顺序一致）：编号 -> (显示名, UPDATE_* 标识)
@@ -453,10 +567,11 @@ _MENU_GROUPS = (
     (("1", "更新数据", "同步交易日历 / 日线 / 涨停 / 策略 / 目标池"),
      ("2", "更新5M数据", "下载首板/涨停/候选池/详情涉及股、按关键日 T-2~T+5 窗口的 5 分钟行情"),
      ("3", "更新同花顺", "按策略写入同花顺板块（自动关闭/重启生效）"),
-     ("5", "单项更新", "列出一条龙各步骤，单独运行任意一项")),
+     ("5", "单项更新", "列出一条龙各步骤，单独运行任意一项"),
+     ("9", "重启服务器", "重启新 UI 服务（8765）并等待就绪")),
     (("6", "上传 Gitee", "提交改动并推送到 Gitee 仓库"),
      ("7", "上传 GitHub", "提交改动并推送到 GitHub 仓库")),
-    (("88", "一条龙更新", "先选策略 → 数据 → 同花顺 →（Gitee 默认关），一步到位"),),
+    (("88", "一条龙更新", "先选策略 → 网页导出(涨停+SZ100) → 数据(含5M) → 指数5m → 同花顺 → 明日名单 → 重启UI"),),
 )
 
 
@@ -529,13 +644,15 @@ def _menu_loop():
             input("\n  按回车返回主菜单...")
         elif choice == "3":
             _do_ths()
+        elif choice == "9":
+            _do_restart_ui()
         elif choice == "88":
             _do_pipeline()
         elif choice in ("0", "q", "Q", "exit", "quit"):
             print(f"\n  {Y}已退出。{R}\n")
             break
         else:
-            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 5 / 6 / 7 / 88 / 0。{R}")
+            print(f"  {Y}无效选择，请输入 1 / 2 / 3 / 5 / 6 / 7 / 9 / 88 / 0。{R}")
 
 
 def main():
@@ -561,6 +678,9 @@ def main():
             except BaseException as exc:
                 print(f"{Y}[错误] 同花顺更新失败：{type(exc).__name__}: {exc}{R}")
             return
+        if cmd == "restart_ui":
+            _do_restart_ui()
+            return
         if cmd == "step":
             if len(args) < 2:
                 print(f"{Y}[错误] 用法：python Run.py step <UPDATE_标识>{R}")
@@ -573,7 +693,7 @@ def main():
             except BaseException as exc:
                 print(f"{Y}[错误] 单项更新失败：{type(exc).__name__}: {exc}{R}")
             return
-        print(f"{Y}[错误] 未知命令：{cmd}（可用：update_all / update_5m / update_ths / step）{R}")
+        print(f"{Y}[错误] 未知命令：{cmd}（可用：update_all / update_5m / update_ths / restart_ui / step）{R}")
         return
     _menu_loop()
 

@@ -1,8 +1,8 @@
 /* 策略回测页：策略/买入/卖出三选择 + 8 指标卡 + 资金 K 线 + 月/季/年 + 收益分布 */
-import { h, clear, fmt, pct, n, toast } from '../util.js?v=20261105d';
-import { API } from '../api.js?v=20261105d';
-import { CapitalChart } from '../chart_adapter.js?v=20261105d';
-import { ChartDrawings } from '../chart_drawings.js?v=20261105d';
+import { h, clear, fmt, pct, n, toast } from '../util.js?v=20261106j';
+import { API } from '../api.js?v=20261106j';
+import { CapitalChart } from '../chart_adapter.js?v=20261106j';
+import { ChartDrawings } from '../chart_drawings.js?v=20261106j';
 
 const PICK_MODES = [
   { id: 'first', label: 'first · 当日候选第一只（单票）' },
@@ -17,11 +17,12 @@ const SELL_MODES = [
 const DEFAULT_SELL_MODE = 'bplus';
 
 /** B+ 新卖法后端接口（只在回测页使用，避免改动公共 api.js）。 */
-async function fetchBplus(strategy, pickMode) {
+async function fetchBplus(strategy, pickMode, sellMode = 'bplus') {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 120000);
   try {
-    const url = `/api/backtest/bplus?strategy=${encodeURIComponent(strategy)}&months=12&pick_mode=${encodeURIComponent(pickMode)}`;
+    const apiMode = sellMode === '5m' ? 'legacy5m' : (sellMode === 'day' ? 'day' : 'bplus');
+    const url = `/api/backtest/bplus?strategy=${encodeURIComponent(strategy)}&months=12&pick_mode=${encodeURIComponent(pickMode)}&sell_mode=${apiMode}`;
     const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
     const data = await res.json();
     if (!res.ok || data.ok === false) throw new Error((data && (data.error || data.message)) || `HTTP ${res.status}`);
@@ -171,6 +172,7 @@ export class BacktestView {
     clear(this.root);
     this.controlsEl = h('div', { class: 'bt-controls' });
     this.bodyEl = h('div', {});
+    this.sellHelpEl = h('div', { class: 'bt-sell-help', hidden: true });
     this.badgeEl = h('span', { class: 'chip dim bt-bplus-badge' }, 'B+ 卖法 · 2026 年起生效（此前回退现状）');
     this.root.appendChild(h('div', { class: 'view-pad' },
       h('div', { class: 'page-head' },
@@ -179,6 +181,7 @@ export class BacktestView {
         this.badgeEl,
         h('div', { class: 'spacer' }),
         this.controlsEl),
+      this.sellHelpEl,
       this.bodyEl));
     this._renderControls();
   }
@@ -196,8 +199,60 @@ export class BacktestView {
     sellSel.value = this.sellMode;
     this.controlsEl.appendChild(h('div', { class: 'ctl' }, h('span', {}, '策略'), strategySel));
     this.controlsEl.appendChild(h('div', { class: 'ctl' }, h('span', {}, '买入方式'), pickSel));
-    this.controlsEl.appendChild(h('div', { class: 'ctl' }, h('span', {}, '卖出方式'), sellSel));
+    this.helpBtn = h('button', { class: 'btn btn-xs ghost bt-help-btn', title: '卖出方式详细说明', onclick: () => this._toggleSellHelp() }, '说明 ⓘ');
+    this.controlsEl.appendChild(h('div', { class: 'ctl' }, h('span', {}, '卖出方式'), sellSel, this.helpBtn));
     this.controlsEl.appendChild(h('button', { class: 'btn btn-xs ghost', onclick: () => this.load(true) }, '刷新'));
+  }
+
+  _toggleSellHelp(force) {
+    const show = force == null ? this.sellHelpEl.hidden : !!force;
+    this.sellHelpEl.hidden = !show;
+    if (this.helpBtn) this.helpBtn.classList.toggle('on', show);
+    if (show) this._renderSellHelp();
+  }
+
+  _sellSampleRange() {
+    const d = this.data || {};
+    if (d.dateFrom && d.dateTo) return `${d.dateFrom} ~ ${d.dateTo}`;
+    const bars = d.capitalKline || [];
+    if (bars.length) return `${String(bars[0].time).slice(0, 10)} ~ ${String(bars[bars.length - 1].time).slice(0, 10)}`;
+    return '2026-01-09 ~ 2026-11-04（近 12 个月）';
+  }
+
+  _renderSellHelp() {
+    if (!this.sellHelpEl) return;
+    const cur = this.sellMode;
+    const sec = (id, title, body) => h('div', { class: 'bt-help-sec' + (cur === id ? ' cur' : '') },
+      h('div', { class: 'bt-help-h' }, title, cur === id ? h('span', { class: 'bt-help-cur' }, '当前') : null),
+      h('div', { class: 'bt-help-b' }, ...body));
+    const li = (t) => h('div', { class: 'bt-help-li' }, t);
+    clear(this.sellHelpEl);
+    this.sellHelpEl.appendChild(h('div', { class: 'bt-help-head' },
+      h('span', {}, '卖出方式说明'),
+      h('span', { class: 'hint' }, '口径：买入 T-1 收盘 · 卖出 T-0 · 单票满仓 · 日收益复利 · 毛收益未计费用'),
+      h('span', { class: 'spacer' }),
+      h('span', { class: 'hint' }, `样本区间 ${this._sellSampleRange()}`),
+      h('button', { class: 'btn btn-xs ghost', onclick: () => this._toggleSellHelp(false) }, '关闭 ✕')));
+    const grid = h('div', { class: 'bt-help-grid' },
+      sec('5m', '5 分钟卖出（5m）· 现状卖法', [
+        li('买入：T-1 收盘价（原始价）。'),
+        li('T-0 按 5m K 线顺序：① 先触及涨停价 → 按涨停价卖；② 跌破 成本×0.95 → 按该 bar 收盘止损；③ 都未触发 → 14:55 那根收盘卖出。'),
+        li('使用 vipdoc lc5 原始价，含盘中细节；不接交易、仅回测。'),
+      ]),
+      sec('day', '日线卖出（day）', [
+        li('买入：T-1 收盘价。'),
+        li('T-0 用日线 OHLC 近似：开盘跌破止损按开盘、最低跌破按止损价、最高触涨停按涨停价，否则按收盘价卖出。'),
+        li('没有盘中 5m 细节，适合长周期/缺 5m 数据的粗回测。'),
+      ]),
+      sec('bplus', 'B+ 新卖法（推荐）', [
+        li('环境 S6（T-1）：沪深300>MA60 +1、创业板指>MA60 +1、中证银行≤MA60 +1 → score=0~3；MA60=日线K线（vipdoc lday 原始日线）。任一数据不足=不可用（回退满仓·14:55）。'),
+        li('T-0 满仓：① 涨停价优先卖出；② -5% 止损；③ score≥2 → 持有到 14:55；④ score=1 → 10:00 看沪深300+创业板指红盘宽度（10:00价>前一日日线收盘，不含银行）：2/2 持有，否则 10:00 卖；⑤ score=0 → 10:00 卖出。'),
+        li('数据限制：INDEX_5M 自 2026-01-05 起；此前区间回退 5m 卖法，页头标注（回退 43 天 · 生效自 2026-04-09）。'),
+        li('毛收益，未计手续费/滑点；同 bar 双触发按止损（保守）。'),
+      ]));
+    this.sellHelpEl.appendChild(grid);
+    this.sellHelpEl.appendChild(h('div', { class: 'bt-help-foot' },
+      '说明：以上为回测口径，不代表实盘收益；切换上方「卖出方式」后本面板高亮会自动更新。'));
   }
 
   async load(refresh = false) {
@@ -206,11 +261,10 @@ export class BacktestView {
     clear(this.bodyEl);
     this.bodyEl.appendChild(h('div', { class: 'loading-box' }, h('div', { class: 'spin' }), h('span', {}, '回测数据加载中…')));
     try {
-      const data = this.sellMode === 'bplus'
-        ? await fetchBplus(this.strategy, this.pickMode)
-        : await API.dashboard(this.strategy, this.pickMode, this.sellMode);
+      const data = await fetchBplus(this.strategy, this.pickMode, this.sellMode);
       this.data = data;
       this._renderBadge(data);
+      if (this.sellHelpEl && !this.sellHelpEl.hidden) this._renderSellHelp();
       if (!data || data.ok === false || (data.degraded && !(data.monthRet || []).length)) {
         const msg = (data && (data.error || data.message)) || '回测数据为空';
         this._renderError(msg);
@@ -231,16 +285,16 @@ export class BacktestView {
       const fb = data && data.fallbackDays != null ? data.fallbackDays : null;
       const start = data && data.bplusStart ? ` · 生效自 ${data.bplusStart}` : '';
       this.badgeEl.className = 'chip ok bt-bplus-badge';
-      this.badgeEl.textContent = `B+ 卖法 · 2026 年起生效（此前回退现状）${fb != null ? ` · 回退 ${fb} 天` : ''}${start}`;
-      this.badgeEl.title = (data && data.fallbackNote) || '2026 年前 / MA60 不足的日期回退现状 5m 卖法';
+      this.badgeEl.textContent = `B+ S6 · 满仓 · 日线MA60评分 + 宽度2${fb != null ? ` · 回退 ${fb} 天` : ''}${start}`;
+      this.badgeEl.title = (data && data.fallbackNote) || '环境=沪深300上+创业板指上+中证银行下；2026 年前 / 数据不足回退 5m 卖法';
     } else if (this.sellMode === '5m') {
-      this.badgeEl.className = 'chip dim bt-bplus-badge';
-      this.badgeEl.textContent = '卖法：5 分钟（现状口径）';
-      this.badgeEl.title = '切回“卖出方式”选择 B+ 新卖法可查看推荐口径';
+      this.badgeEl.className = 'chip ok bt-bplus-badge';
+      this.badgeEl.textContent = '原始价 5m 卖法（毛收益）';
+      this.badgeEl.title = 'vipdoc lc5 原始价：涨停优先→-5%止损→14:55；与 B+ 同数据源';
     } else {
-      this.badgeEl.className = 'chip dim bt-bplus-badge';
-      this.badgeEl.textContent = '卖法：日线（现状口径）';
-      this.badgeEl.title = '切回“卖出方式”选择 B+ 新卖法可查看推荐口径';
+      this.badgeEl.className = 'chip ok bt-bplus-badge';
+      this.badgeEl.textContent = '原始价日线卖法（毛收益）';
+      this.badgeEl.title = 'vipdoc lday 原始日线 OHLC：涨停优先→止损→收盘；与 B+ 同数据源';
     }
   }
 
@@ -357,17 +411,30 @@ export class BacktestView {
     try { localStorage.setItem(INDEX_HIDDEN_KEY, JSON.stringify([...this.hiddenSeries])); } catch (e) { /* ignore */ }
   }
 
-  _capitalPoints() {
+  _capitalPoints(dates) {
     const bars = (this.data && this.data.capitalKline) || [];
     if (!bars.length) return { points: [], raw: new Map() };
     const base = Number(bars[0].pre_close || bars[0].open || bars[0].close || 100000) || 100000;
-    const points = [{ time: prevDateStr(bars[0].time), value: 0 }];
-    const raw = new Map();
+    const byDate = new Map();
     for (const b of bars) {
       const c = Number(b.close);
       if (!Number.isFinite(c) || !b.time) continue;
-      points.push({ time: String(b.time), value: (c / base - 1) * 100 });
-      raw.set(String(b.time), c);
+      byDate.set(String(b.time).slice(0, 10), c);
+    }
+    const raw = new Map();
+    const points = [];
+    let lastNorm = 0;
+    let firstDone = false;
+    for (const date of (dates || [])) {
+      let val = lastNorm;
+      if (byDate.has(date)) {
+        val = (byDate.get(date) / base - 1) * 100;
+        firstDone = true;
+      }
+      // 起点显示 0%，之后含空仓日沿用前值
+      points.push({ time: date, value: firstDone && points.length === 0 ? 0 : val });
+      raw.set(date, byDate.has(date) ? byDate.get(date) : (raw.size ? [...raw.values()].slice(-1)[0] : base));
+      lastNorm = val;
     }
     return { points, raw };
   }
@@ -390,10 +457,16 @@ export class BacktestView {
       if (this.legendEl) clear(this.legendEl);
       return;
     }
-    const start = String(bars[0].time || '');
-    const end = String(bars[bars.length - 1].time || '');
+    const start = String(bars[0].time || '').slice(0, 10);
+    const end = String(bars[bars.length - 1].time || '').slice(0, 10);
+    let dates = (this.data.tradingDates || []).filter((d) => d >= start && d <= end);
+    if (!dates.length) {
+      const set = new Set(bars.map((b) => String(b.time).slice(0, 10)));
+      for (const d of set) dates.push(d);
+      dates.sort();
+    }
     const series = [];
-    const cap = this._capitalPoints();
+    const cap = this._capitalPoints(dates);
     series.push({ id: 'capital', name: '资金曲线', color: '#4ade80', points: cap.points, raw: cap.raw, isCapital: true });
 
     const codes = this.indexCodes.slice();
@@ -404,11 +477,8 @@ export class BacktestView {
       if (!pts.length) continue;
       const base = Number(pts[0].value) || 1;
       const raw = new Map();
-      const points = [{ time: prevDateStr(pts[0].date), value: 0 }];
-      for (const x of pts) {
-        raw.set(String(x.date), Number(x.value));
-        points.push({ time: String(x.date), value: (Number(x.value) / base - 1) * 100 });
-      }
+      for (const x of pts) raw.set(String(x.date), Number(x.value));
+      const points = dates.map((d) => ({ time: d, value: raw.has(d) ? (raw.get(d) / base - 1) * 100 : null })).filter((x) => x.value != null);
       series.push({ id: item.code, name: item.name || (opt && opt.name) || item.code,
         color: (opt && opt.color) || '#94a3b8', points, raw });
     }

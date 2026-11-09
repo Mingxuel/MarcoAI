@@ -568,10 +568,10 @@ def get_dashboard(strategy, refresh=False, pick_mode="first", sell_mode="5m"):
         }
 
 
-def get_bplus_backtest(strategy, months=12, pick_mode="first", refresh=False):
+def get_bplus_backtest(strategy, months=12, pick_mode="first", refresh=False, sell_mode="bplus", env_mode="s6", width_mode="s6"):
     """B+ 新卖法回测（tools/bplus_engine.py），失败返回明确错误不阻塞其它接口。"""
     empty = {
-        "ok": False, "strategy": strategy, "sell_mode": "bplus", "pick_mode": pick_mode,
+        "ok": False, "strategy": strategy, "sell_mode": sell_mode, "pick_mode": pick_mode,
         "months": months, "metrics": {}, "monthRet": [], "quarterRet": [], "yearRet": [],
         "capitalKline": [], "dist": {}, "fallbackDays": 0, "bplusDays": 0,
         "badge": "B+ 卖法 · 2026 年起生效（此前回退现状）",
@@ -582,7 +582,7 @@ def get_bplus_backtest(strategy, months=12, pick_mode="first", refresh=False):
         empty["error"] = "bplus_engine 模块不可用"
         return empty
     try:
-        payload = mod.run_bplus(ROOT, strategy, months=months, pick_mode=pick_mode, refresh=refresh) or {}
+        payload = mod.run_bplus(ROOT, strategy, months=months, pick_mode=pick_mode, refresh=refresh, sell_mode=sell_mode, env_mode=env_mode, width_mode=width_mode) or {}
         payload["strategies"] = safe_strategies()
         payload["cachedAt"] = int(time.time())
         return payload
@@ -903,6 +903,23 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path or "/")
         try:
+            if path == "/api/ths/test-block":
+                try:
+                    body = self._read_json_body()
+                except BaseException as exc:  # noqa: BLE001
+                    self._send_error_json(400, f"请求体解析失败: {exc}")
+                    return
+                month = str((body or {}).get("month") or "").strip()
+                mod = _ths_test_module()
+                if mod is None:
+                    self._send_error_json(503, "ths_test_block 模块不可用")
+                    return
+                try:
+                    res = mod.add_month_to_test(month, restart=True)
+                    self._send_json(res)
+                except BaseException as exc:  # noqa: BLE001
+                    self._send_error_json(400, f"{type(exc).__name__}: {exc}")
+                return
             if path == "/api/training/calc":
                 mod = _training_module()
                 if mod is None:
@@ -1010,8 +1027,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             pick_mode = (_q1(query, "pick_mode") or "first").lower()
             if pick_mode not in ("first", "avg", "last"):
                 pick_mode = "first"
+            sell_mode = (_q1(query, "sell_mode") or "bplus").lower()
+            if sell_mode not in ("bplus", "legacy5m", "day"):
+                sell_mode = "bplus"
+            env_mode = (_q1(query, "env_mode") or "s6").lower()
+            if env_mode not in ("s6", "three", "legacy7"):
+                env_mode = "s6"
+            width_mode = (_q1(query, "width_mode") or "s6").lower()
+            if width_mode not in ("s6", "three", "legacy7"):
+                width_mode = "s6"
             self._send_json(get_bplus_backtest(strategy, months=months,
-                                               pick_mode=pick_mode, refresh=refresh))
+                                               pick_mode=pick_mode, refresh=refresh,
+                                               sell_mode=sell_mode, env_mode=env_mode,
+                                               width_mode=width_mode))
             return
         if path == "/api/index-series":
             codes = _q1(query, "codes") or ""
@@ -1269,6 +1297,24 @@ def _bplus_module():
         return None
 
 
+def _ths_test_module():
+    """惰性导入 tools/ths_test_block.py（同花顺 TEST 板块）。"""
+    mod = sys.modules.get("ths_test_block")
+    if mod is not None:
+        return mod
+    try:
+        import importlib.util
+        fp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ths_test_block.py")
+        spec = importlib.util.spec_from_file_location("ths_test_block", fp)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        sys.modules["ths_test_block"] = mod
+        return mod
+    except BaseException as exc:  # noqa: BLE001
+        print(f"[ths] import failed: {exc}")
+        return None
+
+
 def _realtime_module():
     """惰性导入 tools/realtime_feed.py（失败返回 None，实时看盘降级但服务照常）。"""
     mod = sys.modules.get("realtime_feed")
@@ -1313,24 +1359,24 @@ def _start_realtime_feed():
 
 
 def _start_preclose_thread():
-    """交易日 14:45–15:50 后台自动调用一次 14:45 预生成（本地线程，不消耗 agent）。"""
+    """交易日 14:40–15:50 后台自动调用一次 14:40 预生成（目标 14:45 前完成，本地线程）。"""
     def _loop():
         while True:
             try:
                 now = _dt.datetime.now()
                 mins = now.hour * 60 + now.minute
-                if now.weekday() < 5 and 14 * 60 + 45 <= mins < 15 * 60 + 50:
+                if now.weekday() < 5 and 14 * 60 + 40 <= mins < 15 * 60 + 50:
                     mod = _preclose_module()
                     if mod is not None:
                         res = mod.generate(force=False)
-                        print(f"[preclose] 14:45 预生成: {res}")
+                        print(f"[preclose] 14:40 预生成 duration_s={res.get('duration_s')}: {res}")
             except BaseException as exc:  # noqa: BLE001
                 print(f"[preclose] 线程异常（不影响服务）: {type(exc).__name__}: {exc}")
             time.sleep(60)
 
     try:
-        threading.Thread(target=_loop, name="preclose-1445", daemon=True).start()
-        print("[preclose] 14:45 预生成线程已启动")
+        threading.Thread(target=_loop, name="preclose-1440", daemon=True).start()
+        print("[preclose] 14:40 预生成线程已启动")
     except BaseException as exc:  # noqa: BLE001
         print(f"[preclose] 线程启动失败: {type(exc).__name__}: {exc}")
 

@@ -2,12 +2,63 @@
  * 以后换 klinecharts 等只需改本文件（dashboard/vendor/klinecharts.min.js 已留作候选，
  * v10 UMD API 与 v9 不同且无 applyNewData，v1 采用本地已验证的 lightweight-charts 5.0.8）。
  */
-import { UP, DOWN, fmtBarTime, isIntraday } from './util.js?v=20261105d';
+import { UP, DOWN, fmtBarTime, isIntraday } from './util.js?v=20261106j';
 
 const LW = () => window.LightweightCharts;
 
 const SUB_IND = ['VOL', 'MACD', 'KDJ'];
 const MAIN_IND = ['MA', 'BOLL'];
+
+/* 5m 按日网格：图表坐标系 primitive，随缩放/平移原生移动，不使用 DOM 固定像素覆盖层。 */
+class DayGridPrimitive {
+  constructor(chart, series, days) {
+    this._chart = chart;
+    this._series = series;
+    this._days = days || [];
+  }
+  attached() {}
+  detached() {}
+  paneViews() {
+    const renderer = { draw: (target) => this._draw(target) };
+    return [{ renderer: () => renderer }];
+  }
+  _draw(target) {
+    if (!this._days.length) return;
+    try {
+      target.useBitmapCoordinateSpace((scope) => {
+        const ctx = scope.context;
+        const ts = this._chart.timeScale();
+        const h = scope.bitmapSize.height;
+        const pr = scope.horizontalPixelRatio;
+        const vr = scope.verticalPixelRatio;
+        ctx.save();
+        ctx.font = `${9 * vr}px "JetBrains Mono", Consolas, monospace`;
+        for (const d of this._days) {
+          const x = ts.timeToCoordinate(d.start);
+          if (x == null) continue;
+          const xb = x * pr;
+          ctx.fillStyle = 'rgba(148,163,184,0.32)';
+          ctx.fillRect(Math.round(xb), 0, Math.max(1, Math.round(pr)), h);
+          const x2 = d.end != null ? ts.timeToCoordinate(d.end) : null;
+          if (x2 != null) {
+            const mid = ((x + x2) / 2) * pr;
+            ctx.fillStyle = '#64748b';
+            ctx.fillText(d.label, mid + 2 * pr, 11 * vr);
+          }
+        }
+        ctx.restore();
+      });
+    } catch (e) { /* renderer 环境不支持时忽略 */ }
+  }
+}
+
+function limitPctForCode(code) {
+  const c = String(code || "").replace(/\./g, "");
+  if (c.startsWith("688") || c.startsWith("689")) return 20;
+  if (c.startsWith("300") || c.startsWith("301")) return 20;
+  if (c.startsWith("8") || c.startsWith("4")) return 30;
+  return 10;
+}
 
 /* ---------------- indicators ---------------- */
 export function sma(bars, period, key = 'close') {
@@ -211,6 +262,38 @@ export class KlineChart {
     candle.setData(plot.map((b) => (b.open == null
       ? { time: b.time }
       : { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+    if (opts.dayGrid) {
+      // 5m 选股图只保留 primitive 画的一天一格竖线，去掉库自带的多条竖向网格
+      try { chart.applyOptions({ grid: { vertLines: { visible: false } } }); } catch (e) { /* ignore */ }
+    }
+    // 日线涨停金色：按板块 10/20/30% + 前一交易日收盘计算涨停价，用金色蜡烛覆盖
+    if (period === '1d' && opts.code) {
+      const pct = limitPctForCode(opts.code);
+      const goldBars = [];
+      for (let i = 1; i < plot.length; i++) {
+        const cur = plot[i], prev = plot[i - 1];
+        const pc = Number(prev.close), cc = Number(cur.close);
+        if (!Number.isFinite(pc) || !Number.isFinite(cc) || pc <= 0) continue;
+        const limit = Math.round(pc * (1 + pct / 100) * 100) / 100;
+        if (cc >= limit - 0.005) {
+          goldBars.push({ time: cur.time, open: cur.open, high: cur.high, low: cur.low, close: cur.close });
+        }
+      }
+      this._limitBars = goldBars;
+      if (goldBars.length) {
+        try {
+          const gold = chart.addSeries(LWg.CandlestickSeries, {
+            upColor: '#f5c518', downColor: '#f5c518',
+            borderUpColor: '#f5c518', borderDownColor: '#f5c518',
+            wickUpColor: '#f5c518', wickDownColor: '#f5c518',
+            priceLineVisible: false, lastValueVisible: false,
+            priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+          }, 0);
+          gold.setData(goldBars);
+          this._limitSeries = gold;
+        } catch (e) { this._limitSeries = null; }
+      }
+    }
 
     let paneIdx = 1;
     const subUsed = SUB_IND.filter((x) => indicators.includes(x));
@@ -268,6 +351,29 @@ export class KlineChart {
       up.setData(b.up);
       const lo = chart.addSeries(LWg.LineSeries, { color: '#38bdf8', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 0);
       lo.setData(b.low);
+    }
+
+    if (opts.dayGrid && period === '5m') {
+      const groups = new Map();
+      for (const b of plot) {
+        let y;
+        if (typeof b.time === 'number') {
+          const dt = new Date(b.time * 1000);
+          y = `${dt.getUTCFullYear()}${String(dt.getUTCMonth() + 1).padStart(2, '0')}${String(dt.getUTCDate()).padStart(2, '0')}`;
+        } else {
+          y = String(b.time).replace(/-/g, '').slice(0, 8);
+        }
+        if (!groups.has(y)) groups.set(y, []);
+        groups.get(y).push(b.time);
+      }
+      const days = [...groups.entries()].map(([ymd, times]) => ({
+        start: times[0], end: times[times.length - 1],
+        label: `${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`,
+      }));
+      try {
+        this._dayGridPrim = new DayGridPrimitive(chart, candle, days);
+        if (typeof candle.attachPrimitive === 'function') candle.attachPrimitive(this._dayGridPrim);
+      } catch (e) { this._dayGridPrim = null; }
     }
 
     this._bindEvents();

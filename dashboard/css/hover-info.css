@@ -1,0 +1,15 @@
+/* K线悬停信息框 */
+.ws-hover, .rt-hover {
+  position: absolute; left: 8px; top: 64px; z-index: 8; pointer-events: none;
+  background: rgba(11,16,23,.93); border: 1px solid var(--border-soft); border-radius: 6px;
+  padding: 5px 8px; font-size: 10.5px; color: #c7d5e6; line-height: 1.55;
+  font-family: var(--mono); min-width: 180px; box-shadow: 0 6px 18px rgba(0,0,0,.3);
+}
+.ws-hover[hidden], .rt-hover[hidden] { display: none !important; }
+.ws-hover .t, .rt-hover .t { color: #dbe7f5; margin-bottom: 2px; }
+.ws-hover .r, .rt-hover .r { display: flex; flex-wrap: wrap; gap: 8px; color: var(--muted); }
+.ws-hover .up, .rt-hover .up { color: #ef4444; }
+.ws-hover .down, .rt-hover .down { color: #60a5fa; }
+.ws-hover .ma, .rt-hover .ma { color: #93c5fd; }
+.rt-hover { top: 4px; right: 8px; left: auto; }
+@media (max-width: 1200px) { .ws-hover, .rt-hover { display: none; } }

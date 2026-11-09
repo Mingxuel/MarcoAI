@@ -1,0 +1,6 @@
+/* 选股页 T-3~T+1 区间与 5m 按日网格 */
+.ws-range-tag {
+  font-size: 10.5px; color: #93c5fd; border: 1px solid #22354d; background: #0f1b2a;
+  border-radius: 4px; padding: 1px 6px; white-space: nowrap; font-family: var(--mono);
+}
+.ws-range-tag[hidden] { display: none !important; }

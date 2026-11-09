@@ -1,9 +1,8 @@
-/* 回测页 v2：资金曲线线段 + 指数叠加 */
+/* 回测资金曲线/指数样式（补齐：悬停 tooltip 绝对定位，不参与文档流） */
 .bt-line-panel .panel-body { position: relative; }
 .bt-index-sel { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; font-size: 11px; color: var(--muted); }
 .bt-index-sel label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
-.bt-index-sel .dot,
-.bt-line-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.bt-index-sel .dot, .bt-line-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .bt-line-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; margin-bottom: 4px; }
 .bt-legend-item { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--muted); user-select: none; }
 .bt-legend-item.off { opacity: .4; text-decoration: line-through; }
@@ -11,7 +10,7 @@
 .bt-line-tip {
   position: absolute; z-index: 8; pointer-events: none; background: rgba(11,16,23,.94);
   border: 1px solid var(--border-soft); border-radius: 6px; padding: 6px 8px; font-size: 10.5px;
-  min-width: 170px; box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  min-width: 170px; box-shadow: 0 6px 18px rgba(0,0,0,.35); max-height: 120px; overflow: hidden;
 }
 .bt-line-tip[hidden] { display: none !important; }
 .bt-line-tip .t { color: #dbe7f5; font-family: var(--mono); margin-bottom: 3px; }
@@ -23,3 +22,20 @@
 .bt-line-tip .r .c.down { color: #60a5fa; }
 .bt-line-tip .r.cap .n { color: #4ade80; }
 @media (max-width: 1100px) { .bt-line-chart { height: 260px; } }
+
+/* 卖出方式说明面板 */
+.bt-help-btn.on { background: #1d2a3b; border-color: #2f4b73; color: #f5c518; }
+.bt-sell-help { margin: 6px 0; background: #0d141d; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.bt-sell-help[hidden] { display: none !important; }
+.bt-help-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; font-weight: 700; color: #e8f0fa; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft); }
+.bt-help-head .spacer { flex: 1 1 auto; }
+.bt-help-head .hint { font-weight: 400; font-size: 10.5px; }
+.bt-help-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.bt-help-sec { border: 1px solid var(--border-soft); border-radius: 6px; padding: 7px 9px; background: #0f1722; opacity: .78; }
+.bt-help-sec.cur { opacity: 1; border-color: #2f4b73; box-shadow: inset 0 0 0 1px rgba(59,130,246,.15); background: #101b29; }
+.bt-help-h { font-size: 11.5px; font-weight: 700; color: #dbe7f5; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.bt-help-cur { font-size: 9px; padding: 0 4px; border-radius: 3px; background: #1d4ed8; color: #fff; font-weight: 600; }
+.bt-help-sec.cur .bt-help-h { color: #f5c518; }
+.bt-help-li { font-size: 10.5px; color: var(--muted); line-height: 1.55; margin: 3px 0; }
+.bt-help-foot { margin-top: 7px; font-size: 10px; color: var(--muted-2); }
+@media (max-width: 1200px) { .bt-help-grid { grid-template-columns: 1fr; } .bt-sell-help { max-height: 46vh; overflow: auto; } }

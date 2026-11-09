@@ -1,7 +1,7 @@
 /* 选股训练 v2：按日期分组、列出每日全部候选、多选后等权计算。 */
-import { h, clear, fmt, pct, toast } from '../util.js?v=20261105d';
-import { API } from '../api.js?v=20261105d';
-import { WorkspaceView } from './workspace.js?v=20261105d';
+import { h, clear, fmt, pct, toast } from '../util.js?v=20261106j';
+import { API } from '../api.js?v=20261106j';
+import { WorkspaceView } from './workspace.js?v=20261106j';
 
 const INPUT_KEY = 'marco.training.inputs';
 const SELECT_KEY = 'marco.training.selected';
@@ -116,12 +116,14 @@ export class TrainingView {
     const s = this.summary;
     const sign = (v) => (v == null ? '—' : (v > 0 ? '+' : '') + fmt(v, 2) + '%');
     const card = (label, value, cls) => h('div', { class: 'tr-sum-card' }, h('div', { class: 'k' }, label), h('div', { class: 'v ' + (cls || '') }, value));
+    const avgText = `训练 ${sign(s.trainAvgPnlPct)} / 原 ${sign(s.originalAvgPnlPct)}`;
+    const winText = `训练 ${s.trainWinRate == null ? '—' : fmt(s.trainWinRate, 1) + '%'} / 原 ${s.originalWinRate == null ? '—' : fmt(s.originalWinRate, 1) + '%'}`;
     this.summaryEl.appendChild(h('div', { class: 'tr-sum-cards' },
-      card(`训练总盈亏（等权 ${s.count} 只）`, sign(s.trainTotalPnlPct), s.trainTotalPnlPct > 0 ? 'up' : s.trainTotalPnlPct < 0 ? 'down' : ''),
-      card('B+ 原策略（等权）', sign(s.originalTotalPnlPct), s.originalTotalPnlPct > 0 ? 'up' : s.originalTotalPnlPct < 0 ? 'down' : ''),
-      card('差异（训练-原）', sign(s.diffPct), s.diffPct > 0 ? 'up' : s.diffPct < 0 ? 'down' : ''),
-      card('训练胜率', s.trainWinRate == null ? '—' : fmt(s.trainWinRate, 1) + '%', 'up'),
-      card('原策略胜率', s.originalWinRate == null ? '—' : fmt(s.originalWinRate, 1) + '%', 'dim')));
+      card(`训练总收益（逐日复利 ${s.count} 只）`, sign(s.trainTotalPnlPct), s.trainTotalPnlPct > 0 ? 'up' : s.trainTotalPnlPct < 0 ? 'down' : ''),
+      card('原策略总收益（逐日复利）', sign(s.originalTotalPnlPct), s.originalTotalPnlPct > 0 ? 'up' : s.originalTotalPnlPct < 0 ? 'down' : ''),
+      card('差异（复利）', sign(s.diffPct), s.diffPct > 0 ? 'up' : s.diffPct < 0 ? 'down' : ''),
+      card('单笔平均', avgText, ''),
+      card('胜率', winText, 'dim')));
     if ((this.daily || []).length) {
       const rows = this.daily.map((d) => h('div', { class: 'tr-daily-row' },
         h('span', { class: 'd' }, d.dateLabel),

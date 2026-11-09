@@ -1,7 +1,7 @@
 /* 实时看盘 5 分钟 K 线（v2）：candlestick + 5m MA + 日线 MA（step line）。
  * 日线 MA 数据由后端按「截至前一交易日」计算，避免未来函数。
  */
-import { UP, DOWN, fmtBarTime, isIntraday } from './util.js?v=20261105d';
+import { UP, DOWN, fmtBarTime, isIntraday } from './util.js?v=20261106j';
 
 const LW = () => window.LightweightCharts;
 

@@ -36,6 +36,9 @@ GROWTH_INDEXES = [
     ("000852.SH", "中证1000"),
     ("000905.SH", "中证500"),
 ]
+ENV_INDEXES = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指"), ("399986.SZ", "中证银行")]
+WIDTH_INDEXES = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指")]
+WIDTH_THRESHOLD = 2
 EXTRA_INDEXES = [
     ("000001.SH", "上证指数"),
     ("399986.SZ", "中证银行"),
@@ -152,21 +155,24 @@ def _limit_up_price(code, last_close):
     return round(last_close * (1 + pct) + 1e-9, 2)
 
 
-def bplus_action(env_t1, breadth, now_dt=None, breadth_1000=None):
-    """B+ 当日操作结论：10:00 前待判；10:00 后按 10:00 宽度决定持有/卖出。"""
+def bplus_action(env_t1, breadth, now_dt=None, breadth_1000=None, env_score=None):
+    """S6 四状态：score≥2 持有；score==1 看 10:00 宽度（300+创指都红）；score==0 10:00卖。"""
     now_dt = now_dt or _dt.datetime.now()
-    if env_t1 == "好":
+    if env_score is None:
+        return "环境不可用（回退满仓·持有到14:55）", "hold"
+    if env_score >= 2:
         return "持有到14:55（涨停/止损优先）", "hold"
-    if now_dt.time() < _dt.time(10, 0):
-        b = breadth if breadth is not None else "—"
-        return f"10:00 待判（当前宽度 {b}/7）", "bplus-pending"
+    if env_score == 0:
+        return "10:00卖出（S0 环境 0/3）", "bplus-sell"
     b = breadth_1000 if breadth_1000 is not None else breadth
-    if b is not None and b <= 3:
-        return "10:00卖出", "bplus-sell"
-    return "持有到14:55（涨停/止损优先）", "bplus-hold"
+    if now_dt.time() < _dt.time(10, 0):
+        return f"10:00待判（S1，宽度 {b if b is not None else '—'}/2）", "bplus-pending"
+    if b is not None and b >= 2:
+        return f"持有到14:55（S1 宽度 {b}/2）", "bplus-hold"
+    return f"10:00卖出（S1 宽度 {b if b is not None else '—'}/2 <2）", "bplus-sell"
 
 
-def compute_sell_signal(holding, quote, env_good, breadth, now_dt=None, breadth_1000=None):
+def compute_sell_signal(holding, quote, env_good, breadth, now_dt=None, breadth_1000=None, env_score=None):
     """B+ 执行口径卖出信号：涨停价卖 / 止损卖 / 10:00卖出 / 待定 / 持有到14:55。
     原「弱势卖」降级为 note 参考字段。"""
     now_dt = now_dt or _dt.datetime.now()
@@ -195,7 +201,7 @@ def compute_sell_signal(holding, quote, env_good, breadth, now_dt=None, breadth_
             "note": note, "pnlPct": pnl, "env": env_label, "breadth": breadth, "breadth1000": b1000,
         }
     # 3) B+ 环境/10:00 宽度
-    text, typ = bplus_action(env_label, breadth, now_dt, breadth_1000)
+    text, typ = bplus_action(env_label, breadth, now_dt, breadth_1000, env_score)
     if typ == "bplus-pending":
         text = f"待定（10:00 看宽度，当前 {breadth}/7）"
     if typ == "bplus-sell":
@@ -685,29 +691,45 @@ class RealtimeFeed:
         now = time.time()
         if not force and self._env_cache and (now - self._env_at) < 300:
             return
+        env_indexes = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指"), ("399986.SZ", "中证银行")]
         details = []
-        above = 0
-        total = 0
+        flags = {}
         t1_date = None
-        for code, name in GROWTH_INDEXES:
+        valid = True
+        for code, name in env_indexes:
             closes = self._daily_closes(code)
-            if len(closes) < 60:
+            if len(closes) < 61:
                 details.append({"code": code, "name": name, "ok": False})
+                valid = False
                 continue
-            ma60 = sum(c for _, c in closes[-60:]) / 60
+            ma60 = sum(c for _d, c in closes[-61:-1]) / 60.0
             day, last = closes[-1]
             t1_date = t1_date or day
             is_above = last > ma60
-            total += 1
-            above += 1 if is_above else 0
+            flags[code] = is_above
             details.append({
                 "code": code, "name": name, "ok": True, "date": day,
                 "close": round(last, 2), "ma60": round(ma60, 2), "above": is_above,
             })
-        self._env_cache = {
-            "t1": ("好" if above >= 4 else "差") if total else None,
-            "above": above, "total": total, "date": t1_date, "details": details,
-        }
+        if valid and len(flags) == 3:
+            score = int(bool(flags.get("000300.SH"))) + int(bool(flags.get("399006.SZ"))) + int(not bool(flags.get("399986.SZ")))
+            sell_rule = "持有到14:55" if score >= 2 else ("10:00看300+创指宽度" if score == 1 else "10:00卖出")
+            self._env_cache = {
+                "t1": ("好" if score >= 2 else "差"),
+                "score": score, "state": f"S{score}",
+                "above": sum(1 for x in details if x.get("above")),
+                "total": 3, "date": t1_date, "details": details, "mode": "s6",
+                "rule": "S6：沪深300上+1、创业板指上+1、中证银行≤MA60+1",
+                "sellRule": sell_rule,
+            }
+        else:
+            self._env_cache = {
+                "t1": None, "score": None, "state": "不可用",
+                "above": None, "total": 3, "date": t1_date,
+                "details": details, "mode": "s6",
+                "rule": "S6 三指数数据不足 → 环境不可用（回退满仓·14:55）",
+                "sellRule": "回退满仓·持有到14:55",
+            }
         self._env_at = now
 
     # ------------------------------------------------------------ holdings
@@ -772,13 +794,13 @@ class RealtimeFeed:
             "marketLabel": label,
             "source": "tqcenter",
             "interval": self.interval,
-            "env": {"t1": None, "t1Label": "数据缺失", "breadth": None, "breadthTotal": len(GROWTH_INDEXES),
+            "env": {"t1": None, "t1Label": "数据缺失", "breadth": None, "breadthTotal": 3,
                     "label": "初始化中", "above": None, "date": None},
             "indices": [],
             "candidates": [],
             "holdings": [],
             "strategy": None,
-            "nextDay": {"available": False, "reason": "初始化中", "sellPlan": {"mode": "B+", "rule": "差环境10:00宽度≥4抗/≤3卖", "stop": -0.05}},
+            "nextDay": {"available": False, "reason": "初始化中", "sellPlan": {"mode": "B+", "rule": "差环境10:00看3指数宽度≥2抗/≤1卖", "stop": -0.05}},
             "holdingsToday": [],
             "candidatesTomorrow": [],
             "closedYesterday": [],
@@ -865,7 +887,7 @@ class RealtimeFeed:
             if not code:
                 continue
             candidates.append({"code": code, "name": (it.get("name") or "").strip(),
-                               "source": (it.get("source") or "后日预选").strip()})
+                               "source": (it.get("source") or "下一交易日预选").strip()})
         first = raw.get("firstPick")
         first_pick = None
         if isinstance(first, dict) and _ensure_code(first.get("code")):
@@ -878,20 +900,23 @@ class RealtimeFeed:
         elif buy_list:
             first_pick = {k: buy_list[0].get(k) for k in ("code", "name", "buyPrice", "marketValue")}
 
-        available = bool(buy_list) and ft in (today_s, next_s)
+        empty = not buy_list
+        available = bool(ft) and ft in (today_s, next_s)
         reason = None
-        if not buy_list:
-            reason = "名单为空（等每日更新）"
-        elif not ft:
+        if not ft:
             reason = "名单缺少 forTradeDate"
         elif ft < today_s:
             reason = f"名单已过期（forTradeDate={ft}）"
         elif ft not in (today_s, next_s):
             reason = f"名单日期不是今日/下一交易日（forTradeDate={ft}）"
+        elif empty:
+            reason = "下个交易日无首选/空仓（TPO 名单为空）"
 
         env_art = raw.get("env") if isinstance(raw.get("env"), dict) else None
         result = {
             "available": available,
+            "empty": empty,
+            "emptyLabel": "下个交易日无首选/空仓" if empty else None,
             "reason": reason,
             "generatedAt": raw.get("generatedAt"),
             "buyDate": buy_date,
@@ -959,10 +984,23 @@ class RealtimeFeed:
                 except BaseException as exc:  # noqa: BLE001
                     errors[code] = f"{type(exc).__name__}: {exc}"
 
-        growth_quotes = [quotes[c] for c, _ in GROWTH_INDEXES if c in quotes]
-        breadth = sum(1 for q in growth_quotes if q.get("now") and q.get("lastClose") and q["now"] > q["lastClose"])
+        # 10:00 红盘宽度：S6 只用沪深300+创业板指（不含银行）
+        width_details = []
+        breadth = None
+        for code, name in WIDTH_INDEXES:
+            q = quotes.get(code) or {}
+            closes = self._daily_closes(code)
+            prev_daily = closes[-1][1] if closes else None
+            nowp = q.get("now")
+            red = bool(nowp and prev_daily and nowp > prev_daily)
+            width_details.append({"code": code, "name": name, "now": nowp,
+                                  "prevDailyClose": round(prev_daily, 2) if prev_daily else None,
+                                  "red": red})
+        if all(x["now"] is not None and x["prevDailyClose"] is not None for x in width_details):
+            breadth = sum(1 for x in width_details if x["red"])
         breadth_1000 = self._breadth_1000_value(now_dt, breadth)
-        env_good = env.get("t1") == "好"
+        env_score = env.get("score")
+        env_good = (env_score is not None and env_score >= 2)
 
         indices = []
         for code, name in ALL_INDEXES:
@@ -997,7 +1035,7 @@ class RealtimeFeed:
         holdings_out = []
         for h in holdings_in:
             q = quotes.get(h["code"])
-            sig = compute_sell_signal(h, q, env_good, breadth, now_dt, breadth_1000)
+            sig = compute_sell_signal(h, q, env_good, breadth, now_dt, breadth_1000, env_score)
             name = h.get("name") or self._stock_name(h["code"]) or ""
             holdings_out.append({
                 "code": h["code"], "name": name,
@@ -1020,10 +1058,11 @@ class RealtimeFeed:
             "above": env.get("above"),
             "total": env.get("total"),
             "date": env.get("date"),
-            "breadth": breadth if growth_quotes else None,
-            "breadthTotal": len(GROWTH_INDEXES),
+            "breadth": breadth,
+            "breadthTotal": 3,
+            "widthDetails": width_details,
             "details": env.get("details") or [],
-            "label": (f"T-1环境 {env.get('t1') or '—'} · 盘中宽度 {breadth}/{len(GROWTH_INDEXES)}"),
+            "label": (f"T-1环境 {env.get('state') or '—'} · 盘中宽度 {breadth if breadth is not None else '—'}/2"),
         }
         error = None
         if not tq_ready:
@@ -1051,11 +1090,18 @@ class RealtimeFeed:
             }
 
         # next_day 已在本次轮询开头加载（用于补充报价代码）
+        # 环境以实时三指数计算为准；artifact 的旧 7 指数 env 仅在新计算不可用时兜底
+        if isinstance(next_day.get("sellPlan"), dict):
+            next_day["sellPlan"]["rule"] = "差环境 10:00 看 3 指数宽度（≥2 抗/≤1 卖）；-5%止损；涨停价优先"
         strategy_env = env
-        if next_day.get("available") and isinstance(next_day.get("env"), dict) \
+        if strategy_env.get("t1") not in ("好", "差") and next_day.get("available") \
+                and isinstance(next_day.get("env"), dict) \
                 and next_day["env"].get("t1") in ("好", "差"):
             strategy_env = next_day["env"]
+        if next_day.get("available") and strategy_env.get("details"):
+            next_day["env"] = strategy_env
         env_good_now = strategy_env.get("t1") == "好"
+        env_score_now = strategy_env.get("score")
 
         holdings_today = []
         candidates_tomorrow = []
@@ -1069,7 +1115,7 @@ class RealtimeFeed:
                 if cost is None and q:
                     cost = q.get("lastClose")
                 sell = compute_sell_signal({"code": code, "cost": cost}, q,
-                                           env_good_now, breadth, now_dt, breadth_1000)
+                                           env_good_now, breadth, now_dt, breadth_1000, env_score_now)
                 holdings_today.append({
                     "code": code, "name": item.get("name") or self._stock_name(code) or "",
                     "source": "NEXT_DAY", "buyPrice": cost, "cost": cost,
@@ -1091,7 +1137,7 @@ class RealtimeFeed:
                 sig = compute_buy_signal(q, env_good_now, breadth)
                 candidates_tomorrow.append({
                     "code": item["code"], "name": item.get("name") or self._stock_name(item["code"]) or "",
-                    "source": item.get("source") or "后日预选",
+                    "source": item.get("source") or "下一交易日预选",
                     "now": q.get("now") if q else None,
                     "lastClose": q.get("lastClose") if q else None,
                     "zaf": q.get("zaf") if q else None,
@@ -1108,7 +1154,7 @@ class RealtimeFeed:
                     row = _cand_row(c)
                     cost = row["lastClose"]
                     sell = compute_sell_signal({"code": c["code"], "cost": cost},
-                                               quotes.get(c["code"]), env_good, breadth, now_dt, breadth_1000)
+                                               quotes.get(c["code"]), env_good, breadth, now_dt, breadth_1000, env_score)
                     row["cost"] = cost
                     row["pnlPct"] = sell.get("pnlPct")
                     row["sellSignal"] = sell.get("signal")
@@ -1150,11 +1196,13 @@ class RealtimeFeed:
             except OSError:
                 pass
 
-        action_text, action_type = bplus_action(strategy_env.get("t1"), breadth, now_dt, breadth_1000)
+        action_text, action_type = bplus_action(strategy_env.get("t1"), breadth, now_dt, breadth_1000, strategy_env.get("score"))
+        if next_day.get("available") and next_day.get("empty"):
+            action_text, action_type = "下个交易日空仓（无首选）", "empty"
         next_day["sellPlan"] = {
             "mode": "B+",
             "env": strategy_env.get("t1"),
-            "rule": "差环境10:00宽度≥4抗/≤3卖；-5%止损；涨停价优先",
+            "rule": "S6：score≥2持有；score=1看300+创指宽度≥2抗/≤1卖；score0 10:00卖；-5%止损；涨停价优先",
             "stop": -0.05,
             "breadth1000": breadth_1000,
             "actionText": action_text,
@@ -1185,13 +1233,23 @@ class RealtimeFeed:
             "env": {
                 "t1": strategy_env.get("t1"), "above": strategy_env.get("above"),
                 "total": strategy_env.get("total"), "date": strategy_env.get("date"),
+                "mode": strategy_env.get("mode") or "s6",
+                "rule": strategy_env.get("rule") or "S6 三指数评分",
+                "score": strategy_env.get("score"),
+                "state": strategy_env.get("state"),
+                "sellRule": strategy_env.get("sellRule"),
+                "details": strategy_env.get("details") or [],
             },
-            "breadth": breadth if growth_quotes else None,
-            "breadthTotal": len(GROWTH_INDEXES),
+            "breadth": breadth,
+            "breadthTotal": 2,
+            "widthDetails": width_details,
+            "envScore": env.get("score"),
+            "envState": env.get("state"),
+            "sellRule": env.get("sellRule"),
             "actionText": action_text,
             "actionType": action_type,
             "sellPlan": next_day["sellPlan"],
-            "ruleText": "B+ 卖法：-5% 止损优先；涨停价优先卖出；好环境持有到 14:55；差环境 10:00 看成长端红盘宽度（≥4 抗到 14:55 / ≤3 10:00 卖出）（规则摘要，非投资建议）",
+            "ruleText": "B+ 卖法：-5% 止损优先；涨停价优先卖出；好环境持有到 14:55；差环境 10:00 看 3 指数红盘宽度（≥2 抗到 14:55 / ≤1 10:00 卖出）（规则摘要，非投资建议）",
         }
 
         # ---------- 实时最该买（参考评分，不下单） ----------

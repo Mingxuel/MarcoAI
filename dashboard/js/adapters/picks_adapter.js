@@ -101,17 +101,28 @@ export class PicksAdapter {
   /** TPO 窗口 → 与日期分组同构的分组（同一套表格渲染，仅标题带 (T)/(T-1)） */
   tpoGroups(data) {
     const tw = (data && data.tpoWindow) || {};
-    const mk = (key, date, label, rows) => {
+    const fmt = (d) => formatYmd(String(d || ''));
+    const today = String(tw.today || '');
+    const prev = String(tw.prev || '');
+    const todayLabel = today ? fmt(today) : '今日';
+    const mk = (key, date, label, rows, hint) => {
       const list = rows || [];
       const d = String(date || '');
       if (!d && !list.length) return null;
       return {
         key, date: d, tpo: key, cand: false,
         title: d ? `${formatYmd(d)}（${label}）` : `${label} 窗口`,
+        hint,
         rows: list.map((r) => this._tpoRow(r, { key, date: d })),
       };
     };
-    return [mk('T', tw.today, 'T', tw.T), mk('TM1', tw.prev, 'T-1', tw.TM1)].filter(Boolean);
+    // 两组都显示今日日期：T 用今日数据；T-1 数据仍取 TM1，但日期=今日、标题注明窗口
+    // 用户要求：T-1 分组放在 T 分组上方
+    return [
+      mk('TM1', today, 'T-1', tw.TM1,
+        `符合 T-3→T-2（窗口 ${prev ? fmt(prev) + '→' : ''}${todayLabel}，今日=${todayLabel}）`),
+      mk('T', today, 'T', tw.T, `符合 T-3→T-1（今日=${todayLabel}）`),
+    ].filter(Boolean);
   }
 
   _tpoRow(entry, group) {

@@ -3,10 +3,11 @@
  * - 右侧 PickList（只负责渲染与交互）+ picksAdapter（数据来源可替换）
  * - 点列表行只联动左侧 K 线并标注 T-2/T-0，不跳页、不丢列表状态
  */
-import { h, clear, toast } from '../util.js?v=20261105d';
-import { WorkspaceView } from './workspace.js?v=20261105d';
-import { PickList } from '../components/pick_list.js?v=20261105d';
-import { createDefaultPicksAdapter } from '../adapters/picks_adapter.js?v=20261105d';
+import { h, clear, toast } from '../util.js?v=20261106j';
+import { WorkspaceView } from './workspace.js?v=20261106j';
+import { PickList } from '../components/pick_list.js?v=20261106j';
+import { createDefaultPicksAdapter } from '../adapters/picks_adapter.js?v=20261106j';
+import { API } from '../api.js?v=20261106j';
 
 const SPLIT_KEY = 'marco.dashboard.picksSplitPct';
 const DEFAULT_SPLIT = 65;   // 左 65% / 右 35%
@@ -150,10 +151,52 @@ export class PicksView {
   }
 
   /* ---------- 列表 → 左侧 K 线联动 ---------- */
-  handleSelect(row) {
+  async _picksRange(D) {
+    const ymd = String(D || '').replace(/-/g, '').slice(0, 8);
+    if (!/^\d{8}$/.test(ymd)) return null;
+    const dt = new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(4, 6) - 1, +ymd.slice(6, 8)));
+    dt.setUTCDate(dt.getUTCDate() + 10);
+    const endPlus = dt.toISOString().slice(0, 10).replace(/-/g, '');
+    try {
+      const res = await API.kline('000001.SH', '1d', 80, endPlus);
+      const dates = (res.bars || []).map((b) => {
+        const t = b.time;
+        if (typeof t === 'number') {
+          const d = new Date(t * 1000);
+          return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+        }
+        return String(t).replace(/-/g, '').slice(0, 8);
+      }).filter((d) => /^\d{8}$/.test(d));
+      let idx = dates.indexOf(ymd);
+      if (idx < 0) {
+        for (let i = dates.length - 1; i >= 0; i--) if (dates[i] <= ymd) { idx = i; break; }
+      }
+      if (idx < 0) return { start: ymd, end: ymd };
+      const start = dates[Math.max(0, idx - 3)];
+      const end = dates[Math.min(dates.length - 1, idx + 1)];
+      return { start, end };
+    } catch (e) { return { start: ymd, end: ymd }; }
+  }
+
+  async handleSelect(row) {
     if (!this.leftWorkspace) return;
+    const seq = (this._selectSeq || 0) + 1;
+    this._selectSeq = seq;
     const trade = this.adapter.toTrade(row, this.pickList.getData());
-    this.leftWorkspace.selectTrade(trade);   // 股票联动开→全部可见面板；关→当前/主面板
+    const ws = this.leftWorkspace;
+    ws.trade = trade;
+    const win = await this._picksRange(row.date);
+    if (seq !== this._selectSeq) return;
+    // 选股页要求点击任意行 → 所有可见面板（无论「股票联动」开关）都切到该股并重载
+    ws.panels.forEach((p, i) => {
+      if (p.el.hidden) return;
+      if (p.state.code !== trade.code) {
+        p.setState(Object.assign({}, p.state, { code: trade.code, name: trade.name || '' }));
+        try { ws.ctx.store.updatePanel(i, { code: trade.code, name: trade.name || '' }); } catch (e) { /* ignore */ }
+      }
+    });
+    if (win) ws.setRange(win.start, win.end);
+    else { ws.setRange(null, null); ws.panels.forEach((p) => { if (!p.el.hidden) p.load(); }); }
     this.ctx.setTradeChip(trade);
     toast(`已联动 ${trade.code}${trade.name ? ' ' + trade.name : ''}｜卖出日 T-0 ${trade.t0Label}｜选股日 T-2 ${trade.t2Label}`, '', 2400);
   }

@@ -93,6 +93,24 @@ def list_month(root, strategy="TPO_M5", month=""):
             "strategy": strategy, "groups": groups, "items": flat}
 
 
+def compound_daily_returns(rows, field="trainPnlPct"):
+    """按日期先等权平均，再逐日复利；+10%/-10% 两天应为 -1%。"""
+    by_date = {}
+    for r in rows or []:
+        if r.get(field) is None:
+            continue
+        by_date.setdefault(r.get("date"), []).append(r[field])
+    acc = 1.0
+    used = False
+    for date in sorted(by_date):
+        vals = by_date[date]
+        if not vals:
+            continue
+        acc *= (1 + (sum(vals) / len(vals)) / 100.0)
+        used = True
+    return (acc - 1) * 100 if used else None
+
+
 def calc(root, items, strategy="TPO_M5"):
     idx = be._load_index_data(root)
     rows = []
@@ -164,15 +182,19 @@ def calc(root, items, strategy="TPO_M5"):
             "trainPnlPct": _round(ta, 2), "originalPnlPct": _round(oa, 2),
             "diffPct": _round((ta - oa) if (ta is not None and oa is not None) else None, 2),
         })
+    train_comp = compound_daily_returns(rows, "trainPnlPct")
+    orig_comp = compound_daily_returns(rows, "originalPnlPct")
     return {
         "ok": True, "rows": rows, "daily": daily,
         "summary": {
             "count": len(rows),
-            "trainTotalPnlPct": _round(train_avg, 2),
-            "originalTotalPnlPct": _round(orig_avg, 2),
-            "diffPct": _round((train_avg - orig_avg) if (train_avg is not None and orig_avg is not None) else None, 2),
+            "trainTotalPnlPct": _round(train_comp, 2),
+            "originalTotalPnlPct": _round(orig_comp, 2),
+            "diffPct": _round((train_comp - orig_comp) if (train_comp is not None and orig_comp is not None) else None, 2),
+            "trainAvgPnlPct": _round(train_avg, 2),
+            "originalAvgPnlPct": _round(orig_avg, 2),
             "trainWinRate": _round(tw / len(train_vals) * 100, 1) if train_vals else None,
             "originalWinRate": _round(ow / len(orig_vals) * 100, 1) if orig_vals else None,
-            "avgMode": True,
+            "compoundMode": True,
         },
     }

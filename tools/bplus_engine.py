@@ -18,13 +18,15 @@ import time
 import traceback
 
 GROWTH_INDEXES = ["399673.SZ", "399006.SZ", "000688.SH", "399001.SZ", "000300.SH", "000852.SH", "000905.SH"]
+# 新 B+ 环境：沪深300 + 创业板指 在 MA60 上，且中证银行 不在 MA60 上
+THREE_ENV_INDEXES = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指"), ("399986.SZ", "中证银行")]
 INIT_CAPITAL = 100000.0
 COMMISSION_RATE = 1e-4
 MIN_COMMISSION = 5.0
 STAMP_RATE = 5e-4
 DEFAULT_STOP = -0.05
 CACHE_TTL = 3600.0
-ENGINE_VERSION = 3  # 3: 按 Lead 参考口径（个股 lc5 前收买入 / 旧卖法涨停优先 / env MA60 不含 T-1）
+ENGINE_VERSION = 6  # 4: 增加回测区间内交易日序列 tradingDates（个股 lc5 前收买入 / 旧卖法涨停优先 / env MA60 不含 T-1）
 VDIR = os.environ.get("TDX_VIPDOC", r"C:/new_tdx64/vipdoc")
 
 
@@ -149,11 +151,16 @@ def _lday_bars(code):
     if code in _LDAY_CACHE:
         return _LDAY_CACHE[code]
     mkt = "sh" if code.endswith(".SH") else ("sz" if code.endswith(".SZ") else "bj")
-    path = os.path.join(VDIR, mkt, "lday", f"{mkt}{code[:6]}.lday")
+    base = os.path.join(VDIR, mkt, "lday", f"{mkt}{code[:6]}")
+    raw = None
+    for ext in (".day", ".lday"):
+        try:
+            raw = open(base + ext, "rb").read()
+            break
+        except OSError:
+            continue
     out = {}
-    try:
-        raw = open(path, "rb").read()
-    except OSError:
+    if raw is None:
         _LDAY_CACHE[code] = out
         return out
     for i in range(len(raw) // 32):
@@ -184,66 +191,156 @@ def _raw_buy_price(code, trade_date):
 
 
 # ---------------- INDEX_5M ----------------
-def _load_index_data(root):
-    """返回 dates 列表 + 每个日期的 env_above(0..7 或 None) + width10(0..7 或 None)。"""
+def _raw_daily_buy(code, trade_date):
+    """day 模式买入：该股原始日线 < trade_date 的最后一根收盘（缺失回退 5m 原始前收）。"""
+    ld = _lday_bars(code)
+    keys = [k for k in ld if k < trade_date]
+    if keys:
+        return ld[max(keys)][3]
+    return _raw_buy_price(code, trade_date)
+
+
+def _day_ohlc(code, date):
+    ld = _lday_bars(code)
+    if date in ld:
+        return ld[date]
+    bars = (_lc5_days(code) or {}).get(date)
+    if not bars:
+        return None
+    return (bars[0][1], max(b[2] for b in bars), min(b[3] for b in bars), bars[-1][4])
+
+
+def _day_sell(buy, ohlc, code):
+    """day 模式：涨停价优先 → 日线开盘/最低跌破止损 → 否则收盘。"""
+    if not buy or buy <= 0 or not ohlc:
+        return None
+    op, hi, lo, cl = ohlc
+    limit = _limit_price(buy, _limit_ratio(code))
+    stop = buy * 0.95
+    if hi >= limit:
+        return limit
+    if op <= stop:
+        return op
+    if lo <= stop:
+        return stop
+    return cl
+
+
+def _load_index_data(root, env_mode="s6", width_mode="s6"):
+    """环境评分/宽度（日线 MA60）。
+
+    S6 四状态：沪深300>MA60 +1、创业板指>MA60 +1、中证银行<=MA60 +1 → score 0~3；
+    宽度 S6 只用沪深300+创业板指（10:00 价 > 前一日日线收盘，0~2）。
+    保留 env_mode=three/legacy7、width_mode=three/legacy7 供旧口径对比。
+    """
     data_dir = os.path.join(root, "AIData", "INDEX_5M")
-    closes = {}
-    close10 = {}
-    for code in GROWTH_INDEXES:
-        p = os.path.join(data_dir, code)
-        per, ten = {}, {}
-        if os.path.isfile(p):
+    three = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指"), ("399986.SZ", "中证银行")]
+    all_codes = list(dict.fromkeys([c for c, _n in three] + GROWTH_INDEXES))
+    daily = {}
+    for code in all_codes:
+        per = {d: v[3] for d, v in _lday_bars(code).items() if v and v[3]}
+        if not per:
+            p = os.path.join(data_dir, code)
             try:
                 for line in _read_text(p).splitlines():
                     parts = line.strip().split("|")
-                    if len(parts) < 5 or len(parts[0]) < 19:
+                    if len(parts) < 5 or len(parts[0]) < 10:
                         continue
-                    d, hm = parts[0][:10], parts[0][11:16]
+                    d8 = parts[0][:10].replace("-", "")
                     c = _f(parts[4])
-                    if c is None:
-                        continue
-                    d8 = d.replace("-", "")
-                    per[d8] = c
-                    if hm == "10:00":
-                        ten[d8] = c
+                    if c is not None:
+                        per[d8] = c
             except OSError:
                 pass
-        closes[code] = per
+        daily[code] = per
+    close10 = {}
+    for code in all_codes:
+        ten = {}
+        p = os.path.join(data_dir, code)
+        try:
+            for line in _read_text(p).splitlines():
+                parts = line.strip().split("|")
+                if len(parts) < 5 or len(parts[0]) < 19:
+                    continue
+                if parts[0][11:16] == "10:00":
+                    c = _f(parts[4])
+                    if c is not None:
+                        ten[parts[0][:10].replace("-", "")] = c
+        except OSError:
+            pass
         close10[code] = ten
-    dates = sorted(closes.get(GROWTH_INDEXES[0], {}).keys())
-    env, width10 = {}, {}
+    dates = sorted(daily.get("000300.SH") or [])
+    if not dates:
+        dates = sorted(daily.get(all_codes[0]) or [])
+    env_score, env_good, env_above, env_details, width10 = {}, {}, {}, {}, {}
     for ds in dates:
-        i = bisect.bisect_left(dates, ds)
-        prior = dates[:i]
-        env_above = None
+        prior = [d for d in dates if d < ds]
+        score = None
+        good = None
+        above_cnt = None
+        details = []
         if len(prior) >= 61:
-            cnt = 0
+            t1 = prior[-1]
+            series_days = prior[-61:-1]  # T-1 之前 60 日
             valid = True
-            for code in GROWTH_INDEXES:
-                per = closes.get(code) or {}
-                series = [per[d] for d in prior[-61:-1] if d in per]
-                if len(series) < 60 or prior[-1] not in per:
+            flags = {}
+            for code, name in three:
+                per = daily.get(code) or {}
+                series = [per[d] for d in series_days if d in per]
+                if len(series) < 60 or t1 not in per:
                     valid = False
                     break
                 ma60 = sum(series) / 60.0
-                if per[prior[-1]] > ma60:
-                    cnt += 1
+                close = per[t1]
+                above = close > ma60
+                flags[code] = above
+                details.append({"code": code, "name": name, "close": round(close, 2),
+                                "ma60": round(ma60, 2), "above": bool(above)})
             if valid:
-                env_above = cnt
+                above_cnt = sum(1 for x in details if x["above"])
+                if env_mode == "s6":
+                    score = int(bool(flags.get("000300.SH"))) + int(bool(flags.get("399006.SZ"))) + int(not bool(flags.get("399986.SZ")))
+                    good = score >= 2
+                elif env_mode == "legacy7":
+                    cnt = 0
+                    ok7 = True
+                    for code in GROWTH_INDEXES:
+                        per = daily.get(code) or {}
+                        series = [per[d] for d in series_days if d in per]
+                        if len(series) < 60 or t1 not in per:
+                            ok7 = False
+                            break
+                        if per[t1] > sum(series) / 60.0:
+                            cnt += 1
+                    if ok7:
+                        good = cnt >= 4
+                else:
+                    good = bool(flags.get("000300.SH")) and bool(flags.get("399006.SZ")) and not bool(flags.get("399986.SZ"))
+        env_score[ds] = score
+        env_good[ds] = good
+        env_above[ds] = above_cnt
+        env_details[ds] = details
         w10 = None
         if prior:
-            prev = prior[-1]
+            t1 = prior[-1]
+            if width_mode == "s6":
+                codes = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指")]
+            elif width_mode == "legacy7":
+                codes = [(c, c) for c in GROWTH_INDEXES]
+            else:
+                codes = three
             vals = []
-            for code in GROWTH_INDEXES:
+            for code, _name in codes:
                 ten = close10.get(code) or {}
-                per = closes.get(code) or {}
-                if ds in ten and prev in per:
-                    vals.append(1 if ten[ds] > per[prev] else 0)
-            if len(vals) == len(GROWTH_INDEXES):
+                per = daily.get(code) or {}
+                if ds in ten and t1 in per:
+                    vals.append(1 if ten[ds] > per[t1] else 0)
+            if len(vals) == len(codes):
                 w10 = sum(vals)
-        env[ds] = env_above
         width10[ds] = w10
-    return {"dates": dates, "env": env, "width10": width10}
+    return {"dates": dates, "env": env_above, "env_score": env_score, "env_good": env_good,
+            "env_details": env_details, "width10": width10,
+            "env_mode": env_mode, "width_mode": width_mode}
 
 
 def _bar_at(bars, hm):
@@ -253,7 +350,7 @@ def _bar_at(bars, hm):
     return None
 
 
-def _bplus_sell(bars, buy, env_good, width10, code=""):
+def _bplus_sell(bars, buy, env_good, width10, code="", width_threshold=4, env_mode="s6", score=None):
     """B+ 卖法（全部用原始价）：涨停价优先 → -5% 止损 → 好环境/宽度≥4 持有到14:55 → 否则 10:00 卖。"""
     if not buy or buy <= 0 or not bars:
         return None, "no-bars"
@@ -271,16 +368,27 @@ def _bplus_sell(bars, buy, env_good, width10, code=""):
             sell, reason = cl, "止损卖"
             break
     if sell is None:
-        if env_good or (width10 is not None and width10 >= 4):
+        if env_mode == "s6":
+            if score is None:
+                hold = True
+            elif score >= 2:
+                hold = True
+            elif score == 0:
+                hold = False
+            else:
+                hold = (width10 is not None and width10 >= 2)
+        else:
+            hold = bool(env_good) or (width10 is not None and width10 >= width_threshold)
+        if hold:
             b = _bar_at(bars, 14 * 60 + 55)
             if b is None:
                 b = next((x for x in reversed(bars) if x[0] <= 14 * 60 + 55), bars[-1])
-            sell, reason = b[4], "持有到14:55"
+            sell, reason = b[4], "S6持有到14:55" if env_mode == "s6" else "持有到14:55"
         else:
             b = _bar_at(bars, 10 * 60)
             if b is None:
                 b = next((x for x in bars if x[0] >= 10 * 60), bars[-1])
-            sell, reason = b[4], "10:00卖出"
+            sell, reason = b[4], "S6-10:00卖出" if env_mode == "s6" else "10:00卖出"
     return sell, reason
 
 
@@ -345,8 +453,8 @@ def _metrics(capitals, rets):
     return out
 
 
-def _cache_path(root, strategy, months, pick_mode):
-    return os.path.join(root, "AIData", "BACKTEST_CACHE", f"bplus_{strategy}_{months}_{pick_mode}.json")
+def _cache_path(root, strategy, months, pick_mode, sell_mode="bplus", env_mode="s6", width_mode="s6"):
+    return os.path.join(root, "AIData", "BACKTEST_CACHE", f"bplus_{strategy}_{months}_{pick_mode}_{sell_mode}_{env_mode}_{width_mode}.json")
 
 
 def _input_sig(root, strategy):
@@ -368,6 +476,19 @@ def _input_sig(root, strategy):
     except OSError:
         pass
     return round(sig, 3)
+
+
+def _load_trading_dates(root):
+    path = os.path.join(root, "AIData", "TRADING_DATES")
+    out = []
+    try:
+        for line in _read_text(path).splitlines():
+            d = line.strip().replace("-", "")[:8]
+            if len(d) == 8 and d.isdigit():
+                out.append(d)
+    except OSError:
+        return []
+    return sorted(set(out))
 
 
 def _load_alignment(root):
@@ -425,7 +546,7 @@ def _load_alignment(root):
     return out
 
 
-def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=False):
+def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=False, sell_mode="bplus", env_mode="s6", width_mode="s6"):
     started = time.time()
     try:
         months = max(1, min(60, int(months or 12)))
@@ -433,7 +554,13 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
         months = 12
     if pick_mode not in ("first", "avg", "last"):
         pick_mode = "first"
-    cache_file = _cache_path(root, strategy, months, pick_mode)
+    if sell_mode not in ("bplus", "legacy5m", "day"):
+        sell_mode = "bplus"
+    if env_mode not in ("s6", "three", "legacy7"):
+        env_mode = "s6"
+    if width_mode not in ("s6", "three", "legacy7"):
+        width_mode = "s6"
+    cache_file = _cache_path(root, strategy, months, pick_mode, sell_mode, env_mode, width_mode)
     sig = _input_sig(root, strategy)
     if not refresh and os.path.isfile(cache_file):
         try:
@@ -441,7 +568,10 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
             if (cached.get("engineVersion") == ENGINE_VERSION
                     and cached.get("inputSig") == sig
                     and time.time() - float(cached.get("savedAt") or 0) < CACHE_TTL
-                    and cached.get("pick_mode") == pick_mode):
+                    and cached.get("pick_mode") == pick_mode
+                    and cached.get("sell_mode") == sell_mode
+                    and cached.get("envMode") == env_mode
+                    and cached.get("widthMode") == width_mode):
                 cached["cacheHit"] = True
                 cached["elapsedMs"] = int((time.time() - started) * 1000)
                 return cached
@@ -457,7 +587,14 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
     latest = _dt.datetime.strptime(all_dates[-1], "%Y%m%d")
     cutoff = (latest - _dt.timedelta(days=months * 31)).strftime("%Y%m%d")
     dates = [d for d in all_dates if d >= cutoff]
-    idx = _load_index_data(root)
+    idx = _load_index_data(root, env_mode, width_mode)
+    all_trade_days = _load_trading_dates(root)
+    if dates:
+        trading_dates = [d for d in all_trade_days if dates[0] <= d <= dates[-1]]
+        if not trading_dates:
+            trading_dates = list(dates)
+    else:
+        trading_dates = []
     align = _load_alignment(root)
     ex_dates = []
     all_idx = all_dates
@@ -496,26 +633,38 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
         else:
             selected = list(rows)
         env_above = idx["env"].get(date)
+        env_score = idx["env_score"].get(date)
+        env_good = idx["env_good"].get(date)
         width10 = idx["width10"].get(date)
-        bplus_ok = env_above is not None and width10 is not None
-        if bplus_ok:
-            bplus_days += 1
-            if first_bplus is None:
-                first_bplus = date
-        else:
-            fallback_days += 1
-            fallback_dates.append(date)
+        width_threshold = 4 if width_mode == "legacy7" else 2
+        bplus_ok = sell_mode == "bplus" and (env_score is not None if env_mode == "s6" else (env_good is not None and width10 is not None))
+        if sell_mode == "bplus":
+            if bplus_ok:
+                bplus_days += 1
+                if first_bplus is None:
+                    first_bplus = date
+            else:
+                fallback_days += 1
+                fallback_dates.append(date)
         valid = []
         fallback_used = False
         for row in selected:
             code = row[0]
-            buy = _raw_buy_price(code, date)
+            date_raw = _day_ohlc(code, date)
+            if sell_mode == "day":
+                buy = _raw_daily_buy(code, date)
+            else:
+                buy = _raw_buy_price(code, date)
             if not buy or buy <= 0:
                 continue
             bars = (_lc5_days(code) or {}).get(date)
-            day_raw = None
-            if bplus_ok and bars:
-                sp, reason = _bplus_sell(bars, buy, env_above >= 4, width10, code)
+            day_raw = date_raw if sell_mode == "day" else None
+            if sell_mode == "legacy5m":
+                sp, reason = _fallback_sell(buy, bars), "legacy5m"
+            elif sell_mode == "day":
+                sp, reason = _day_sell(buy, date_raw, code), "day"
+            elif bplus_ok and bars:
+                sp, reason = _bplus_sell(bars, buy, bool(env_good), width10, code, width_threshold, env_mode, env_score)
             else:
                 sp, reason = _fallback_sell(buy, bars), "fallback"
                 fallback_used = True
@@ -582,8 +731,16 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
     payload = {
         "ok": True,
         "strategy": strategy,
-        "sell_mode": "bplus",
+        "sell_mode": sell_mode,
         "pick_mode": pick_mode,
+        "envMode": env_mode,
+        "widthMode": width_mode,
+        "widthThreshold": 2 if width_mode == "s6" else (4 if width_mode == "legacy7" else 3),
+        "envRule": ("S6评分：沪深300上+1、创业板指上+1、中证银行≤MA60+1；score≥2持有，score=1看10:00宽度，score=0卖"
+                    if env_mode == "s6" else
+                    ("日线口径：沪深300上 且 创业板指上 且 中证银行下" if env_mode == "three" else "7 成长宽基 ≥4 在日线 MA60 上")),
+        "envScore": (idx["env_score"].get(dates[-1]) if dates else None),
+        "envDetails": (idx["env_details"].get(dates[-1]) if dates else []),
         "months": months,
         "metrics": metrics,
         "monthRet": [{"k": k, "ret": round((v - 1) * 100, 1)} for k, v in sorted(month.items())],
@@ -591,16 +748,19 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
         "yearRet": [{"k": k, "ret": round((v - 1) * 100, 1)} for k, v in sorted(year.items())],
         "capitalKline": kline,
         "dist": dist,
-        "fallbackDays": fallback_days,
         "exDateTrades": len(ex_dates),
         "exDateDetails": ex_dates[:20],
         "fallbackDates": fallback_dates[:10],
         "bplusDays": bplus_days,
         "bplusStart": (first_bplus[:4] + "-" + first_bplus[4:6] + "-" + first_bplus[6:8]) if first_bplus else None,
         "reasons": reasons,
+        "tradingDates": [d[:4] + "-" + d[4:6] + "-" + d[6:8] for d in trading_dates],
         "dateFrom": dates[0][:4] + "-" + dates[0][4:6] + "-" + dates[0][6:8] if dates else None,
         "dateTo": dates[-1][:4] + "-" + dates[-1][4:6] + "-" + dates[-1][6:8] if dates else None,
-        "badge": "B+ 卖法 · 2026 年起生效（此前回退现状）",
+        "badge": {"bplus": "B+ 卖法 · 2026 年起生效（此前回退现状）",
+                  "legacy5m": "原始价 5m 卖法（毛收益）",
+                  "day": "原始价日线卖法（毛收益）"}.get(sell_mode, "原始价回测"),
+        "fallbackDays": fallback_days if sell_mode == "bplus" else 0,
         "fallbackNote": "INDEX_5M/MA60 不足的日期回退现状 5m 卖法",
         "inputSig": sig,
         "engineVersion": ENGINE_VERSION,

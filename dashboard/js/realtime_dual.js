@@ -198,6 +198,19 @@ export class RealtimeDualChart {
     });
     candle.setData(candles);
     this.series[period] = { chart, candle, mas: {} };
+    if (!this.hoverEls) this.hoverEls = {};
+    if (!this.hoverEls[period]) {
+      this.hoverEls[period] = document.createElement('div');
+      this.hoverEls[period].className = 'rt-hover';
+      this.hoverEls[period].hidden = true;
+      this.wraps[period].wrap.appendChild(this.hoverEls[period]);
+      this.wraps[period].wrap.addEventListener('mouseleave', () => { this.hoverEls[period].hidden = true; });
+    }
+    this._hoverBound = this._hoverBound || {};
+    if (!this._hoverBound[period]) {
+      this._hoverBound[period] = true;
+      chart.subscribeCrosshairMove((param) => this._updateHover(period, param));
+    }
     this._drawMa(period);
     this.draws = this.draws || {};
     if (!this.draws[period]) this.draws[period] = new ChartDrawings(this.wraps[period].wrap, { pageKey: 'realtime', code: this.code, period });
@@ -209,6 +222,39 @@ export class RealtimeDualChart {
     chart.timeScale().fitContent();
     chart.timeScale().subscribeVisibleTimeRangeChange(() => this._redrawDrawings(period));
     chart.subscribeCrosshairMove((param) => this._onCrosshair(period, param));
+  }
+
+  _updateHover(period, param) {
+    const el = this.hoverEls && this.hoverEls[period];
+    if (!el) return;
+    const bars = period === '1d' ? (this.data && this.data.dailyBars) : (this.data && this.data.fiveBars);
+    if (!param || param.time == null || !bars || !bars.length) { el.hidden = true; return; }
+    let idx = -1;
+    for (let i = 0; i < bars.length; i++) if (String(bars[i].time) === String(param.time)) { idx = i; break; }
+    if (idx < 0) { el.hidden = true; return; }
+    const b = bars[idx], prev = idx > 0 ? bars[idx - 1] : null;
+    const pre = prev ? Number(prev.close) : Number(b.open);
+    const chg = pre ? ((Number(b.close) - pre) / pre) * 100 : null;
+    const d = new Date(Number(b.time) * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeText = period === '1d'
+      ? `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+      : `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    const maList = [];
+    for (const per of (this.maState[period] || [])) {
+      if (idx < per - 1) continue;
+      let sum = 0;
+      for (let j = idx - per + 1; j <= idx; j++) sum += Number(bars[j].close);
+      maList.push(`MA${per} ${(sum / per).toFixed(2)}`);
+    }
+    const vol = Number(b.volume);
+    const volText = Number.isFinite(vol) ? (vol / 10000).toFixed(1) + ' 万' : '—';
+    const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
+    el.innerHTML = `<div class="t">${timeText}</div>`
+      + `<div class="r"><span>开 ${Number(b.open).toFixed(2)}</span><span>高 ${Number(b.high).toFixed(2)}</span><span>低 ${Number(b.low).toFixed(2)}</span><span>收 ${Number(b.close).toFixed(2)}</span></div>`
+      + `<div class="r"><span class="${cls}">涨跌 ${chg == null ? '—' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%'}</span><span>量 ${volText}</span></div>`
+      + (maList.length ? `<div class="r ma">${maList.join(' · ')}</div>` : '');
+    el.hidden = false;
   }
 
   _drawMa(period) {

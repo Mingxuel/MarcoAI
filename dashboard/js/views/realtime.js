@@ -2,9 +2,9 @@
  * tqcenter 快照 2s 轮询；K 线数据来自 /api/realtime/kline（TDX vipdoc lc5 + 日线 MA）。
  * 只做行情与判断，不接 miniQMT、不下单。
  */
-import { h, clear, fmt, pct, n, toast, modalConfirm } from '../util.js?v=20261105d';
-import { API } from '../api.js?v=20261105d';
-import { RealtimeDualChart } from '../realtime_dual.js?v=20261105d';
+import { h, clear, fmt, pct, n, toast, modalConfirm } from '../util.js?v=20261106j';
+import { API } from '../api.js?v=20261106j';
+import { RealtimeDualChart } from '../realtime_dual.js?v=20261106j';
 
 const REFRESH_MS = 2000;
 const KLINE_REFRESH_MS = 15000;
@@ -155,7 +155,7 @@ export class RealtimeView {
     this.pageEl = h('div', { class: 'view-pad rt-page rt-v2' + (this.klineHidden ? ' kline-hidden' : '') },
       h('div', { class: 'rt-head' },
         h('div', {}, h('div', { class: 'page-title' }, '实时看盘'),
-          h('div', { class: 'page-sub' }, '5 分钟 K 线 + 当日策略 / 今日持仓(T) / 明日预选(T-1) · tqcenter 快照 2s 轮询 · 只判断不下单')),
+          h('div', { class: 'page-sub' }, '5 分钟 K 线 + 当日策略 / 今日买入(T) / 下一交易日预选(T-1) · tqcenter 快照 2s 轮询 · 只判断不下单')),
         h('div', { class: 'spacer' }),
         h('div', { class: 'rt-chips' }, this.marketChip, this.timeChip, this.envChip, this.pollChip, this.toggleBtn,
           h('button', { class: 'btn btn-xs ghost', onclick: () => this.load() }, '立即刷新'))),
@@ -208,7 +208,7 @@ export class RealtimeView {
     const env = d.env || {};
     this.envChip.textContent = env.label || 'T-1环境 — · 盘中宽度 —';
     this.envChip.className = 'chip ' + (env.t1 === '好' ? 'ok' : env.t1 === '差' ? 'warn' : 'dim');
-    this.envChip.title = env.date ? `T-1 ${env.date}：成长端 ${env.above}/${env.total} 在日线 MA60 上；盘中宽度 ${env.breadth}/${env.breadthTotal}` : '';
+    this.envChip.title = env.date ? `T-1 ${env.date}：S6 三指数评分 ${env.state || ''}；盘中宽度 ${env.breadth}/${env.breadthTotal || 2}` : '';
     this.pollChip.textContent = '2s 轮询';
 
     this._renderIndices(d.indices || []);
@@ -246,7 +246,7 @@ export class RealtimeView {
       h('span', { class: 'chip ' + (d.marketState === '盘中' ? 'ok' : 'dim') }, d.marketState || '—')));
     if (closed) {
       this.topPickEl.appendChild(h('div', { class: 'rt-tp-empty' },
-        d.marketState === '收盘' ? '收盘——明日名单见下（14:45 预生成 / 15:50 正式）' : '暂无实时候选'));
+        d.marketState === '收盘' ? '收盘——下个交易日名单见下（14:45 预生成 / 15:50 正式）' : '暂无实时候选'));
       return;
     }
     const p = picks[0];
@@ -279,14 +279,21 @@ export class RealtimeView {
     const sellD = String(nd.forTradeDate || nd.forTradeDateLabel || '').replace(/-/g, '');
     const buyTag = todayStr && buyD === todayStr ? '（今日尾盘）' : '（尾盘买入）';
     const sellTag = nextStr && sellD === nextStr
-      ? '（下一交易日）'
+      ? '（下个交易日）'
       : (todayStr && sellD === todayStr ? '（今日卖出）' : '（卖出日）');
-    const envText = env.t1
-      ? `T-1 环境 ${env.t1}（成长端 ${env.above}/${env.total} 在日线 MA60 上）`
-      : 'T-1 环境 数据缺失';
+    const envDetails = Array.isArray(env.details) ? env.details : [];
+    const envBits = envDetails.map((d) => {
+      const nm = d.name === '中证银行' ? '银行' : (d.name || d.code);
+      if (d.ok === false) return `${nm} 数据不足`;
+      return `${nm} ${d.above ? '上' : '下'}`;
+    });
+    const envState = env.state || (env.score != null ? `S${env.score}` : '不可用');
+    const envRule = env.sellRule || '回退满仓·持有到14:55';
+    const envText = `环境 ${envState}（${envBits.length ? envBits.join(' · ') : '数据不足'}）→ ${envRule}`;
     const actionCls = strategy.actionType === 'hold' ? 'act-hold'
-      : strategy.actionType === 'bplus-pending' ? 'act-bplus-pending'
-        : strategy.actionType === 'bplus-hold' ? 'act-bplus-hold' : 'act-bplus-sell';
+      : strategy.actionType === 'empty' ? 'act-empty'
+        : strategy.actionType === 'bplus-pending' ? 'act-bplus-pending'
+          : strategy.actionType === 'bplus-hold' ? 'act-bplus-hold' : 'act-bplus-sell';
     const sellPlan = (d && d.nextDay && d.nextDay.sellPlan) || strategy.sellPlan || {};
 
     const headChips = [h('span', { class: 'chip dim' }, `${strategy.name || 'TPO_M5'} · 文件 ${strategy.fileDateLabel || '—'}`)];
@@ -295,9 +302,12 @@ export class RealtimeView {
     } else if (nd.available) {
       headChips.push(h('span', { class: 'chip dim' }, '每日更新正式名单'));
     }
+    if (nd.available && nd.empty) {
+      headChips.push(h('span', { class: 'chip warn', title: nd.reason || '' }, '下个交易日无首选 / 空仓'));
+    }
     if (nd.available) {
       headChips.push(h('span', { class: 'chip ok' },
-        `买入日 ${nd.buyDateLabel || '—'} → 卖出日 ${nd.forTradeDateLabel || '—'}`));
+        `买入日 ${nd.buyDateLabel || '—'}${buyTag} → 卖出日 ${nd.forTradeDateLabel || '—'}${sellTag}`));
     } else {
       headChips.push(h('span', {
         class: 'chip warn', title: nd.reason || 'AIData/NEXT_DAY/strategy.json 未生成或已过期',
@@ -334,15 +344,15 @@ export class RealtimeView {
 
     if (sellPlan && sellPlan.mode) {
       this.strategyEl.appendChild(h('div', { class: 'rt-sellplan' },
-        h('span', { class: 'bplus-badge' }, `明日卖法：${sellPlan.mode}`),
-        h('span', {}, sellPlan.rule || '差环境10:00宽度≥4抗/≤3卖；-5%止损；涨停价优先'),
-        sellPlan.breadth1000 != null ? h('span', { class: 'muted' }, `10:00 宽度 ${sellPlan.breadth1000}/7`) : null));
+        h('span', { class: 'bplus-badge' }, `下个交易日卖法：${sellPlan.mode}`),
+        h('span', {}, sellPlan.rule || '差环境10:00宽度≥2抗/≤1卖；-5%止损；涨停价优先'),
+        sellPlan.breadth1000 != null ? h('span', { class: 'muted' }, `10:00 宽度 ${sellPlan.breadth1000}/2`) : null));
     }
 
     this.strategyEl.appendChild(h('div', { class: 'rt-strategy-env' },
       h('span', { class: 'chip ' + (env.t1 === '好' ? 'ok' : env.t1 === '差' ? 'warn' : 'dim') }, envText),
       h('span', { class: 'chip ' + ((strategy.breadth || 0) >= 4 ? 'ok' : 'warn') },
-        `盘中宽度 ${strategy.breadth == null ? '—' : strategy.breadth}/${strategy.breadthTotal || 7}`)));
+        `盘中宽度 ${strategy.breadth == null ? '—' : strategy.breadth}/${strategy.breadthTotal || 2}`)));
     this.strategyEl.appendChild(h('div', { class: 'rt-action ' + actionCls }, strategy.actionText || '—'));
     this.strategyEl.appendChild(h('details', { class: 'rt-rule' },
       h('summary', {}, '规则摘要'),
@@ -414,12 +424,13 @@ export class RealtimeView {
     const dateHint = nd.available
       ? `买入日 ${nd.buyDateLabel || '—'} → 卖出日 ${nd.forTradeDateLabel || '—'}`
       : (strategy && strategy.tDateLabel ? `今日 ${strategy.tDateLabel} 卖出` : '今日卖出');
-    const title = nd.available ? '今日持仓 · 明日卖出' : '今日持仓 · 昨日尾盘买入（今日卖出）';
-    const bplusHint = (nd.sellPlan && nd.sellPlan.mode ? ` · 明日卖法：${nd.sellPlan.mode}` : '');
+    const title = nd.available ? '今日买入 · 下个交易日卖出' : '今日持仓 · 昨日尾盘买入（今日卖出）';
+    const bplusHint = (nd.sellPlan && nd.sellPlan.mode ? ` · 下个交易日卖法：${nd.sellPlan.mode}` : '');
     this.holdingsTodayEl.appendChild(this._panelHead(title, dateHint + bplusHint, rows.length));
     if (!rows.length) {
       this.holdingsTodayEl.appendChild(h('div', { class: 'empty-box' },
-        nd.available ? '名单为空（NEXT_DAY buyList 无股票）' : '今日空仓（昨日名单为空）'));
+        nd.available && nd.empty ? '下个交易日无首选 · 空仓（TPO 名单为空）'
+          : (nd.available ? '名单为空（NEXT_DAY buyList 无股票）' : '今日空仓（昨日名单为空）')));
       return;
     }
     this.holdingsTodayEl.appendChild(this._listTable(rows, 'hold'));
@@ -429,13 +440,13 @@ export class RealtimeView {
     clear(this.candidatesTomorrowEl);
     const nd = (this.data && this.data.nextDay) || {};
     const hint = nd.available
-      ? `${nd.forTradeDateLabel || '—'} 之后（后日预选）`
-      : (strategy && strategy.t1DateLabel ? `${strategy.t1DateLabel} 盘后确认` : '明日盘后确认');
-    const title = nd.available ? '候选股 · 后日预选' : '候选股 · 明日预选';
+      ? `${nd.forTradeDateLabel || '—'} 之后（下一交易日预选）`
+      : (strategy && strategy.t1DateLabel ? `${strategy.t1DateLabel} 盘后确认` : '下个交易日盘后确认');
+    const title = '候选股 · 下一交易日预选';
     this.candidatesTomorrowEl.appendChild(this._panelHead(title, hint, rows.length));
     if (!rows.length) {
       this.candidatesTomorrowEl.appendChild(h('div', { class: 'empty-box' },
-        nd.available ? '后日预选为空（NEXT_DAY candidates 为空）' : '明日预选为空（T-1 窗口无候选）'));
+        nd.available ? '下一交易日预选为空（NEXT_DAY candidates 为空）' : '下一交易日预选为空（T-1 窗口无候选）'));
       return;
     }
     this.candidatesTomorrowEl.appendChild(this._listTable(rows, 'cand'));
@@ -520,6 +531,12 @@ export class RealtimeView {
     if (!code && pool.length) {
       code = pool[0].code;
       name = pool[0].name || '';
+    }
+    if (!code && (d.indices || []).length) {
+      // 空仓日无候选时默认展示上证指数，保证双周期 K 线仍有内容
+      const idx0 = (d.indices || []).find((x) => x.code) || {};
+      code = idx0.code;
+      name = idx0.name || '';
     }
     if (code) {
       const hit = [...today, ...tomorrow, ...weak].find((r) => r.code === code);

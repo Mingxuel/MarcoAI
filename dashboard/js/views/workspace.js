@@ -1,9 +1,9 @@
 /* K 线工作区：1/2/4 布局、每面板独立周期/指标、股票联动 + 时间轴联动、交易标记 */
-import { h, clear, fmt, pct, chgClass, fmtBarTime, dateToTs, toast, openPopover, closePopover } from '../util.js?v=20261105d';
-import { API } from '../api.js?v=20261105d';
-import { KlineChart } from '../chart_adapter.js?v=20261105d';
-import { ChartDrawings } from '../chart_drawings.js?v=20261105d';
-import { AVAILABLE_PERIODS, INDICATORS, PERIODS, panelCount } from '../store.js?v=20261105d';
+import { h, clear, fmt, pct, chgClass, fmtBarTime, dateToTs, toast, openPopover, closePopover } from '../util.js?v=20261106j';
+import { API } from '../api.js?v=20261106j';
+import { KlineChart } from '../chart_adapter.js?v=20261106j';
+import { ChartDrawings } from '../chart_drawings.js?v=20261106j';
+import { AVAILABLE_PERIODS, INDICATORS, PERIODS, panelCount } from '../store.js?v=20261106j';
 
 const MA_PERIODS = [5, 10, 20, 30, 60, 120];
 const MA_COLORS = { 5: '#f5c518', 10: '#f472b6', 20: '#60a5fa', 30: '#34d399', 60: '#c084fc', 120: '#fb923c' };
@@ -74,7 +74,8 @@ class Panel {
     }, '自适应');
     this.priceBox = h('div', { class: 'ws-price' });
 
-    const head = h('div', { class: 'ws-head' }, this.symInput, this.nameEl, this.periodSel, this.indBtn, this.fitBtn, this.priceBox);
+    this.rangeTag = h('span', { class: 'ws-range-tag', hidden: true });
+    const head = h('div', { class: 'ws-head' }, this.symInput, this.nameEl, this.periodSel, this.indBtn, this.fitBtn, this.rangeTag, this.priceBox);
     this.chartEl = h('div', { class: 'ws-chart' });
     this.overlay = h('div', { class: 'ws-overlay', hidden: true });
     this.readout = h('div', { class: 'ws-readout' });
@@ -98,6 +99,8 @@ class Panel {
         h('span', { class: 'dot', style: `background:${MA_COLORS[p]}` }), String(p)));
     }
     this.chartEl.appendChild(this.maBar);
+    this.hoverEl = h('div', { class: 'ws-hover', hidden: true });
+    this.chartEl.appendChild(this.hoverEl);
     this.body = h('div', { class: 'ws-body' }, this.chartEl, this.readout, this.markerTag, this.overlay);
     this.el = h('div', { class: 'ws-panel', 'data-panel': this.index }, head, this.body);
     this.el.addEventListener('mousedown', () => this.view.setActive(this.index), true);
@@ -191,10 +194,15 @@ class Panel {
     this.setStatus('loading', '行情加载中…');
     this.readout.textContent = '';
     try {
-      const endDate = this.view.endDate || null;
-      const count = endDate
-        ? (this.state.period === '1d' ? 250 : 480)
-        : (COUNT_BY_PERIOD[this.state.period] || 600);
+      const isDaily = this.state.period === '1d';
+      // 选股页：1D 显示全部日线；只有 5m 等盘中周期使用 T-3~T+1 区间
+      const useRange = (this.view.rangeStart || this.view.rangeEnd) && !isDaily;
+      const rangeEnd = useRange ? this.view.rangeEnd : null;
+      const endDate = rangeEnd || this.view.endDate || null;
+      const count = useRange
+        ? 600
+        : (isDaily ? (COUNT_BY_PERIOD['1d'] || 320)
+          : (endDate ? 480 : (COUNT_BY_PERIOD[this.state.period] || 600)));
       const res = await API.kline(this.state.code, this.state.period, count, endDate);
       if (token !== this.loadToken) return;
       this.data = res;
@@ -209,9 +217,17 @@ class Panel {
         return;
       }
       this.bars = res.bars;
-      if (this.view.cutoffDate) {
+      if (useRange) {
+        const lo = this.view.rangeStart || '00000000';
+        const hi = this.view.rangeEnd || '99999999';
+        this.bars = this.bars.filter((b) => {
+          const y = barYmdAny(b.time);
+          return y >= lo && y <= hi;
+        });
+      } else if (this.view.cutoffDate) {
         this.bars = this.bars.filter((b) => barYmdAny(b.time) < this.view.cutoffDate);
       }
+      this._updateRangeTag();
       this.renderChart();
       this.setStatus('ok');
     } catch (e) {
@@ -230,9 +246,16 @@ class Panel {
     clearTimeout(this._suppressTimer);
     this._suppressTimer = setTimeout(() => { this._suppressRange = false; }, 350);
     try {
-      chart.render(this.bars, this.state.period, this.state.indicators, { markers, focus, fullRange: !!this.view.endDate, ma: this.maState, hideLastValue: !!this.view.hideLastPriceLine });
+      chart.render(this.bars, this.state.period, this.state.indicators, { markers, focus, fullRange: !!this.view.endDate || (!!this.view.rangeEnd && this.state.period !== '1d'), ma: this.maState, hideLastValue: !!this.view.hideLastPriceLine, dayGrid: this.state.period === '5m' && !!this.view.rangeEnd, code: this.state.code });
+      // 5m 按日网格由 chart_adapter 的原生 primitive 绘制（随缩放移动）
       if (this.view.hideLastPriceLine && chart.candle) {
         try { chart.candle.applyOptions({ priceLineVisible: false, lastValueVisible: false }); } catch (e) { /* ignore */ }
+      }
+      if (!this._hoverBound && chart.chart) {
+        this._hoverBound = true;
+        chart.chart.subscribeCrosshairMove((p) => this._updateHover(p));
+        this.chartEl.addEventListener('mousemove', (ev) => this._updateHoverAt(ev));
+        this.chartEl.addEventListener('mouseleave', () => { if (this.hoverEl) this.hoverEl.hidden = true; });
       }
       if (this.draw) {
         this.draw.setBars(this.bars);
@@ -246,6 +269,69 @@ class Panel {
     this._updatePrice();
     this._updateMarkerTag();
     this.readout.textContent = '';
+  }
+
+  _updateRangeTag() {
+    if (!this.rangeTag) return;
+    const a = this.view.rangeStart, b = this.view.rangeEnd;
+    if (!a && !b) { this.rangeTag.hidden = true; this.rangeTag.textContent = ''; return; }
+    if (this.state.period === '1d') { this.rangeTag.textContent = '全部日线'; this.rangeTag.hidden = false; return; }
+    const f = (y) => y && y.length === 8 ? `${y.slice(0, 4)}-${y.slice(4, 6)}-${y.slice(6, 8)}` : '—';
+    this.rangeTag.textContent = `${f(a)} ~ ${f(b)}`;
+    this.rangeTag.hidden = false;
+  }
+
+  _updateHoverAt(ev) {
+    if (!this.hoverEl || !this.bars || !this.bars.length || !this.chart || !this.chart.chart) return;
+    const rect = this.chartEl.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < this.bars.length; i++) {
+      let cx = null;
+      try { cx = this.chart.chart.timeScale().timeToCoordinate(this.bars[i].time); } catch (e) { cx = null; }
+      if (cx == null) continue;
+      const d = Math.abs(cx - x);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    this._showHoverBar(best);
+  }
+
+  _updateHover(param) {
+    if (!this.hoverEl) return;
+    if (!param || param.time == null || !this.bars || !this.bars.length) { this.hoverEl.hidden = true; return; }
+    let idx = -1;
+    for (let i = 0; i < this.bars.length; i++) {
+      if (String(this.bars[i].time) === String(param.time)) { idx = i; break; }
+    }
+    if (idx < 0) { this.hoverEl.hidden = true; return; }
+    this._showHoverBar(idx);
+  }
+
+  _showHoverBar(idx) {
+    if (!this.hoverEl || !this.bars || !this.bars[idx]) return;
+    const b = this.bars[idx];
+    const prev = idx > 0 ? this.bars[idx - 1] : null;
+    const prevClose = prev ? Number(prev.close) : Number(b.open);
+    const chg = prevClose ? ((Number(b.close) - prevClose) / prevClose) * 100 : null;
+    const ma = [];
+    for (const per of (this.maState || [])) {
+      if (idx < per - 1) continue;
+      let sum = 0;
+      for (let j = idx - per + 1; j <= idx; j++) sum += Number(this.bars[j].close);
+      ma.push(`MA${per} ${(sum / per).toFixed(2)}`);
+    }
+    const t = typeof b.time === 'number' ? new Date(b.time * 1000).toISOString().slice(0, 10) : String(b.time).slice(0, 10);
+    const timeText = fmtBarTime(b.time, this.state.period);
+    const vol = Number(b.volume);
+    const volText = Number.isFinite(vol) ? (vol / 10000).toFixed(1) + ' 万' : '—';
+    const amt = Number(b.amount);
+    const amtText = Number.isFinite(amt) && amt > 0 ? (amt / 100000000).toFixed(2) + ' 亿' : null;
+    const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
+    this.hoverEl.innerHTML = `<div class="t">${timeText}</div>`
+      + `<div class="r"><span>开 ${Number(b.open).toFixed(2)}</span><span>高 ${Number(b.high).toFixed(2)}</span><span>低 ${Number(b.low).toFixed(2)}</span><span>收 ${Number(b.close).toFixed(2)}</span></div>`
+      + `<div class="r"><span class="${cls}">涨跌 ${chg == null ? '—' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%'}</span><span>量 ${volText}</span>${amtText ? `<span>额 ${amtText}</span>` : ''}</div>`
+      + (ma.length ? `<div class="r ma">${ma.join(' · ')}</div>` : '');
+    this.hoverEl.hidden = false;
   }
 
   _updatePrice() {
@@ -324,6 +410,8 @@ export class WorkspaceView {
     this._mounted = false;
     this.cutoffDate = null;
     this.endDate = null;
+    this.rangeStart = null;
+    this.rangeEnd = null;
     this.pageKey = 'workspace';
   }
 
@@ -348,6 +436,12 @@ export class WorkspaceView {
     if (this.cutoffDate === v) return;
     this.cutoffDate = v;
     this.loadVisible();
+  }
+
+  setRange(start, end) {
+    const a = start || null, b = end || null;
+    this.rangeStart = a; this.rangeEnd = b;
+    for (const p of this.panels) { if (!p.el.hidden) p.load(); }
   }
 
   setEnd(date) {

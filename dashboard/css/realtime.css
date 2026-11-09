@@ -245,3 +245,5 @@ table.rt-tbl tr.rt-row:hover { background: #16202d; }
 .rt-k-body .rt-dual-host { position: absolute; inset: 0; }
 
 #app-header .hdr-tools[hidden] { display: none !important; }
+
+.rt-action.act-empty { color: #94a3b8; }

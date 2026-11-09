@@ -3,7 +3,7 @@
  * 事件：onSelect(row) 点击行；onAdd(row) 点击 +；onCollapse() 收起右栏。
  * v1.2：TPO T/T-1 不再用独立卡片，而是与日期分组同构渲染（同一套列/表头/行高/颜色/排序）。
  */
-import { h, clear, fmt, pct, n, fmtDate, fmtYm, isLimitUp } from '../util.js?v=20261105d';
+import { h, clear, fmt, pct, n, fmtDate, fmtYm, isLimitUp, toast } from '../util.js?v=20261106j';
 
 const TPO_KEY = 'marco.picks.tpoOpenV2';
 const SORTABLE = (col) => !!col.sortable;
@@ -116,6 +116,26 @@ export class PickList {
     return this.adapter.listSources();
   }
 
+  async addToThsTest(btn) {
+    if (!this.month) { toast('请先选择月份', 'warn', 3000); return; }
+    if (btn && btn.disabled) return;
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '写入中…'; }
+    try {
+      const res = await fetch('/api/ths/test-block', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: this.month }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      toast(`已写入同花顺 TEST：${data.count} 只（${data.month}）${data.restarted ? '，已重启同花顺' : '，重启失败：' + (data.restartDetail || '未知')}`, data.restarted ? '' : 'warn', 6000);
+    } catch (e) {
+      toast('添加到同花顺失败：' + ((e && e.message) || e), 'error', 6000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+    }
+  }
+
   _renderToolbar() {
     clear(this.toolbarEl);
     const sources = this._sourceOptions();
@@ -140,10 +160,15 @@ export class PickList {
     for (const m of months) monthSel.appendChild(h('option', { value: m.value }, m.label));
     if (this.month) monthSel.value = this.month;
 
+    const thsBtn = h('button', {
+      class: 'btn btn-xs ghost', title: '把当前月份全部股票写入同花顺 ===TEST=== 板块（按代码去重）',
+      onclick: () => this.addToThsTest(thsBtn),
+    }, '添加到同花顺');
     const row = h('div', { class: 'pick-toolbar-row' },
       h('span', { class: 'pt-label' }, '策略'), strategySel,
       h('span', { class: 'pt-label' }, '月份'), monthSel,
-      h('button', { class: 'btn btn-xs ghost', title: '重新拉取选股数据', onclick: () => this.load(true) }, '刷新'));
+      h('button', { class: 'btn btn-xs ghost', title: '重新拉取选股数据', onclick: () => this.load(true) }, '刷新'),
+      thsBtn);
     if (this.onCollapse) {
       row.appendChild(h('button', { class: 'btn btn-xs ghost pt-collapse', title: '收起选股列表（Ctrl+\\）', onclick: () => this.onCollapse() }, '⟩'));
     }
@@ -222,7 +247,7 @@ export class PickList {
         }, h('td', { colspan: columns.length },
           h('span', { class: 'gt-chev' + (open ? ' open' : '') }, open ? '▾' : '▸'),
           `${g.title}（${g.rows.length} 只）`,
-          h('span', { class: 'gt-hint' }, g.tpo === 'T' ? '符合 T-3→T-1' : '符合 T-3→T-2'))));
+          h('span', { class: 'gt-hint' }, g.hint || (g.tpo === 'T' ? '符合 T-3→T-1' : '符合 T-3→T-2')))));
         if (!open) return;
         if (!g.rows.length) { tbody.appendChild(emptyRow('该窗口暂无符合标的')); return; }
         g.rows.forEach(appendDataRow);

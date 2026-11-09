@@ -1,68 +1,47 @@
 {
- "generatedAt": "2026-11-04T17:24:05",
- "buyDate": "20261104",
- "forTradeDate": "20261105",
+ "generatedAt": "2026-11-09T14:41:22",
+ "buyDate": "20261109",
+ "forTradeDate": "20261110",
  "approx": true,
  "preclose": true,
  "strategy": "TPO_M5",
  "env": {
   "t1": "差",
-  "above": 0,
-  "total": 7,
-  "date": "20261104"
+  "score": 0,
+  "state": "S0",
+  "sellRule": "10:00卖出",
+  "above": 1,
+  "total": 3,
+  "date": "20261106",
+  "mode": "s6",
+  "rule": "S6：沪深300上+1、创业板指上+1、中证银行≤MA60+1",
+  "details": [
+   {
+    "code": "000300.SH",
+    "name": "沪深300",
+    "close": 4113.41,
+    "ma60": 4423.87,
+    "above": false
+   },
+   {
+    "code": "399006.SZ",
+    "name": "创业板指",
+    "close": 2566.8,
+    "ma60": 3175.82,
+    "above": false
+   },
+   {
+    "code": "399986.SZ",
+    "name": "中证银行",
+    "close": 7748.82,
+    "ma60": 7519.1,
+    "above": true
+   }
+  ]
  },
- "firstPick": {
-  "code": "002601.SZ",
-  "name": "",
-  "buyPrice": 15.44,
-  "marketValue": 297.16,
-  "ma5Pred": true
- },
- "buyList": [
-  {
-   "code": "002601.SZ",
-   "name": "",
-   "buyPrice": 15.44,
-   "marketValue": 297.16,
-   "ma5Pred": true
-  },
-  {
-   "code": "000100.SZ",
-   "name": "",
-   "buyPrice": 4.68,
-   "marketValue": 915.23,
-   "ma5Pred": true
-  },
-  {
-   "code": "603822.SH",
-   "name": "",
-   "buyPrice": 63.95,
-   "marketValue": null,
-   "ma5Pred": true
-  },
-  {
-   "code": "600438.SH",
-   "name": "",
-   "buyPrice": 11.8,
-   "marketValue": 516.83,
-   "ma5Pred": true
-  },
-  {
-   "code": "002294.SZ",
-   "name": "",
-   "buyPrice": 31.5,
-   "marketValue": 341.5,
-   "ma5Pred": true
-  },
-  {
-   "code": "603606.SH",
-   "name": "",
-   "buyPrice": 39.51,
-   "marketValue": 317.55,
-   "ma5Pred": true
-  }
- ],
+ "firstPick": null,
+ "buyList": [],
  "candidates": [],
- "source": "preclose-14:45",
- "note": "14:45 预生成（尾盘买入用）；15:50 后以正式 strategy.json 为准"
+ "source": "preclose-14:40",
+ "note": "14:40 预生成（尾盘买入用）；15:50 后以正式 strategy.json 为准"
 }

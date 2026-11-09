@@ -40,6 +40,7 @@ import bisect
 import datetime as dt
 import json
 import os
+import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -208,42 +209,82 @@ def _market_value(parts: list[str], float_share: int) -> float:
     return float_share * float(parts[_C_CLOSE])
 
 
-def compute_env(buy_date: str) -> dict:
-    """成长端 7 宽基日线 MA60 环境（口径同 realtime_feed._refresh_env，但只用 <= buy_date 的收盘）。"""
-    above = 0
-    total = 0
-    env_date: str | None = None
-    for code, _name in GROWTH_INDEXES:
-        path = os.path.join(DIR_INDEX_5M, code)
-        if not os.path.exists(path):
+def _daily_index_closes(code: str) -> list[tuple[str, float]]:
+    """指数日线：vipdoc lday *.day 原始日线；缺失回退 INDEX_5M 聚合日线。"""
+    mkt = "sh" if code.upper().endswith(".SH") else "sz"
+    base = os.path.join(os.environ.get("TDX_VIPDOC", r"C:/new_tdx64/vipdoc"), mkt, "lday", mkt + code[:6])
+    for ext in (".day", ".lday"):
+        fp = base + ext
+        if not os.path.isfile(fp):
             continue
-        daily: dict[str, float] = {}
+        try:
+            raw = open(fp, "rb").read()
+        except OSError:
+            continue
+        out = {}
+        for i in range(len(raw) // 32):
+            try:
+                date, _op, _hi, _lo, cl, _amt, _vol, _r = struct.unpack("<IIIIIfII", raw[i * 32:(i + 1) * 32])
+            except struct.error:
+                continue
+            y, rem = date // 10000, date % 10000
+            mo, da = rem // 100, rem % 100
+            if 1990 <= y <= 2100 and 1 <= mo <= 12 and 1 <= da <= 31 and cl > 0:
+                out[f"{y}{mo:02d}{da:02d}"] = cl / 100.0
+        if out:
+            return [(d, out[d]) for d in sorted(out)]
+    # 回退 INDEX_5M 聚合
+    path = os.path.join(DIR_INDEX_5M, code)
+    daily: dict[str, float] = {}
+    try:
         for line in _read_text(path).splitlines():
             parts = line.split("|")
             if len(parts) < 5:
                 continue
             day = parts[0][:10].replace("-", "")
-            if len(day) != 8 or day > buy_date:
-                continue
             try:
                 daily[day] = float(parts[4])
             except ValueError:
                 continue
-        closes = [daily[d] for d in sorted(daily)]
-        if len(closes) < 60:
+    except OSError:
+        return []
+    return [(d, daily[d]) for d in sorted(daily)]
+
+
+def compute_env(buy_date: str) -> dict:
+    """新 B+ 环境（3 指数）：沪深300 上、创业板指 上、中证银行 下 → 好。"""
+    env_indexes = [("000300.SH", "沪深300"), ("399006.SZ", "创业板指"), ("399986.SZ", "中证银行")]
+    details = []
+    flags = {}
+    env_date = None
+    valid = True
+    for code, name in env_indexes:
+        closes = [(d, c) for d, c in _daily_index_closes(code) if d <= buy_date]
+        if not closes:
+            details.append({"code": code, "name": name, "ok": False})
+            valid = False
             continue
-        ma60 = sum(closes[-60:]) / 60.0
-        last = closes[-1]
-        above += 1 if last > ma60 else 0
-        total += 1
-        if env_date is None:
-            env_date = sorted(daily)[-1]
-    return {
-        "t1": ("好" if above >= 4 else "差") if total else None,
-        "above": above,
-        "total": total,
-        "date": env_date,
-    }
+        if len(closes) < 61:
+            details.append({"code": code, "name": name, "ok": False})
+            valid = False
+            continue
+        ma60 = sum(c for _d, c in closes[-61:-1]) / 60.0
+        day, last = closes[-1]
+        env_date = env_date or day
+        above = last > ma60
+        flags[code] = above
+        details.append({"code": code, "name": name, "ok": True, "date": day,
+                        "close": round(last, 2), "ma60": round(ma60, 2), "above": bool(above)})
+    if valid and len(flags) == 3:
+        score = int(bool(flags.get("000300.SH"))) + int(bool(flags.get("399006.SZ"))) + int(not bool(flags.get("399986.SZ")))
+        sell_rule = "持有到14:55" if score >= 2 else ("10:00看300+创指宽度" if score == 1 else "10:00卖出")
+        return {"t1": "好" if score >= 2 else "差", "score": score, "state": f"S{score}",
+                "sellRule": sell_rule, "above": sum(1 for x in details if x.get("above")),
+                "total": 3, "date": env_date, "mode": "s6",
+                "rule": "S6：沪深300上+1、创业板指上+1、中证银行≤MA60+1", "details": details}
+    return {"t1": None, "score": None, "state": "不可用", "sellRule": "回退满仓·持有到14:55",
+            "above": None, "total": 3, "date": env_date, "mode": "s6",
+            "rule": "S6 三指数数据不足 → 环境不可用", "details": details}
 
 
 def generate(buy_date: str) -> dict:
