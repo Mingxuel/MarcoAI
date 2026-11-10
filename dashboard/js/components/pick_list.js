@@ -3,7 +3,7 @@
  * 事件：onSelect(row) 点击行；onAdd(row) 点击 +；onCollapse() 收起右栏。
  * v1.2：TPO T/T-1 不再用独立卡片，而是与日期分组同构渲染（同一套列/表头/行高/颜色/排序）。
  */
-import { h, clear, fmt, pct, n, fmtDate, fmtYm, isLimitUp, toast } from '../util.js?v=20261106j';
+import { h, clear, fmt, pct, n, fmtDate, fmtYm, isLimitUp, toast } from '../util.js?v=20261106aa';
 
 const TPO_KEY = 'marco.picks.tpoOpenV2';
 const SORTABLE = (col) => !!col.sortable;

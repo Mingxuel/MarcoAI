@@ -25,6 +25,7 @@ export class ChartDrawings {
     this.pageKey = opts.pageKey || 'page';
     this.code = opts.code || '';
     this.period = opts.period || '1d';
+    this.storageKey = opts.storageKey || null;
     this.chart = null;
     this.series = null;
     this.bars = [];
@@ -128,7 +129,7 @@ export class ChartDrawings {
     document.addEventListener('keydown', (ev) => this._onKey(ev));
   }
 
-  _key() { return `marco.draw.${this.pageKey}.${this.code}.${this.period}`; }
+  _key() { return this.storageKey || `marco.draw.${this.pageKey}.${this.code}.${this.period}`; }
   load() {
     try {
       const raw = JSON.parse(localStorage.getItem(this._key()) || '[]') || [];

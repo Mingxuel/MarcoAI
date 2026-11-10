@@ -39,3 +39,36 @@
 .bt-help-li { font-size: 10.5px; color: var(--muted); line-height: 1.55; margin: 3px 0; }
 .bt-help-foot { margin-top: 7px; font-size: 10px; color: var(--muted-2); }
 @media (max-width: 1200px) { .bt-help-grid { grid-template-columns: 1fr; } .bt-sell-help { max-height: 46vh; overflow: auto; } }
+
+/* 资金曲线蜡烛 / 情绪图 */
+.bt-grid-lower { margin-top: 10px; }
+.bt-candle-chart, .bt-sent-chart { height: 280px; position: relative; }
+.bt-candle-panel .panel-body, .bt-sent-panel .panel-body { position: relative; }
+.bt-candle-panel .bt-line-tip, .bt-sent-panel .bt-line-tip { position: absolute; }
+@media (max-width: 1100px) { .bt-candle-chart, .bt-sent-chart { height: 230px; } }
+
+/* task-53 两列重排：左汇总+资金折线，右资金蜡烛+情绪副图 */
+.bt-grid.bt-layout2 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+  overflow: hidden;
+}
+.bt-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+.bt-col-right .bt-combo-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.bt-combo-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.bt-combo-body .bt-candle-chart { flex: 2 1 0; height: auto; min-height: 160px; }
+.bt-combo-body .bt-sent-chart { flex: 1 1 0; height: auto; min-height: 110px; }
+.bt-sub-sep {
+  flex: 0 0 auto; margin: 5px 0 2px; padding-top: 5px; border-top: 1px solid var(--border-soft);
+  font-size: 10px; color: var(--muted-2);
+}
+.bt-sent-legend { gap: 4px 8px; }
+@media (max-width: 1100px) {
+  .bt-grid.bt-layout2 { grid-template-columns: 1fr; }
+  .bt-combo-body .bt-candle-chart { min-height: 220px; }
+  .bt-combo-body .bt-sent-chart { min-height: 150px; }
+}
+
+.bt-combo-body > .cd-toolbar { position: static; align-self: flex-start; max-width: 100%; margin-bottom: 4px; flex-wrap: wrap; }
+.bt-combo-body > .cd-props { position: static; align-self: flex-start; margin-bottom: 4px; }

@@ -26,7 +26,7 @@ MIN_COMMISSION = 5.0
 STAMP_RATE = 5e-4
 DEFAULT_STOP = -0.05
 CACHE_TTL = 3600.0
-ENGINE_VERSION = 6  # 4: 增加回测区间内交易日序列 tradingDates（个股 lc5 前收买入 / 旧卖法涨停优先 / env MA60 不含 T-1）
+ENGINE_VERSION = 9  # 4: 增加回测区间内交易日序列 tradingDates（个股 lc5 前收买入 / 旧卖法涨停优先 / env MA60 不含 T-1）
 VDIR = os.environ.get("TDX_VIPDOC", r"C:/new_tdx64/vipdoc")
 
 
@@ -546,6 +546,66 @@ def _load_alignment(root):
     return out
 
 
+def _equity_candle(prev, close, paths):
+    """权益蜡烛：open=前一日权益，close=当日权益，high/low 用持仓票 5m 路径折算。"""
+    high = max(prev, close)
+    low = min(prev, close)
+    for buy, bars in paths or []:
+        if not buy or buy <= 0 or not bars:
+            continue
+        for bar in bars:
+            try:
+                hi = bar[2]
+                lo = bar[3]
+            except (TypeError, IndexError):
+                continue
+            if hi is not None:
+                high = max(high, prev * (1 + (float(hi) - buy) / buy))
+            if lo is not None:
+                low = min(low, prev * (1 + (float(lo) - buy) / buy))
+    return {"open": round(prev, 2), "high": round(high, 2), "low": round(low, 2), "close": round(close, 2)}
+
+
+def _sentiment_series(trading_dates):
+    """三指数情绪：(MA5-MA60)/MA60；银行反向；三者平均。T-1 数据，缺失=null。"""
+    codes = [("000300.SH", 1), ("399006.SZ", 1), ("399986.SZ", -1)]
+    daily = {}
+    for code, _sign in codes:
+        per = {d: v[3] for d, v in _lday_bars(code).items() if v and v[3]}
+        daily[code] = per
+    anchor = daily.get("000300.SH") or {}
+    all_days = sorted(anchor)
+    out = []
+    for t in trading_dates:
+        prior = [d for d in all_days if d < t]
+        value = None
+        comps = {}
+        if len(prior) >= 60:
+            vals = []
+            ok = True
+            for code, sign in codes:
+                per = daily.get(code) or {}
+                series = [per[d] for d in prior[-60:] if d in per]
+                if len(series) < 60:
+                    ok = False
+                    break
+                ma5 = sum(series[-5:]) / 5.0
+                ma60 = sum(series) / 60.0
+                if not ma60:
+                    ok = False
+                    break
+                c = (ma5 - ma60) / ma60 * 100.0 * sign
+                comps[code] = round(c, 3)
+                vals.append(c)
+            if ok and len(vals) == 3:
+                value = round(sum(vals) / 3.0, 3)
+                comps["value"] = value
+        out.append({"time": t[:4] + "-" + t[4:6] + "-" + t[6:8], "value": value,
+                    "h300": comps.get("000300.SH"), "cyb": comps.get("399006.SZ"),
+                    "bank": comps.get("399986.SZ")})
+    return out
+
+
 def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=False, sell_mode="bplus", env_mode="s6", width_mode="s6"):
     started = time.time()
     try:
@@ -583,14 +643,23 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
         return {"ok": False, "strategy": strategy, "sell_mode": "bplus", "pick_mode": pick_mode,
                 "error": f"STRATEGY/{strategy} 无数据", "metrics": {}, "capitalKline": [],
                 "monthRet": [], "quarterRet": [], "yearRet": [], "dist": {}, "fallbackDays": 0}
-    all_dates = sorted(daily)
+    # 当天的 TPO 文件是给下一交易日的前瞻名单，尚不是已完成的 T-0 交易，回测剔除当天
+    _today_ymd = _dt.datetime.now().strftime("%Y%m%d")
+    all_dates = [d for d in sorted(daily) if d < _today_ymd]
+    if not all_dates:
+        all_dates = sorted(daily)
     latest = _dt.datetime.strptime(all_dates[-1], "%Y%m%d")
     cutoff = (latest - _dt.timedelta(days=months * 31)).strftime("%Y%m%d")
     dates = [d for d in all_dates if d >= cutoff]
     idx = _load_index_data(root, env_mode, width_mode)
     all_trade_days = _load_trading_dates(root)
     if dates:
-        trading_dates = [d for d in all_trade_days if dates[0] <= d <= dates[-1]]
+        # 图表时间轴：回测区间首个策略日 → 最新市场交易日（含 11-09），
+        # 指标/交易仍只用已完成的策略日期，末尾空仓日资金平盘、情绪取 T-1。
+        _today = _dt.date.today().strftime("%Y%m%d")
+        _market_last = max([d for d in all_trade_days if d <= _today] or [dates[-1]])
+        _chart_end = max(dates[-1], _market_last)
+        trading_dates = [d for d in all_trade_days if dates[0] <= d <= _chart_end]
         if not trading_dates:
             trading_dates = list(dates)
     else:
@@ -617,12 +686,16 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
     bplus_days = 0
     reasons = {}
     first_bplus = None
+    cap_candle_map = {}
     for date in dates:
+        open_capital = capital
         rows = daily.get(date) or []
         if not rows:
             capitals.append(round(capital, 2))
             rets.append(0.0)
             kline.append(None)
+            cap_candle_map[date] = {"open": round(capital, 2), "high": round(capital, 2),
+                                    "low": round(capital, 2), "close": round(capital, 2)}
             for k in dist:
                 dist[k].append(None)
             continue
@@ -647,6 +720,7 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
                 fallback_days += 1
                 fallback_dates.append(date)
         valid = []
+        paths = []
         fallback_used = False
         for row in selected:
             code = row[0]
@@ -675,6 +749,7 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
             if (code, date) in align:
                 ex_dates.append({"code": code, "date": date, "ret": round(ret * 100, 2)})
             valid.append((row, buy, sp, reason, ret, day_raw))
+            paths.append((buy, bars))
             reasons[reason] = reasons.get(reason, 0) + 1
         day_net = 0.0
         if valid:
@@ -726,8 +801,19 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
             kline.append(None)
             for k in dist:
                 dist[k].append(None)
+        cap_candle_map[date] = _equity_candle(open_capital, capital, paths)
 
     metrics = _metrics(capitals, rets)
+    capital_candles = []
+    last_cap = INIT_CAPITAL
+    for d in trading_dates:
+        c = cap_candle_map.get(d)
+        if not c:
+            c = {"open": round(last_cap, 2), "high": round(last_cap, 2),
+                 "low": round(last_cap, 2), "close": round(last_cap, 2)}
+        capital_candles.append({"time": d[:4] + "-" + d[4:6] + "-" + d[6:8], **c})
+        last_cap = c["close"]
+    sentiment = _sentiment_series(trading_dates)
     payload = {
         "ok": True,
         "strategy": strategy,
@@ -747,6 +833,8 @@ def run_bplus(root, strategy="TPO_M5", months=12, pick_mode="first", refresh=Fal
         "quarterRet": [{"k": k, "ret": round((v - 1) * 100, 1)} for k, v in sorted(quarter.items())],
         "yearRet": [{"k": k, "ret": round((v - 1) * 100, 1)} for k, v in sorted(year.items())],
         "capitalKline": kline,
+        "capitalCandles": capital_candles,
+        "sentiment": sentiment,
         "dist": dist,
         "exDateTrades": len(ex_dates),
         "exDateDetails": ex_dates[:20],

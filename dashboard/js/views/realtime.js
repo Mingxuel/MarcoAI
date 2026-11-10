@@ -2,9 +2,9 @@
  * tqcenter 快照 2s 轮询；K 线数据来自 /api/realtime/kline（TDX vipdoc lc5 + 日线 MA）。
  * 只做行情与判断，不接 miniQMT、不下单。
  */
-import { h, clear, fmt, pct, n, toast, modalConfirm } from '../util.js?v=20261106j';
-import { API } from '../api.js?v=20261106j';
-import { RealtimeDualChart } from '../realtime_dual.js?v=20261106j';
+import { h, clear, fmt, pct, n, toast, modalConfirm } from '../util.js?v=20261106aa';
+import { API } from '../api.js?v=20261106aa';
+import { RealtimeDualChart } from '../realtime_dual.js?v=20261106aa';
 
 const REFRESH_MS = 2000;
 const KLINE_REFRESH_MS = 15000;

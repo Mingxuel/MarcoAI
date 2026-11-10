@@ -1,7 +1,7 @@
 /* 选股训练 v2：按日期分组、列出每日全部候选、多选后等权计算。 */
-import { h, clear, fmt, pct, toast } from '../util.js?v=20261106j';
-import { API } from '../api.js?v=20261106j';
-import { WorkspaceView } from './workspace.js?v=20261106j';
+import { h, clear, fmt, pct, toast } from '../util.js?v=20261106aa';
+import { API } from '../api.js?v=20261106aa';
+import { WorkspaceView } from './workspace.js?v=20261106aa';
 
 const INPUT_KEY = 'marco.training.inputs';
 const SELECT_KEY = 'marco.training.selected';

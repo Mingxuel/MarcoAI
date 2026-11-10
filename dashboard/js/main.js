@@ -1,12 +1,12 @@
 /* 应用入口：顶栏（数据状态/工作区/布局/联动）+ 三个视图的装配与快捷键 */
-import { API } from './api.js?v=20261106j';
-import { Store, LAYOUTS } from './store.js?v=20261106j';
-import { h, clear, fmtDate, toast, modalPrompt, modalConfirm, closePopover } from './util.js?v=20261106j';
-import { WorkspaceView } from './views/workspace.js?v=20261106j';
-import { BacktestView } from './views/backtest.js?v=20261106j';
-import { PicksView } from './views/picks.js?v=20261106j';
-import { RealtimeView } from './views/realtime.js?v=20261106j';
-import { TrainingView } from './views/training.js?v=20261106j';
+import { API } from './api.js?v=20261106aa';
+import { Store, LAYOUTS } from './store.js?v=20261106aa';
+import { h, clear, fmtDate, toast, modalPrompt, modalConfirm, closePopover } from './util.js?v=20261106aa';
+import { WorkspaceView } from './views/workspace.js?v=20261106aa';
+import { BacktestView } from './views/backtest.js?v=20261106aa';
+import { PicksView } from './views/picks.js?v=20261106aa';
+import { RealtimeView } from './views/realtime.js?v=20261106aa';
+import { TrainingView } from './views/training.js?v=20261106aa';
 
 const state = {
   meta: null,

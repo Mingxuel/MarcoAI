@@ -1,9 +1,9 @@
 /* K 线工作区：1/2/4 布局、每面板独立周期/指标、股票联动 + 时间轴联动、交易标记 */
-import { h, clear, fmt, pct, chgClass, fmtBarTime, dateToTs, toast, openPopover, closePopover } from '../util.js?v=20261106j';
-import { API } from '../api.js?v=20261106j';
-import { KlineChart } from '../chart_adapter.js?v=20261106j';
-import { ChartDrawings } from '../chart_drawings.js?v=20261106j';
-import { AVAILABLE_PERIODS, INDICATORS, PERIODS, panelCount } from '../store.js?v=20261106j';
+import { h, clear, fmt, pct, chgClass, fmtBarTime, dateToTs, toast, openPopover, closePopover } from '../util.js?v=20261106aa';
+import { API } from '../api.js?v=20261106aa';
+import { KlineChart } from '../chart_adapter.js?v=20261106aa';
+import { ChartDrawings } from '../chart_drawings.js?v=20261106aa';
+import { AVAILABLE_PERIODS, INDICATORS, PERIODS, panelCount } from '../store.js?v=20261106aa';
 
 const MA_PERIODS = [5, 10, 20, 30, 60, 120];
 const MA_COLORS = { 5: '#f5c518', 10: '#f472b6', 20: '#60a5fa', 30: '#34d399', 60: '#c084fc', 120: '#fb923c' };

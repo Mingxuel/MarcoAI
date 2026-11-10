@@ -3,11 +3,11 @@
  * - 右侧 PickList（只负责渲染与交互）+ picksAdapter（数据来源可替换）
  * - 点列表行只联动左侧 K 线并标注 T-2/T-0，不跳页、不丢列表状态
  */
-import { h, clear, toast } from '../util.js?v=20261106j';
-import { WorkspaceView } from './workspace.js?v=20261106j';
-import { PickList } from '../components/pick_list.js?v=20261106j';
-import { createDefaultPicksAdapter } from '../adapters/picks_adapter.js?v=20261106j';
-import { API } from '../api.js?v=20261106j';
+import { h, clear, toast } from '../util.js?v=20261106aa';
+import { WorkspaceView } from './workspace.js?v=20261106aa';
+import { PickList } from '../components/pick_list.js?v=20261106aa';
+import { createDefaultPicksAdapter } from '../adapters/picks_adapter.js?v=20261106aa';
+import { API } from '../api.js?v=20261106aa';
 
 const SPLIT_KEY = 'marco.dashboard.picksSplitPct';
 const DEFAULT_SPLIT = 65;   // 左 65% / 右 35%

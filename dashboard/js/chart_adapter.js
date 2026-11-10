@@ -2,7 +2,7 @@
  * 以后换 klinecharts 等只需改本文件（dashboard/vendor/klinecharts.min.js 已留作候选，
  * v10 UMD API 与 v9 不同且无 applyNewData，v1 采用本地已验证的 lightweight-charts 5.0.8）。
  */
-import { UP, DOWN, fmtBarTime, isIntraday } from './util.js?v=20261106j';
+import { UP, DOWN, fmtBarTime, isIntraday } from './util.js?v=20261106aa';
 
 const LW = () => window.LightweightCharts;
 

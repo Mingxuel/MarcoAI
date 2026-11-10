@@ -1,8 +1,8 @@
 /* 策略回测页：策略/买入/卖出三选择 + 8 指标卡 + 资金 K 线 + 月/季/年 + 收益分布 */
-import { h, clear, fmt, pct, n, toast } from '../util.js?v=20261106j';
-import { API } from '../api.js?v=20261106j';
-import { CapitalChart } from '../chart_adapter.js?v=20261106j';
-import { ChartDrawings } from '../chart_drawings.js?v=20261106j';
+import { h, clear, fmt, pct, n, toast } from '../util.js?v=20261106aa';
+import { API } from '../api.js?v=20261106aa';
+import { CapitalChart } from '../chart_adapter.js?v=20261106aa';
+import { ChartDrawings } from '../chart_drawings.js?v=20261106aa';
 
 const PICK_MODES = [
   { id: 'first', label: 'first · 当日候选第一只（单票）' },
@@ -307,6 +307,8 @@ export class BacktestView {
 
   async _renderBody() {
     const d = this.data;
+    if (this.candleChart) { try { this.candleChart.remove(); } catch (e) { /* ignore */ } this.candleChart = null; }
+    if (this.sentChart) { try { this.sentChart.remove(); } catch (e) { /* ignore */ } this.sentChart = null; }
     clear(this.bodyEl);
     const m = d.metrics || {};
 
@@ -377,11 +379,334 @@ export class BacktestView {
               distBox('开盘', dist.open), distBox('最高', dist.high),
               distBox('最低', dist.low), distBox('收盘', dist.close))))));
 
-    this.bodyEl.appendChild(metrics);
-    this.bodyEl.appendChild(h('div', { class: 'bt-grid' }, retPanel, capPanel));
+    // —— 右列：资金蜡烛主图 + 情绪副图（同一卡片） ——
+    this.candleHost = h('div', { class: 'bt-candle-chart' });
+    this.candleTip = h('div', { class: 'bt-line-tip', hidden: true });
+    this.candleLegend = h('div', { class: 'bt-line-legend' });
+    this.sentLegend = h('div', { class: 'bt-line-legend bt-sent-legend' });
+    this.sentHost = h('div', { class: 'bt-sent-chart' });
+    this.sentTip = h('div', { class: 'bt-line-tip', hidden: true });
+    this.comboPanel = h('div', { class: 'panel-block bt-candle-panel bt-combo-panel' },
+      h('div', { class: 'panel-head' }, '资金曲线蜡烛 × 情绪指数副图',
+        h('span', { class: 'hint' }, '主图 open=前日权益/5m路径 high-low · 副图三指数情绪 · MA可勾选 · 时间轴联动')),
+      h('div', { class: 'panel-body bt-combo-body' },
+        this.candleLegend, this.candleHost, this.candleTip,
+        h('div', { class: 'bt-sub-sep' }, '情绪指数（0 轴）'),
+        this.sentLegend, this.sentHost, this.sentTip));
+
+    const leftCol = h('div', { class: 'bt-col bt-col-left' }, metrics, retPanel, capPanel);
+    const rightCol = h('div', { class: 'bt-col bt-col-right' }, this.comboPanel);
+    this.bodyEl.appendChild(h('div', { class: 'bt-grid bt-layout2' }, leftCol, rightCol));
     this.bodyEl.appendChild(distPanel);
 
     await this._renderLineChart();
+    this._bindChartPan(this.capHost, this.capChart);
+    this._renderCandleChart();
+    this._renderSentimentChart();
+    this._bindChartPan(this.candleHost, this.candleChart);
+    this._bindChartPan(this.sentHost, this.sentChart);
+    this._linkChartRanges();
+    setTimeout(() => this._linkChartRanges(), 80);
+  }
+
+  _capCandleMaKey() { return 'marco.backtest.capitalCandles.ma'; }
+
+  _renderCandleChart() {
+    const LWg = window.LightweightCharts;
+    if (!this.candleHost) return;
+    if (!LWg) { clear(this.candleHost); this.candleHost.appendChild(h('div', { class: 'empty-box' }, '图表库未加载')); return; }
+    const rows = (this.data && this.data.capitalCandles) || [];
+    if (!rows.length) { clear(this.candleHost); this.candleHost.appendChild(h('div', { class: 'empty-box' }, '无资金蜡烛数据')); return; }
+    const base = Number(rows[0].open) || 100000;
+    const data = rows.map((c) => ({
+      time: String(c.time),
+      open: (Number(c.open) / base - 1) * 100,
+      high: (Number(c.high) / base - 1) * 100,
+      low: (Number(c.low) / base - 1) * 100,
+      close: (Number(c.close) / base - 1) * 100,
+      raw: c,
+    }));
+    clear(this.candleHost);
+    const chart = LWg.createChart(this.candleHost, {
+      autoSize: true, layout: { background: { color: 'transparent' }, textColor: '#8b9bb0' },
+      grid: { vertLines: { color: '#1a2635' }, horzLines: { color: '#1a2635' } },
+      rightPriceScale: { borderColor: '#24354a', scaleMargins: { top: 0.08, bottom: 0.08 } },
+      timeScale: { borderColor: '#24354a', timeVisible: false },
+      handleScale: { axisPressedMouseMove: { time: false, price: false } },
+      handleScroll: { pressedMouseMove: false, mouseWheel: true, horzTouchDrag: false, vertTouchDrag: false },
+      crosshair: {
+        mode: LWg.CrosshairMode ? LWg.CrosshairMode.Normal : 0,
+        vertLine: { visible: true, color: '#94a3b8', width: 1, style: 2, labelVisible: true },
+        horzLine: { visible: true, color: '#94a3b8', width: 1, style: 2, labelVisible: true },
+      },
+      localization: { priceFormatter: (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` },
+    });
+    this.candleChart = chart;
+    const series = chart.addSeries(LWg.CandlestickSeries, {
+      upColor: '#ef4444', downColor: '#1d9bf0', borderUpColor: '#ef4444', borderDownColor: '#1d9bf0',
+      wickUpColor: '#ef4444', wickDownColor: '#1d9bf0', priceLineVisible: false, lastValueVisible: false,
+    });
+    series.setData(data.map(({ raw, ...x }) => x));
+    this.candleSeries = series;
+    // MA 勾选（5/10/20/60，默认 5+60，独立 localStorage）
+    let maSel = [5, 60];
+    try {
+      const raw = JSON.parse(localStorage.getItem(this._capCandleMaKey()) || 'null');
+      if (Array.isArray(raw)) maSel = raw.filter((x) => [5, 10, 20, 30, 60, 120].includes(x));
+    } catch (e) { /* ignore */ }
+    const maColors = { 5: '#f5c518', 10: '#f472b6', 20: '#60a5fa', 30: '#34d399', 60: '#c084fc', 120: '#fb923c' };
+    const maSeries = {};
+    clear(this.candleLegend);
+    const redrawMa = () => {
+      for (const [p, s] of Object.entries(maSeries)) { try { chart.removeSeries(s); } catch (e) { /* ignore */ } delete maSeries[p]; }
+      for (const p of maSel) {
+        const s = chart.addSeries(LWg.LineSeries, { color: maColors[p], lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+        const out = [];
+        for (let i = 0; i < data.length; i++) {
+          if (i < p - 1) continue;
+          let sum = 0;
+          for (let j = i - p + 1; j <= i; j++) sum += data[j].close;
+          out.push({ time: data[i].time, value: sum / p });
+        }
+        s.setData(out);
+        maSeries[p] = s;
+      }
+    };
+    for (const p of [5, 10, 20, 30, 60, 120]) {
+      const cb = h('input', { type: 'checkbox', checked: maSel.includes(p) });
+      cb.addEventListener('change', () => {
+        if (cb.checked) { if (!maSel.includes(p)) maSel.push(p); }
+        else maSel = maSel.filter((x) => x !== p);
+        maSel.sort((a, b) => a - b);
+        try { localStorage.setItem(this._capCandleMaKey(), JSON.stringify(maSel)); } catch (e) { /* ignore */ }
+        redrawMa();
+      });
+      this.candleLegend.appendChild(h('label', { class: 'bt-legend-item' }, cb,
+        h('span', { class: 'dot', style: `background:${maColors[p]}` }), `MA${p}`));
+    }
+    redrawMa();
+    // 画线工具（独立 localStorage：backtest.capitalCandles）
+    if (!this.candleDraw) {
+      this.candleDraw = new ChartDrawings(this.candleHost, { pageKey: 'backtest', code: 'capitalCandles', period: '1d', storageKey: 'backtest.capitalCandles' });
+      const comboBody = (this.comboPanel || this.candlePanel).querySelector('.panel-body');
+      comboBody.insertBefore(this.candleDraw.toolbarEl, this.candleLegend);
+      this.candleHost.appendChild(this.candleDraw.propsEl);
+    }
+    this.candleDraw.setBars(data);
+    this.candleDraw.setChart(chart, series);
+    this.candleDraw.setContext({ pageKey: 'backtest', code: 'capitalCandles', period: '1d' });
+    chart.subscribeCrosshairMove((param) => {
+      if (!param || !param.time) { this.candleTip.hidden = true; return; }
+      const row = rows.find((c) => String(c.time) === String(param.time));
+      if (!row) { this.candleTip.hidden = true; return; }
+      this.candleTip.innerHTML = `<div class="t">${row.time}</div>`
+        + `<div class="r"><span>权益 O ${Number(row.open).toFixed(2)}</span><span>H ${Number(row.high).toFixed(2)}</span>`
+        + `<span>L ${Number(row.low).toFixed(2)}</span><span>C ${Number(row.close).toFixed(2)}</span></div>`;
+      this.candleTip.hidden = false;
+    });
+    chart.timeScale().fitContent();
+    try { const lr = chart.timeScale().getVisibleLogicalRange(); if (lr) chart.timeScale().setVisibleLogicalRange({ from: lr.from - 12, to: lr.to + 12 }); } catch (e) { /* ignore */ }
+  }
+
+  _bindChartPan(host, chart) {
+    if (!host || !chart || host.dataset.panBound) return;
+    host.dataset.panBound = '1';
+    const ts = chart.timeScale();
+    let pan = null;
+    host.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== 0) return;
+      const tg = ev.target;
+      if (tg && tg.closest && tg.closest('.cd-toolbar, .cd-props, .bt-line-legend, .bt-sub-sep')) return;
+      const r = host.getBoundingClientRect();
+      if (ev.clientX > r.right - 70 || ev.clientY > r.bottom - 40) return;
+      const lr = ts.getVisibleLogicalRange();
+      if (!lr) return;
+      pan = { x: ev.clientX, range: lr };
+      host.classList.add('bt-panning');
+      try { host.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+    });
+    host.addEventListener('pointermove', (ev) => {
+      if (!pan) return;
+      const r = host.getBoundingClientRect();
+      const w = Math.max(1, r.width);
+      const span = pan.range.to - pan.range.from;
+      const shift = ((ev.clientX - pan.x) / w) * span;
+      const n = ((this.data && this.data.capitalCandles) || []).length;
+      const minL = -12, maxL = n > 0 ? n + 11 : 1e9;
+      let from = pan.range.from - shift, to = pan.range.to - shift;
+      if (from < minL) { to += minL - from; from = minL; }
+      if (to > maxL) { from -= to - maxL; to = maxL; }
+      try { ts.setVisibleLogicalRange({ from, to }); } catch (e) { /* ignore */ }
+    });
+    const end = () => { if (!pan) return; pan = null; host.classList.remove('bt-panning'); };
+    host.addEventListener('pointerup', end);
+    host.addEventListener('pointercancel', end);
+  }
+
+  _linkChartRanges() {
+    const a = this.candleChart, b = this.sentChart;
+    if (!a || !b || this._rangesLinked) return;
+    this._rangesLinked = true;
+    let syncing = false;
+    let syncTimer = null;
+    const bindRange = (src, dst) => {
+      try {
+        src.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (!range || syncing) return;
+          // 拖拽过程中只记录，松手/停止后再同步，避免两端在边缘互相夹逼造成“放大”
+          clearTimeout(syncTimer);
+          syncTimer = setTimeout(() => {
+            if (syncing) return;
+            const cur = src.timeScale().getVisibleLogicalRange();
+            if (!cur) return;
+            syncing = true;
+            try { dst.timeScale().setVisibleLogicalRange(cur); } catch (e) { /* ignore */ } finally { syncing = false; }
+          }, 180);
+        });
+      } catch (e) { /* ignore */ }
+    };
+    bindRange(a, b);
+    bindRange(b, a);
+    // 十字光标垂直日期联动（主/副图同日期竖线）
+    let crossSyncing = false;
+    const bindCross = (src, dst, dstSeries, priceAt) => {
+      try {
+        src.subscribeCrosshairMove((param) => {
+          if (crossSyncing) return;
+          if (!param || !param.time) {
+            try { dst.clearCrosshairPosition(); } catch (e) { /* ignore */ }
+            return;
+          }
+          crossSyncing = true;
+          try {
+            const price = priceAt(param.time);
+            if (price != null) dst.setCrosshairPosition(price, param.time, dstSeries);
+            else try { dst.clearCrosshairPosition(); } catch (e) { /* ignore */ }
+          } catch (e) { /* ignore */ } finally { crossSyncing = false; }
+        });
+      } catch (e) { /* ignore */ }
+    };
+    const candleRows = (this.data && this.data.capitalCandles) || [];
+    const sentRows = (this.data && this.data.sentiment) || [];
+    const candlePrice = (time) => {
+      const r = candleRows.find((x) => String(x.time) === String(time));
+      return r ? Number(r.close) : null;
+    };
+    const sentPrice = (time) => {
+      const r = sentRows.find((x) => String(x.time) === String(time));
+      return r && r.value != null ? Number(r.value) : 0;
+    };
+    bindCross(a, b, this.sentSeries, sentPrice);
+    bindCross(b, a, this.candleSeries, candlePrice);
+    // 初始加左右空档，避免在右端拖拽被库夹逼成“放大”；两图同一 logical 区间
+    try {
+      const n = ((this.data && this.data.capitalCandles) || []).length;
+      if (n > 0) {
+        a.timeScale().setVisibleLogicalRange({ from: -12, to: n + 11 });
+        b.timeScale().setVisibleLogicalRange({ from: -12, to: n + 11 });
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  _renderSentimentChart() {
+    const LWg = window.LightweightCharts;
+    if (!this.sentHost) return;
+    if (!LWg) { clear(this.sentHost); this.sentHost.appendChild(h('div', { class: 'empty-box' }, '图表库未加载')); return; }
+    const rows = (this.data && this.data.sentiment) || [];
+    const valid = rows.filter((x) => x.value != null);
+    clear(this.sentHost);
+    if (!valid.length) { this.sentHost.appendChild(h('div', { class: 'empty-box' }, '情绪数据不足（MA60 未成形）')); return; }
+    const chart = LWg.createChart(this.sentHost, {
+      autoSize: true, layout: { background: { color: 'transparent' }, textColor: '#8b9bb0' },
+      grid: { vertLines: { color: '#1a2635' }, horzLines: { color: '#1a2635' } },
+      rightPriceScale: { borderColor: '#24354a', scaleMargins: { top: 0.1, bottom: 0.1 } },
+      timeScale: { borderColor: '#24354a', timeVisible: false },
+      handleScale: { axisPressedMouseMove: { time: false, price: false } },
+      handleScroll: { pressedMouseMove: false, mouseWheel: true, horzTouchDrag: false, vertTouchDrag: false },
+      crosshair: {
+        mode: LWg.CrosshairMode ? LWg.CrosshairMode.Normal : 0,
+        vertLine: { visible: true, color: '#94a3b8', width: 1, style: 2, labelVisible: true },
+        horzLine: { visible: true, color: '#94a3b8', width: 1, style: 2, labelVisible: true },
+      },
+    });
+    this.sentChart = chart;
+    const baseOpts = {
+      baseValue: { type: 'price', price: 0 },
+      topLineColor: '#ef4444', bottomLineColor: '#22c55e',
+      topFillColor1: 'rgba(239,68,68,0.22)', topFillColor2: 'rgba(239,68,68,0.03)',
+      bottomFillColor1: 'rgba(34,197,94,0.03)', bottomFillColor2: 'rgba(34,197,94,0.22)',
+      lineWidth: 2, priceLineVisible: false, lastValueVisible: true,
+    };
+    let series;
+    if (LWg.BaselineSeries) series = chart.addSeries(LWg.BaselineSeries, baseOpts);
+    else series = chart.addSeries(LWg.LineSeries, { color: '#22c55e', lineWidth: 2, priceLineVisible: false });
+    series.setData(rows.map((x) => (x.value == null ? { time: x.time } : { time: x.time, value: x.value })));
+    this.sentSeries = series;
+    try {
+      series.createPriceLine({ price: 0, color: '#64748b', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '0' });
+    } catch (e) { /* ignore */ }
+    clear(this.sentLegend);
+    this.sentLegend.appendChild(h('span', { class: 'bt-legend-item' }, h('span', { class: 'dot', style: 'background:#ef4444' }), '情绪（正/红）'));
+    this.sentLegend.appendChild(h('span', { class: 'bt-legend-item' }, h('span', { class: 'dot', style: 'background:#22c55e' }), '情绪（负/绿）'));
+    // 情绪 MA 5/10/20/30/60/120（默认 5+60）
+    const sentMaKey = 'marco.backtest.sentiment.ma';
+    let sentMaSel = [5, 60];
+    try {
+      const raw = JSON.parse(localStorage.getItem(sentMaKey) || 'null');
+      if (Array.isArray(raw)) sentMaSel = raw.filter((x) => [5, 10, 20, 30, 60, 120].includes(x));
+    } catch (e) { /* ignore */ }
+    const sentMaColors = { 5: '#f5c518', 10: '#f472b6', 20: '#60a5fa', 30: '#34d399', 60: '#c084fc', 120: '#fb923c' };
+    const sentMaSeries = {};
+    const sentVals = valid.map((x) => x.value);
+    const calcMa = (i, p) => {
+      if (i < p - 1) return null;
+      let sum = 0;
+      for (let j = i - p + 1; j <= i; j++) {
+        if (sentVals[j] == null) return null;
+        sum += sentVals[j];
+      }
+      return sum / p;
+    };
+    const redrawSentMa = () => {
+      for (const [p, sr] of Object.entries(sentMaSeries)) { try { chart.removeSeries(sr); } catch (e) { /* ignore */ } delete sentMaSeries[p]; }
+      for (const p of sentMaSel) {
+        const sr = chart.addSeries(LWg.LineSeries, { color: sentMaColors[p], lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+        sr.setData(valid.map((x, i) => ({ time: x.time, value: calcMa(i, p) })).filter((x) => x.value != null));
+        sentMaSeries[p] = sr;
+      }
+    };
+    for (const p of [5, 10, 20, 30, 60, 120]) {
+      const cb = h('input', { type: 'checkbox', checked: sentMaSel.includes(p) });
+      cb.addEventListener('change', () => {
+        if (cb.checked) { if (!sentMaSel.includes(p)) sentMaSel.push(p); }
+        else sentMaSel = sentMaSel.filter((x) => x !== p);
+        sentMaSel.sort((a, b) => a - b);
+        try { localStorage.setItem(sentMaKey, JSON.stringify(sentMaSel)); } catch (e) { /* ignore */ }
+        redrawSentMa();
+      });
+      this.sentLegend.appendChild(h('label', { class: 'bt-legend-item' }, cb,
+        h('span', { class: 'dot', style: `background:${sentMaColors[p]}` }), `MA${p}`));
+    }
+    redrawSentMa();
+    chart.subscribeCrosshairMove((param) => {
+      if (!param || !param.time) { this.sentTip.hidden = true; return; }
+      const idx = valid.findIndex((x) => String(x.time) === String(param.time));
+      if (idx < 0) { this.sentTip.hidden = true; return; }
+      const row = valid[idx];
+      const fmtv = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}`;
+      const maTxt = sentMaSel.map((p) => {
+        const mv = calcMa(idx, p);
+        return `MA${p} ${mv == null ? '—' : mv.toFixed(2)}`;
+      }).join(' · ');
+      this.sentTip.innerHTML = `<div class="t">${row.time}</div>`
+        + `<div class="r"><span>情绪</span><span>${fmtv(row.value)}</span></div>`
+        + `<div class="r"><span>沪深300</span><span>${fmtv(row.h300)}</span></div>`
+        + `<div class="r"><span>创业板指</span><span>${fmtv(row.cyb)}</span></div>`
+        + `<div class="r"><span>银行(反向)</span><span>${fmtv(row.bank)}</span></div>`
+        + (maTxt ? `<div class="r ma">${maTxt}</div>` : '');
+      this.sentTip.hidden = false;
+    });
+    chart.timeScale().fitContent();
   }
 
   /* ---------------- 资金曲线 + 指数叠加 ---------------- */
@@ -490,6 +815,8 @@ export class BacktestView {
       grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)', scaleMargins: { top: 0.08, bottom: 0.08 } },
       timeScale: { borderColor: 'rgba(255,255,255,0.08)', rightOffset: 4, barSpacing: 5, timeVisible: false },
+      handleScale: { axisPressedMouseMove: { time: false, price: false } },
+      handleScroll: { pressedMouseMove: false, mouseWheel: true, horzTouchDrag: false, vertTouchDrag: false },
       crosshair: { mode: LWg.CrosshairMode ? LWg.CrosshairMode.Normal : 0,
         vertLine: { color: 'rgba(148,163,184,.55)', width: 1, style: 2, labelBackgroundColor: '#1e293b' },
         horzLine: { color: 'rgba(148,163,184,.55)', width: 1, style: 2, labelBackgroundColor: '#1e293b' } },
